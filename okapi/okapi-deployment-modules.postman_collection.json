@@ -1,0 +1,1910 @@
+{
+	"info": {
+		"_postman_id": "ce8fad34-fd70-4b39-957a-a721280a1fa9",
+		"name": "okapi-deployment-modules",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "authenticate",
+			"description": "",
+			"item": [
+				{
+					"name": "/authn/login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var token = postman.getResponseHeader(\"x-okapi-token\")",
+									"pm.environment.set(\"xokapitoken\", token);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"authn",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "authn/login-supertenant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "1f5a1b48-5a75-4fa2-ba0c-f539cc8cf7fc",
+								"type": "text/javascript",
+								"exec": [
+									"if(pm.response.headers.has(\"x-okapi-token\")) {",
+									"",
+									"    pm.environment.set(\"supertenantokapitoken\", pm.response.headers.get(\"x-okapi-token\"));",
+									"   ",
+									" }",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "supertenant"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\":\"admin\",\"password\":\"$ecrecy8egetsTyranny\"}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"authn",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "modules",
+			"description": null,
+			"item": [
+				{
+					"name": "_/deployment/modules",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "61ad0f25-44b5-44f6-a64a-1164fe15c60e",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"let response = pm.response.json();",
+									"",
+									"if (response.length === 0)",
+									"{",
+									"    postman.setNextRequest(\"_/deployment/modules -get-bad-instance-id\");",
+									"}",
+									"",
+									"else {",
+									"",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.ok; ",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"    tv4.addSchema(\"EnvEntry.json\", JSON.parse(pm.variables.get(\"enventry.schema\")));",
+									"    tv4.addSchema(\"EnvEntryList.json\", JSON.parse(pm.variables.get(\"enventrylist.schema\")));",
+									"    tv4.addSchema(\"LaunchDescriptor.json\", JSON.parse(pm.variables.get(\"launchdescriptor.schema\")));",
+									"    tv4.addSchema(\"DeploymentDescriptor.json\", JSON.parse(pm.variables.get(\"deploymentdescriptor.schema\")));",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"deploymentdescriptorlist.schema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/deployment/modules : 200\");",
+									"});",
+									"",
+									"pm.environment.set(\"testModuleCount\", data.length);",
+									"",
+									"pm.test('There are at least 2 modules deployed', function() {",
+									"  pm.expect(data.length).to.be.above(1);",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data[0]).to.have.all.keys('instId', 'srvcId', 'nodeId', 'url', 'descriptor');",
+									"});",
+									"",
+									"pm.environment.set(\"testModuleInstanceId\", data[0].instId);",
+									"pm.environment.set(\"testModuleServiceId\", data[0].srvcId);",
+									"pm.environment.set(\"testModuleNodeId\", data[0].nodeId);",
+									"pm.environment.set(\"testModuleURL\", data[0].url);",
+									"pm.environment.set(\"testModuleDescriptor\", JSON.stringify(data[0].descriptor));",
+									"pm.environment.set(\"testModuleInstanceObj\", JSON.stringify(data[0]));",
+									"pm.environment.set(\"testModuleInstanceIdAlreadyDeployed\", data[1].instId);",
+									"pm.environment.set(\"testModuleServiceIdAlreadyDeployed\", data[1].srvcId);",
+									"pm.environment.set(\"testModuleDescriptorAlreadyDeployed\", JSON.stringify(data[1].descriptor));",
+									"",
+									"}",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "bb4344c7-717f-41ab-bc98-f3732c832221",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -get-by-instanceid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fbd109a3-b4aa-4d34-a59a-9d4e3e59cd81",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.ok; ",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"    tv4.addSchema(\"EnvEntry.json\", JSON.parse(pm.variables.get(\"enventry.schema\")));",
+									"    tv4.addSchema(\"EnvEntryList.json\", JSON.parse(pm.variables.get(\"enventrylist.schema\")));",
+									"    tv4.addSchema(\"LaunchDescriptor.json\", JSON.parse(pm.variables.get(\"launchdescriptor.schema\")));",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"deploymentdescriptor.schema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules/\".concat(pm.environment.get",
+									"    (\"testModuleInstanceId\"));",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data).to.have.all.keys('instId', 'srvcId', 'nodeId', 'url', 'descriptor');",
+									"});",
+									"",
+									"pm.test(\"response attributes matches saved module attributes\", function() {",
+									"    pm.expect(data.instId).equal(pm.environment.get(\"testModuleInstanceId\"));",
+									"    pm.expect(data.srvcId).equal(pm.environment.get(\"testModuleServiceId\"));",
+									"    pm.expect(data.nodeId).equal(pm.environment.get(\"testModuleNodeId\"));",
+									"    pm.expect(data.url).equal(pm.environment.get(\"testModuleURL\"));",
+									"});",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/{{testModuleInstanceId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"{{testModuleInstanceId}}"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "f2242f0e-4931-4871-b1b8-905a0d0a3a4f",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -delete-sample-instanceid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "efbc33ee-5e51-42ef-8b5d-3e57610776e0",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules/\".concat(pm.environment.get",
+									"    (\"testModuleInstanceId\"));",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/{{testModuleInstanceId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"{{testModuleInstanceId}}"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "4733117a-aa57-41c8-8bbe-85c79f5c7632",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -post-new instance id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "8b1f3ac2-0c4a-4fc0-b441-3e711a4628cd",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"console.log(pm.response)",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Validate schema\", function() {",
+									"    tv4.addSchema(\"EnvEntry.json\", JSON.parse(pm.variables.get(\"enventry.schema\")));",
+									"    tv4.addSchema(\"EnvEntryList.json\", JSON.parse(pm.variables.get(\"enventrylist.schema\")));",
+									"    tv4.addSchema(\"LaunchDescriptor.json\", JSON.parse(pm.variables.get(\"launchdescriptor.schema\")));",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"deploymentdescriptor.schema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules : 201\";",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data).to.have.all.keys('instId', 'srvcId', 'nodeId', 'url', 'descriptor');",
+									"});",
+									"",
+									"pm.test(\"check that module response attributes matches saved module attributes\", function() {",
+									"    pm.expect(data.instId).equal(\"new-instance-id\");",
+									"    pm.expect(data.srvcId).equal(pm.environment.get(\"testModuleServiceId\"));",
+									"    pm.expect(data.nodeId).equal(pm.environment.get(\"testModuleNodeId\"));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"instId\": \"new-instance-id\",\n    \"srvcId\": \"{{testModuleServiceId}}\",\n    \"descriptor\": {{testModuleDescriptor}}\n}\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -delete-new-instance-id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "839845dd-a403-4ebf-880b-7600024adb1d",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules/new-instance-id\";",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/new-instance-id",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"new-instance-id"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "07d2f64f-ce2b-409a-a120-361ba5fd3802",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -post-test-jar-example",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "228d0dbd-5c6e-458a-bb7c-f1dc86019e2c",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"console.log(pm.response)",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Validate schema\", function() {",
+									"    tv4.addSchema(\"EnvEntry.json\", JSON.parse(pm.variables.get(\"enventry.schema\")));",
+									"    tv4.addSchema(\"EnvEntryList.json\", JSON.parse(pm.variables.get(\"enventrylist.schema\")));",
+									"    tv4.addSchema(\"LaunchDescriptor.json\", JSON.parse(pm.variables.get(\"launchdescriptor.schema\")));",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"deploymentdescriptor.schema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules\";",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data).to.have.all.keys('instId', 'srvcId', 'nodeId', 'url', 'descriptor');",
+									"});",
+									"",
+									"pm.test(\"check that module response attributes matches saved module attributes\", function() {",
+									"    pm.expect(data.instId).equal(\"test-jar-example\");",
+									"    pm.expect(data.srvcId).equal(\"Okapi test jar\");",
+									"})",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"instId\": \"test-jar-example\",\r\n  \"srvcId\": \"Okapi test jar\",\r\n \"descriptor\": {\r\n    \"exec\": \"java -Dport=%p -jar {{testjar.path}}/okapi-test-module-fat.jar\"\r\n  }\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -delete-test-jar-example",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "87ea2c4c-911f-4090-997c-40cd3934f547",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules/test-jar-example\";",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/test-jar-example",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"test-jar-example"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "bbf82799-87ae-4c80-9416-bd1928de1424",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -post-missing-instId",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "68dd483a-c5e8-4360-bd8f-5f3e65bf9fab",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Validate schema\", function() {",
+									"    tv4.addSchema(\"EnvEntry.json\", JSON.parse(pm.variables.get(\"enventry.schema\")));",
+									"    tv4.addSchema(\"EnvEntryList.json\", JSON.parse(pm.variables.get(\"enventrylist.schema\")));",
+									"    tv4.addSchema(\"LaunchDescriptor.json\", JSON.parse(pm.variables.get(\"launchdescriptor.schema\")));",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"deploymentdescriptor.schema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules\";",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data).to.have.all.keys('instId', 'srvcId', 'nodeId', 'url', 'descriptor');",
+									"});",
+									"",
+									"pm.test(\"check that module response attribute service id matches posted service id\", function() {",
+									"    pm.expect(data.srvcId).equal(pm.environment.get(\"testModuleServiceId\"));",
+									"});",
+									"",
+									"pm.test(\"check that a new instance id is generated\", function() {",
+									"    pm.expect(data.instId).to.have.length.above(0);",
+									"});",
+									"pm.environment.set(\"testModuleGeneratedInstanceId\", data.instId);",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"srvcId\": \"{{testModuleServiceId}}\",\n    \"descriptor\": {{testModuleDescriptor}}\n}\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -delete-generated-instance-id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "1382ff7e-f057-4c1f-b8f8-00c8daef0ea3",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules/\".concat(pm.environment.get",
+									"    (\"testModuleGeneratedInstanceId\"));",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/{{testModuleGeneratedInstanceId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"{{testModuleGeneratedInstanceId}}"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "6644b21f-f4c7-47eb-8539-11691254859e",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -post-sample-repost-first module object",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "68371ec8-6c94-42ed-a5f5-6046afce3c2e",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"response must be valid and have a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Validate schema\", function() {",
+									"    tv4.addSchema(\"EnvEntry.json\", JSON.parse(pm.variables.get(\"enventry.schema\")));",
+									"    tv4.addSchema(\"EnvEntryList.json\", JSON.parse(pm.variables.get(\"enventrylist.schema\")));",
+									"    tv4.addSchema(\"LaunchDescriptor.json\", JSON.parse(pm.variables.get(\"launchdescriptor.schema\")));",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"deploymentdescriptor.schema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    var traceString = \"/_/deployment/modules : 201\";",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(traceString);",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data).to.have.all.keys('instId', 'srvcId', 'nodeId', 'url', 'descriptor');",
+									"});",
+									"",
+									"pm.test(\"check that module response attributes matches saved module attributes\", function() {",
+									"    pm.expect(data.instId).equal(pm.environment.get(\"testModuleInstanceId\"));",
+									"    pm.expect(data.srvcId).equal(pm.environment.get(\"testModuleServiceId\"));",
+									"    pm.expect(data.nodeId).equal(pm.environment.get(\"testModuleNodeId\"));",
+									"    pm.expect(data.url).equal(pm.environment.get(\"testModuleURL\"));",
+									"})"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{testModuleInstanceObj}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -get-bad-instance-id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "537aa3f2-352e-42f6-ab57-5ab17484b388",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"",
+									"pm.test(\"response must have a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"});",
+									"",
+									"pm.test(\"Body matches string\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"not found: bad-instance-id\");",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/bad-instance-id",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"bad-instance-id"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "3aaaf41a-64c8-4974-8997-d424d9806ccd",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -delete-bad-instance-id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f86349de-189f-45cf-99fc-592c6038d9ea",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"response must have a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"});",
+									"",
+									"pm.test(\"Body matches string\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"not found: bad-instance-id\");",
+									"});",
+									"",
+									"if (pm.environment.get(\"testModuleInstanceIdAlreadyDeployed\")===undefined)",
+									"{",
+									"    postman.setNextRequest(\"_/deployment/modules -post-missing-descriptor\");",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules/bad-instance-id",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules",
+								"bad-instance-id"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "b6f5727e-506a-40ce-97c9-95f8fd44159a",
+							"name": "_/deployment/modules",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"deployment",
+										"modules"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Length",
+									"value": "12095",
+									"name": "Content-Length",
+									"description": "The length of the response body in octets (8-bit bytes)"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json",
+									"name": "Content-Type",
+									"description": "The mime type of this content"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET mod-authtoken-1.2.0-SNAPSHOT.15 http://10.0.2.15:9131/_/deployment/modules : 202 17323us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								},
+								{
+									"key": "X-Okapi-Trace",
+									"value": "GET okapi-2.8.4 /_/deployment/modules : 200 806us",
+									"name": "X-Okapi-Trace",
+									"description": "Custom header"
+								}
+							],
+							"cookie": [],
+							"body": "[ {\n  \"instId\" : \"faaf8c2f-8ba6-49e1-9152-2981f03afee0\",\n  \"srvcId\" : \"mod-authtoken-1.2.0-SNAPSHOT.15\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9131\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-authtoken:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8f309edb-f52d-462f-81f3-9dc9c47b5a2b\",\n  \"srvcId\" : \"mod-permissions-5.0.1-SNAPSHOT.10\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9132\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-permissions:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4282ce54-241a-41b9-b3d2-aae379e7d774\",\n  \"srvcId\" : \"mod-login-4.0.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9133\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login:latest\",\n    \"dockerPull\" : false,\n    \"dockerCMD\" : [ \"verify.user=true\" ],\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c7042fb3-570d-4f6e-88bb-9bf6dff72879\",\n  \"srvcId\" : \"mod-configuration-4.0.2-SNAPSHOT.26\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9134\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-configuration:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a020a12c-0353-421d-985b-65d04233295e\",\n  \"srvcId\" : \"mod-users-14.4.1-SNAPSHOT.13\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9135\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"20364a01-b694-4f83-806f-9754f0a13281\",\n  \"srvcId\" : \"mod-users-bl-2.2.1-SNAPSHOT.9\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9136\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-users-bl:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"bb95b1ed-a57f-48be-9d4e-bd8f23f0d67a\",\n  \"srvcId\" : \"mod-login-saml-1.0.2-SNAPSHOT.16\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9137\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-login-saml:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7240f9b7-d77e-4392-9fe7-844fdc5129ae\",\n  \"srvcId\" : \"mod-user-import-2.0.1-SNAPSHOT.20\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9138\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-user-import:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"47b64707-6891-4c98-9d84-5b85bf3f8cfb\",\n  \"srvcId\" : \"mod-inventory-storage-7.2.2-SNAPSHOT.75\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9139\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"6a273ab0-7c84-487f-9093-86b6535634c5\",\n  \"srvcId\" : \"mod-inventory-7.0.1-SNAPSHOT.71\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9140\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-inventory:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"JAVA_OPTIONS\",\n      \"value\" : \"-Dorg.folio.metadata.inventory.storage.type=okapi\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9403/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"5f4ae8b4-09d5-454e-940d-f8bcc1947b49\",\n  \"srvcId\" : \"mod-circulation-storage-4.3.0-SNAPSHOT.65\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9141\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation-storage:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"4622d2e3-5b8f-43d1-becb-7cf04ba3be06\",\n  \"srvcId\" : \"mod-circulation-7.2.0-SNAPSHOT.98\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9142\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-circulation:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"9801/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"c8c8522c-88f9-44b1-83c3-aa6ff09d4b8e\",\n  \"srvcId\" : \"mod-notify-1.1.6-SNAPSHOT.37\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9143\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notify:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"31f1b70b-4f31-4c7c-8b82-f02dd8befe68\",\n  \"srvcId\" : \"mod-notes-2.0.2-SNAPSHOT.46\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9144\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-notes:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"b220e81d-ba83-442b-b19b-15aab6478f2e\",\n  \"srvcId\" : \"mod-graphql-0.1.100019\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9145\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-graphql:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"3000/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"a8785241-bf1b-40df-bd5d-f4212edafb39\",\n  \"srvcId\" : \"mod-codex-mock-2.0.1-SNAPSHOT.27\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9146\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mock:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"db.password\",\n      \"value\" : \"folio_admin\"\n    }, {\n      \"name\" : \"db.database\",\n      \"value\" : \"okapi_modules\"\n    }, {\n      \"name\" : \"db.port\",\n      \"value\" : \"5432\"\n    }, {\n      \"name\" : \"db.host\",\n      \"value\" : \"10.0.2.15\"\n    }, {\n      \"name\" : \"db.username\",\n      \"value\" : \"folio_admin\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"8e3283d3-d2b3-4baf-999b-c372a1025ad3\",\n  \"srvcId\" : \"mod-codex-inventory-1.0.3-SNAPSHOT.29\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9147\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-inventory:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"605f0ee1-6f4e-486f-898f-d29ee3598681\",\n  \"srvcId\" : \"mod-codex-ekb-0.0.5-SNAPSHOT.57\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9148\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-ekb:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"7a7472a3-f20e-4d9b-b4ba-d815795b5fdc\",\n  \"srvcId\" : \"mod-codex-mux-2.1.3-SNAPSHOT.44\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9149\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-codex-mux:latest\",\n    \"dockerPull\" : false,\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n}, {\n  \"instId\" : \"861d5ee7-5c34-4021-bfb4-2ed97aea8bc4\",\n  \"srvcId\" : \"mod-kb-ebsco-0.1.1-SNAPSHOT.21\",\n  \"nodeId\" : \"10.0.2.15\",\n  \"url\" : \"http://10.0.2.15:9150\",\n  \"descriptor\" : {\n    \"dockerImage\" : \"folioci/mod-kb-ebsco:latest\",\n    \"dockerPull\" : false,\n    \"env\" : [ {\n      \"name\" : \"EBSCO_RMAPI_BASE_URL\",\n      \"value\" : \"https://sandbox.ebsco.io\"\n    } ],\n    \"dockerArgs\" : {\n      \"HostConfig\" : {\n        \"PortBindings\" : {\n          \"8081/tcp\" : [ {\n            \"HostPort\" : \"%p\"\n          } ]\n        }\n      }\n    }\n  }\n} ]"
+						}
+					]
+				},
+				{
+					"name": "_/deployment/modules -post-sample-already-deployed",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "2650fb6a-8897-4f16-8916-442b09d7fccf",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Body matches string\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"already deployed:\");",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "1416fa43-b1ce-4d1e-9300-ad7fc319b78a",
+								"type": "text/javascript",
+								"exec": [
+									"",
+									"   "
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"instId\": \"{{testModuleInstanceIdAlreadyDeployed}}\",\n    \"srvcId\": \"{{testModuleServiceIdAlreadyDeployed}}\",\n    \"descriptor\": {{testModuleDescriptorAlreadyDeployed}}\n}\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -post-missing-srvcid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "7d7fa974-5eea-4432-b6dd-51a0e10b7234",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Body matches string\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"Needs srvcId\");",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "598ae64e-c9f2-4836-9961-3f2f42840c17",
+								"type": "text/javascript",
+								"exec": [
+									" "
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"instId\": \"testid-1\",\n    \"descriptor\": {{testModuleDescriptor}}\n}\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -post-missing-descriptor",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "76cfaa6c-39c3-477a-b623-5fa631a9b8f3",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Body matches string\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"No LaunchDescriptor\");",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"srvcId\": \"{{testModuleServiceId}}\"\n}\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -post-invalid-json",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "044c8b6e-e952-48ab-87a4-52c36f052ff5",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\n    {\n        \"srvcId\"\n    }"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -post-bad-jar-path",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "28c9938f-a849-4295-ab07-b30407632782",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"instId\": \"test-basic-1.1.1\",\r\n  \"srvcId\": \"Okapi test module2\",\r\n \"descriptor\": {\r\n    \"exec\": \"java -Dport=%p -jar okapi-test-auth-module/target/okapi-test-auth-module-fat.jar\"\r\n  }\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -post-bad-docker-image",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "6cadfa64-c7b1-46bf-9fc8-c6c7f08275c2",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": " {\n        \"instId\": \"bad-docker-image\",\n        \"srvcId\": \"mod-doesnotexist-1.4.1-SNAPSHOT.18\",\n        \"descriptor\": {\n            \"dockerImage\": \"folioci/doesnotexist:latest\",\n            \"dockerPull\": false,\n            \"dockerArgs\": {\n                \"HostConfig\": {\n                    \"PortBindings\": {\n                        \"8081/tcp\": [\n                            {\n                                \"HostPort\": \"%p\"\n                            }\n                        ]\n                    }\n                }\n            }\n        }\n    }"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "_/deployment/modules -post-missing-docker-image",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "6c6e98ba-75d0-46b9-aa91-0b7e023aff8b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 500\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Body matches string\", function () {",
+									"    pm.expect(pm.response.text()).to.include(\"Can not deploy: No exec, no CmdlineStart in LaunchDescriptor\");",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "    {\n        \"instId\": \"missing-docker-image\",\n        \"srvcId\": \"mod-authtoken-1.4.1-SNAPSHOT.18\",\n        \"descriptor\": {\n            \"dockerPull\": false,\n            \"dockerArgs\": {\n                \"HostConfig\": {\n                    \"PortBindings\": {\n                        \"8081/tcp\": [\n                            {\n                                \"HostPort\": \"%p\"\n                            }\n                        ]\n                    }\n                }\n            }\n        }\n    }"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/deployment/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"deployment",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "f8448b36-9936-4af6-a9c9-2de04358ed03",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "3ac38d62-63a8-4c7f-bc28-e9cf8c557875",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "f04fa9e3-b48b-42d7-be78-ed88c7e692fb",
+			"key": "deploymentdescriptorlist.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"DeploymentDescriptorList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"DeploymentDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "fedcbc05-4764-4d02-b335-b24f5e8ebda4",
+			"key": "deploymentdescriptor.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"DeploymentDescriptor\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"srvcId\": {\"type\": \"string\"},\n    \"instId\": {\"type\": \"string\"},\n    \"nodeId\": {\"type\": [\"string\", \"null\"]},\n    \"url\": {\"type\": [\"string\", \"null\"]},\n    \"descriptor\" : {\n      \"$ref\": \"LaunchDescriptor.json\"\n    }\n  },\n  \"required\": [\"srvcId\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "360fa029-1fbb-4dbd-821b-109ca9871a18",
+			"key": "launchdescriptor.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"LaunchDescriptor\",\n  \"type\": [ \"object\", \"null\" ],\n  \"properties\": {\n    \"exec\": {\"type\": [\"string\", \"null\"]},\n    \"cmdlineStart\": {\"type\": [\"string\", \"null\"]},\n    \"cmdlineStop\": {\"type\": [\"string\", \"null\"]},\n    \"dockerImage\": {\"type\": [\"string\", \"null\"]},\n    \"dockerCMD\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\"type\": \"string\"}\n    },\n    \"env\" : { \"$ref\": \"EnvEntryList.json\" }\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "8faf74fa-1905-4920-9538-a5f41a71055e",
+			"key": "enventrylist.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"EnvEntryList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"EnvEntry.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "167791d9-f9de-4069-943e-1a1c652515a2",
+			"key": "enventry.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"EnvEntry\",\n  \"type\" : \"object\",\n  \"properties\" : {\n    \"name\" : {\"type\": \"string\"},\n    \"value\" : {\"type\": \"string\"},\n    \"description\" : {\"type\": \"string\"}\n  },\n  \"required\" : [\"name\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "e4d332c7-12e7-47c4-b0fd-71396ca71856",
+			"key": "testjar.path",
+			"value": "/usr/share/folio/okapi/lib/",
+			"type": "string",
+			"description": ""
+		}
+	]
+}

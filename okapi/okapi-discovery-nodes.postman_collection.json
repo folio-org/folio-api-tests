@@ -1,0 +1,648 @@
+{
+	"info": {
+		"_postman_id": "3a3626e7-a465-4137-a4ef-4a9562108a22",
+		"name": "okapi-discovery-nodes",
+		"description": "Tests against the /_/discovery end point.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "supertenant",
+			"description": "",
+			"item": [
+				{
+					"name": "authn/login-supertenant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d51fb42f-a247-4732-8d90-1e5419578fc1",
+								"type": "text/javascript",
+								"exec": [
+									"//check if suppertenant enabled",
+									"if(pm.response.headers.has(\"x-okapi-token\")) {",
+									"",
+									"    pm.environment.set(\"xokapitoken\", pm.response.headers.get(\"x-okapi-token\"));",
+									"    pm.environment.set(\"xokapitenant\", \"supertenant\");",
+									"",
+									"}",
+									"else {",
+									"  pm.environment.set(\"xokapitoken\", \"\");",
+									"  pm.environment.set(\"xokapitenant\", \"supertenant\");  ",
+									"}",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "supertenant"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\":\"admin\",\"password\":\"$ecrecy8egetsTyranny\"}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"authn",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "discovery",
+			"description": null,
+			"item": [
+				{
+					"name": "nodes",
+					"description": null,
+					"item": [
+						{
+							"name": "/_/discovery/nodes",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "59d2e3ec-194f-463a-9bc6-70c5c3fdb1e7",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"correct response test\", function() {",
+											"    pm.response.",
+											"        to.have.jsonBody(\"[0].nodeId\").and.",
+											"        to.have.jsonBody(\"[0].url\");",
+											"});",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"",
+											"pm.test(\"Validate schema\", function() {",
+											"    tv4.addSchema(\"NodeDescriptor.json\", JSON.parse(pm.variables.get(\"node.schema\")));",
+											"",
+											"    pm.expect(tv4.validate(json, JSON.parse(pm.variables.get(\"nodes.schema\")))).to.be.true;",
+											"    pm.expect(tv4.missing).to.be.empty;",
+											"});",
+											"",
+											"// Store the first node's values so we can use them in the upcoming tests",
+											"pm.environment.set(\"node.node_id\", json[0].nodeId);",
+											"pm.environment.set(\"node.url\", json[0].url);",
+											"pm.environment.set(\"node.name\", \"Node Test Name\"); // Arbitrary node name",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes"
+									]
+								},
+								"description": "Returns a list of nodes"
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d873962a-ac89-43c5-a489-ae478075df01",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"404 test\", function() {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/256.256.256.256",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"256.256.256.256"
+									]
+								},
+								"description": "404 test with an invalid IP as the node ID"
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "301275ee-edb3-4397-8ee6-16fcbc9960ea",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"400 test\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"{{node.node_id}}\",\n    \"url\": \"http://127.0.0.1:5555\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/{{node.node_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"{{node.node_id}}"
+									]
+								},
+								"description": "Updates the specified node's URL which is not allowed"
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "dcf288d7-1e76-4661-bbb3-056574d5273a",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"400 test\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"NewIDString\",\n    \"url\": \"{{node.url}}\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/{{node.node_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"{{node.node_id}}"
+									]
+								},
+								"description": "Updates the specified node's nodeId which is not allowed"
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1e0e1523-ce35-4594-9f4b-9a03fb53ec0e",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"404 test\", function() {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"{{node.node_id}}\",\n    \"url\": \"http://127.0.0.1:5555\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/256.256.256.256",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"256.256.256.256"
+									]
+								},
+								"description": "404 test with an invalid IP as the node ID"
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6565e657-536c-4035-93cc-6acfa6a65fc1",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"correct response test\", function() {",
+											"    pm.response.",
+											"        to.have.jsonBody(\"nodeId\", pm.environment.get(\"node.node_id\")).and.",
+											"        to.have.jsonBody(\"url\", pm.environment.get(\"node.url\")).and.",
+											"        to.have.jsonBody(\"nodeName\", pm.environment.get(\"node.name\"));",
+											"});",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"",
+											"pm.test(\"Validate schema\", function() {",
+											"    pm.expect(tv4.validate(json, JSON.parse(pm.variables.get(\"node.schema\")))).to.be.true;",
+											"    pm.expect(tv4.missing).to.be.empty;",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"{{node.node_id}}\",\n    \"url\": \"{{node.url}}\",\n    \"nodeName\": \"{{node.name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/{{node.node_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"{{node.node_id}}"
+									]
+								},
+								"description": "Updates the specified node's \"nodeName\""
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62dfd295-eb4c-4258-8a1a-f03c6e72c8ce",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"correct response test\", function() {",
+											"    pm.response.",
+											"        to.have.jsonBody(\"nodeId\", pm.environment.get(\"node.node_id\")).and.",
+											"        to.have.jsonBody(\"url\", pm.environment.get(\"node.url\")).and.",
+											"        to.have.jsonBody(\"nodeName\", pm.environment.get(\"node.name\"));",
+											"});",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"",
+											"pm.test(\"Validate schema\", function() {",
+											"    pm.expect(tv4.validate(json, JSON.parse(pm.variables.get(\"node.schema\")))).to.be.true;",
+											"    pm.expect(tv4.missing).to.be.empty;",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"{{node_id}}\",\n    \"url\": \"http://127.0.0.1:5555\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/{{node.node_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"{{node.node_id}}"
+									]
+								},
+								"description": "Verify the specified node's name has been updated."
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5fadc8dc-cd94-4bf6-824e-e80324cf4672",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"correct response test\", function() {",
+											"    pm.response.",
+											"        to.have.jsonBody(\"nodeId\", pm.environment.get(\"node.node_id\")).and.",
+											"        to.have.jsonBody(\"url\", pm.environment.get(\"node.url\")).and.",
+											"        to.not.have.jsonBody(\"nodeName\");",
+											"});",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"",
+											"pm.test(\"Validate schema\", function() {",
+											"    pm.expect(tv4.validate(json, JSON.parse(pm.variables.get(\"node.schema\")))).to.be.true;",
+											"    pm.expect(tv4.missing).to.be.empty;",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"{{node.node_id}}\",\n    \"url\": \"{{node.url}}\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/{{node.node_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"{{node.node_id}}"
+									]
+								},
+								"description": "Remove the name from the specified node"
+							},
+							"response": []
+						},
+						{
+							"name": "/_/discovery/nodes/{node_id}",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bb6ed25b-33bb-482b-9806-4ce97788ea7c",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"correct response test\", function() {",
+											"    pm.response.",
+											"        to.have.jsonBody(\"nodeId\", pm.environment.get(\"node.node_id\")).and.",
+											"        to.have.jsonBody(\"url\", pm.environment.get(\"node.url\")).and.",
+											"        to.not.have.jsonBody(\"nodeName\");",
+											"});",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"",
+											"pm.test(\"Validate schema\", function() {",
+											"    pm.expect(tv4.validate(json, JSON.parse(pm.variables.get(\"node.schema\")))).to.be.true;",
+											"    pm.expect(tv4.missing).to.be.empty;",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"nodeId\": \"{{node_id}}\",\n    \"url\": \"{{url}}\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/nodes/{{node.node_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"nodes",
+										"{{node.node_id}}"
+									]
+								},
+								"description": "Verify that the node's name is not set (node should be returned to the initial state)"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "de653710-5ebb-4a9d-a38c-8ce492f6682b",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "de4fa404-9d4e-404d-bb94-02d1b6071904",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "a9ee612c-8fee-4be1-8e7f-c161c4b993b8",
+			"key": "node.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"NodeDescriptor\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"nodeId\": {\n      \"type\": \"string\"\n    },\n    \"url\": {\n      \"type\": \"string\"\n    },\n    \"nodeName\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"nodeId\", \"url\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "941d0270-1dbd-4347-9b31-fec2e6593dd6",
+			"key": "nodes.schema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"NodeDescriptorList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"NodeDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		}
+	]
+}

@@ -1,0 +1,1866 @@
+{
+	"info": {
+		"_postman_id": "8f387ca7-64d6-43c1-8a68-d1b56361db12",
+		"name": "authtoken",
+		"description": "Test the APIs provided by Authtoken module. Authtoken has only one API /token defined in its ModuleDescriptor. On top of that, it works as a request filter for all modules. To test it, direct access to it is needed. That's why the environment variable \"mod_url\" is used. Due to the different module exposure between FSE and Vagrant box, a collection level pre-test script is used to dynamically update \"mod_url\" variable to append \"/mod-authtoken\" for non-vagrant (localhost) environment.\n\nTests are organized to three folders, and each foler has subfolder Postive and Negative to contain tests.\n|--/foo (act as filter) -- test the general filter function provided by Authtoken using a legit token\n   |--Positive\n   |--Negative\n|--/token with payload -- test directly against Authtoken /token API with crafted token and headers\n   |--Positive\n   |--Negative\n|--/token without payload -- test directly against Authtoken /token API with crafted token and headers\n   |--Positive\n   |--Negative\n\nNote:\nAuthtoken was not implemented using RMB, so there is no API documentation available. The test cases are derived after inspecting its source code.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"_postman_id": "0d15f8c5-bcc7-4d22-8f40-7e4db6e3e6bd",
+			"name": "/foo (act as filter)",
+			"item": [
+				{
+					"_postman_id": "413ed76f-ed81-4081-8930-9bcde5078de6",
+					"name": "Positive",
+					"item": [
+						{
+							"_postman_id": "7591d309-3e7f-4f78-a558-6f1e4efcafaf",
+							"name": "/authn/login create a legit token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "78b8a410-1a56-481f-a026-4261740154b8",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"login into FOLIO\";",
+											"",
+											"pm.test(\"Response should be 201 if \" + msg, function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"// set test token to use in later tests",
+											"pm.environment.set(\"test_token\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								},
+								"description": "Set okapi-token header to be used by following tests."
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "9644d305-27f3-459d-8901-eaa2c08acf40",
+							"name": "202 with legit perms",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "56bb39fa-2028-454c-b376-4f7f538ee832",
+										"type": "text/javascript",
+										"exec": [
+											"// will unset later in Negative 403 with required fake perms",
+											"// unset to not interfere other tests",
+											"// pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"filter request has valid token\";",
+											"",
+											"pm.test(\"Response should be 202 if \" + msg, function () {",
+											"    pm.response.to.have.status(202);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-permissions header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});",
+											"",
+											"let perm_headers = postman.getResponseHeader(\"x-okapi-permissions\");",
+											"console.log (\"Response headers: \" + perm_headers);",
+											"",
+											"// pm.test(\"Response should have right perm size 4 in x-okapi-permissions header if \" + msg, function () {",
+											"//     pm.expect(perm_headers.split(\",\").length).to.equal(4);",
+											"// });",
+											"",
+											"pm.test(\"Response should have required perms in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_required_1\"));",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_required_2\"));",
+											"});",
+											"",
+											"pm.test(\"Response should have desired perm in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_desired_1\"));",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_desired_2\"));",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-user-id header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-user-id\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-module-tokens header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-module-tokens\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"pm.test(\"Response should have authorization header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"Authorization\");",
+											"});",
+											"",
+											"pm.test(\"Response should same value for both x-okapi-token header and authorization header if \" + msg, function () {",
+											"    let token = postman.getResponseHeader(\"x-okapi-token\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(\"Bearer\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(token);",
+											"});",
+											"",
+											"pm.test(\"Response should have transfer-encoding header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"transfer-encoding\", \"chunked\");",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "x-okapi-permissions-required",
+										"value": "{{test_perm_required_1}},{{test_perm_required_2}}"
+									},
+									{
+										"key": "x-okapi-permissions-desired",
+										"value": "{{test_perm_desired_1}},{{test_perm_desired_2}}"
+									},
+									{
+										"key": "authtoken-refresh-cache",
+										"value": "true"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "88b5761d-b496-419d-8cd6-12dc37f3295a",
+							"name": "202 with desired fake perms",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "67d18421-6166-45a0-8cec-68d9ad9d9263",
+										"type": "text/javascript",
+										"exec": [
+											"// will unset later in Negative 403 with required fake perms",
+											"// unset to not interfere other tests",
+											"// pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has legit token but fake perms header\";",
+											"",
+											"pm.test(\"Response should be 202 if \" + msg, function () {",
+											"    pm.response.to.have.status(202);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-permissions header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});",
+											"",
+											"let perm_headers = postman.getResponseHeader(\"x-okapi-permissions\");",
+											"console.log (\"Response headers: \" + perm_headers);",
+											"",
+											"// pm.test(\"Response should have right perm size 2 in x-okapi-permissions header if \" + msg, function () {",
+											"//     pm.expect(perm_headers.split(\",\").length).to.equal(2);",
+											"// });",
+											"",
+											"pm.test(\"Response should have required perms in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_required_1\"));",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_required_2\"));",
+											"});",
+											"",
+											"pm.test(\"Response should not have fake desired perms in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(perm_headers).to.not.include(pm.variables.get(\"test_perm_fake_1\"));",
+											"    pm.expect(perm_headers).to.not.include(pm.variables.get(\"test_perm_fake_2\"));",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-user-id header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-user-id\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-module-tokens header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-module-tokens\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"pm.test(\"Response should have authorization header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"Authorization\");",
+											"});",
+											"",
+											"pm.test(\"Response should same value for both x-okapi-token header and authorization header if \" + msg, function () {",
+											"    let token = postman.getResponseHeader(\"x-okapi-token\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(\"Bearer\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(token);",
+											"});",
+											"",
+											"pm.test(\"Response should have transfer-encoding header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"transfer-encoding\", \"chunked\");",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "x-okapi-permissions-required",
+										"value": "{{test_perm_required_1}},{{test_perm_required_2}}"
+									},
+									{
+										"key": "x-okapi-permissions-desired",
+										"value": "{{test_perm_fake_1}},{{test_perm_fake_2}}"
+									},
+									{
+										"key": "authtoken-refresh-cache",
+										"value": "true"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "5304422a-b6e6-4daf-a30b-222c04672004",
+							"name": "202 with required fake perm in extra_permissions",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f0d9679-08bd-442f-b197-9ac3b348f080",
+										"type": "text/javascript",
+										"exec": [
+											"// will unset later in Negative 403 with required fake perms",
+											"// unset to not interfere other tests",
+											"// pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has legit token and fake perm included in extra-permissions\";",
+											"",
+											"pm.test(\"Response should be 202 if \" + msg, function () {",
+											"    pm.response.to.have.status(202);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-permissions header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});",
+											"",
+											"let perm_headers = postman.getResponseHeader(\"x-okapi-permissions\");",
+											"console.log (\"Response headers: \" + perm_headers);",
+											"",
+											"// pm.test(\"Response should have right perm size in x-okapi-permissions header if \" + msg, function () {",
+											"//     pm.expect(perm_headers.split(\",\").length).to.equal(4);",
+											"// });",
+											"",
+											"pm.test(\"Response should have required fake perm in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_fake_1\"));",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_fake_2\"));",
+											"});",
+											"",
+											"pm.test(\"Response should have desired perms in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_desired_1\"));",
+											"    pm.expect(perm_headers).to.include(pm.variables.get(\"test_perm_desired_2\"));",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-user-id header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-user-id\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-module-tokens header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-module-tokens\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"pm.test(\"Response should have authorization header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"Authorization\");",
+											"});",
+											"",
+											"pm.test(\"Response should same value for both x-okapi-token header and authorization header if \" + msg, function () {",
+											"    let token = postman.getResponseHeader(\"x-okapi-token\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(\"Bearer\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(token);",
+											"});",
+											"",
+											"pm.test(\"Response should have transfer-encoding header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"transfer-encoding\", \"chunked\");",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "x-okapi-permissions-required",
+										"value": "{{test_perm_fake_1}},{{test_perm_fake_2}}"
+									},
+									{
+										"key": "x-okapi-permissions-desired",
+										"value": "{{test_perm_desired_1}},{{test_perm_desired_2}}"
+									},
+									{
+										"key": "x-okapi-extra-permissions",
+										"value": "{{test_perm_fake_1}},{{test_perm_fake_2}}"
+									},
+									{
+										"key": "authtoken-refresh-cache",
+										"value": "true"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"_postman_id": "2da55cb1-f8eb-47d3-bc86-c00a7cfc5c36",
+					"name": "Negative",
+					"item": [
+						{
+							"_postman_id": "a44e9483-6be7-41e3-b90f-b137ebf7cba9",
+							"name": "400 without tenant header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "b558147c-b00b-47da-932d-de43ae568ea0",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has no x-okapi-tenant header\";",
+											"",
+											"pm.test(\"Response should be 400 if \" + msg, function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Response should contain wording about missing tenant header if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Missing header: X-Okapi-Tenant\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "0441cd6d-e35e-4f22-959d-34ab54bf9ffa",
+							"name": "400 conflicting auth headers",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "15e0968c-617c-47e3-9569-33a5918be24f",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has conflicting info between x-okapi-token and authorization\";",
+											"",
+											"pm.test(\"Response should be 400 if \" + msg, function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Response should contain wording about conflicting token if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Conflicting token information\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{$guid}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "83a1e79a-9242-4e38-998f-c441293f43f3",
+							"name": "400/500 malformed auth header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "a884b4ca-c2bb-4d00-915d-95cbb5e5c4c4",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has malformed authorization header\";",
+											"",
+											"pm.test(\"Response should be 400 if \" + msg, function () {",
+											"    // TODO: JIRA https://issues.folio.org/browse/MODAT-25",
+											"    // Malformed Authorization header returns 500",
+											"    pm.response.to.have.status(500);",
+											"    // pm.response.to.have.status(400);",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "Authorization",
+										"value": "{{$guid}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "012b64e9-66b8-4aae-89f7-ecfaaa33619e",
+							"name": "401 Invalid token format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd09eec7-34d5-441f-a5aa-c030ce783590",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has invalid x-okapi-token format\";",
+											"",
+											"pm.test(\"Response should be 401 if \" + msg, function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test(\"Response should contain wording about invalid token format if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Invalid token format\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{$guid}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "4e3c2754-e20f-404c-85d1-77b86bf2e1e6",
+							"name": "403 with required fake perms",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4a7fc649-1568-4720-a78b-6baf69c47a2c",
+										"type": "text/javascript",
+										"exec": [
+											"// unset to not interfere other tests",
+											"pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has legit token but desired fake perm\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response should contain wording about access permissions if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Access requires permission\");",
+											"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"test_perm_fake_1\"));",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "x-okapi-permissions-required",
+										"value": "{{test_perm_required_1}},{{test_perm_fake_1}}"
+									},
+									{
+										"key": "x-okapi-permissions-desired",
+										"value": "{{test_perm_desired_1}}"
+									},
+									{
+										"key": "authtoken-refresh-cache",
+										"value": "true"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "dcfc0f61-df5a-4944-a109-a708c8a284e6",
+							"name": "create test token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "92ec989f-8028-4641-a5c1-ff450992f289",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"to create a test token\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"// set test token to use by next request",
+											"pm.environment.set(\"test_token\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\": {  \r\n      \"sub\":\" {{test_user}}\",\r\n      \"tenant\": \"{{xokapitenant}}\",\r\n      \"extra_permissions\": [\"auth.signtoken\"]\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "e1872c79-9a6f-4aad-b8da-4cf32c48fd2a",
+							"name": "403 conflicting tenant info",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4824816e-eebc-45f4-a5d2-d4774bcb45e5",
+										"type": "text/javascript",
+										"exec": [
+											"// unset to not interfere other tests",
+											"pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has conflicting tenant info\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about invalid token for access if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Invalid token for access\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{$guid}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "d2d9df14-4b75-4e5f-acf7-f1de605a21a3",
+							"name": "create test token including user id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "92ec989f-8028-4641-a5c1-ff450992f289",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"to create a test token\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"// set test token to use by next request",
+											"pm.environment.set(\"test_token\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\": {  \r\n      \"sub\":\" {{test_user}}\",\r\n      \"tenant\": \"{{xokapitenant}}\",\r\n      \"user_id\": \"{{test_user_id}}\",\r\n      \"extra_permissions\": [\"auth.signtoken\"]\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "d7ffde6f-c87a-4ac6-ba72-007f0c9c847b",
+							"name": "403 conflicting user id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6be046ba-c8a2-4e93-9618-ae488bacc1b1",
+										"type": "text/javascript",
+										"exec": [
+											"// unset to not interfere other tests",
+											"pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has conflicting user id info\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about invalid token for access if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Payload user id of\");",
+											"    pm.expect(pm.response.text()).to.include(\"does not match expected value\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									},
+									{
+										"key": "x-okapi-user-id",
+										"value": "{{$guid}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/foo",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"foo"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "7b53aac1-57a3-4d79-b703-6048c8fd32aa",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "69b329b1-6988-473d-a9c1-f4db370b5704",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"_postman_id": "e04ed7b8-d71f-4e89-ab92-39f98d3b687e",
+			"name": "/token with payload",
+			"item": [
+				{
+					"_postman_id": "57b367c2-ef5e-4677-a7c3-9f6f2f4fd1ba",
+					"name": "Positive",
+					"item": [
+						{
+							"_postman_id": "9aa348b4-292c-4319-a58c-3cbcd34204d7",
+							"name": "/token 200 with auth.signtoken.execute in x-okapi-permission",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "58e0260a-5f38-4217-9ae9-0005421976ac",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has valid payload and required permissions\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"pm.test(\"Response should have authorization header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"Authorization\");",
+											"});",
+											"",
+											"pm.test(\"Response should same value for both x-okapi-token header and authorization header if \" + msg, function () {",
+											"    let token = postman.getResponseHeader(\"x-okapi-token\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(\"Bearer\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(token);",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "cbfcd33e-0a85-45ca-acf1-d1fb13d71cdf",
+							"name": "create test token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "92ec989f-8028-4641-a5c1-ff450992f289",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"to create a test token\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"// set test token to use by next request",
+											"pm.environment.set(\"test_token\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\": {  \r\n      \"sub\":\" {{test_user}}\",\r\n      \"tenant\": \"{{xokapitenant}}\",\r\n      \"extra_permissions\": [\"auth.signtoken\"]\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "1579ddb1-ee64-4cd4-b8ad-67d20dc8ed9a",
+							"name": "/token 200 with auth.signtoken in token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c7f0ab88-7341-4f99-9a99-01f6e7f69db9",
+										"type": "text/javascript",
+										"exec": [
+											"// unset to not interfere other tests",
+											"pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has valid payload and required permissions\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"pm.test(\"Response should have authorization header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"Authorization\");",
+											"});",
+											"",
+											"pm.test(\"Response should same value for both x-okapi-token header and authorization header if \" + msg, function () {",
+											"    let token = postman.getResponseHeader(\"x-okapi-token\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(\"Bearer\");",
+											"    pm.expect(postman.getResponseHeader(\"Authorization\")).to.include(token);",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"_postman_id": "6a764fa3-696d-499d-8ad9-7d854468be75",
+					"name": "Negative",
+					"item": [
+						{
+							"_postman_id": "b1cf2d72-8183-4716-a906-74494df668a4",
+							"name": "/token 403 without x-okapi-permissions header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "ac9d8885-a726-4036-a8a8-e8949bde668b",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has no x-okapi-permissions header\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about missing token signing request if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Missing permissions for token signing request\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "9e17ea10-d4d6-4659-ad40-12fab91b7068",
+							"name": "/token 403 with null x-okapi-permissions header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "97be16b6-7f17-4829-b9e3-ca7a965c0e88",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has null x-okapi-permissions header\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about missing token signing request if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Missing permissions for token signing request\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": ""
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "e81b7a88-6d5a-4d3a-9710-e76f319aef08",
+							"name": "/token 403 with empty x-okapi-permissions header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "11fc6ae5-a87e-411d-a623-528b91374a53",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has empty x-okapi-permissions header\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about missing token signing request if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Missing permissions for token signing request\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "d455173b-1420-44fc-b8b1-1a09b207fb22",
+							"name": "/token 403 missing auth.signtoken.execute in x-okapi-permissions header",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "21f46c6e-0519-4930-87de-cec6fda11818",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request does not include auth.signtoken.execute in x-okapi-permissions header\";",
+											"",
+											"pm.test(\"Response should be 403 if \" + msg, function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about missing token signing request if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Missing permissions for token signing request\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"{{test_perm_fake_1}}\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "90ee9546-1508-4947-825a-6b2d07232d56",
+							"name": "/token 400 non-json payload",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "762d3c27-7f2f-40e5-a822-8618a22ca4c0",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request has non JSON payload\";",
+											"",
+											"pm.test(\"Response should be 400 if \" + msg, function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about invalid JSON if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Unable to decode\");",
+											"    pm.expect(pm.response.text()).to.include(\"as valid JSON\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "some non-JSON content"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "5197de28-8e01-4ef9-91eb-d142162b9de5",
+							"name": "/token 400 without JSON field payload",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "28ddd3a2-dbf8-40f7-9409-dd80018e4965",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request JSON payload has no field 'payload'\";",
+											"",
+											"pm.test(\"Response should be 400 if \" + msg, function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about invalid JSON if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Valid 'payload' field is required\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload_bad\":{  \r\n      \"sub\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "db88af45-1942-4a5c-b122-b0178c645389",
+							"name": "/token 400 without JSON field sub",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cac92e20-1436-47ef-bc9f-440972107e6a",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"request JSON payload has no field 'sub'\";",
+											"",
+											"pm.test(\"Response should be 400 if \" + msg, function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about invalid JSON if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Payload must contain a 'sub' field\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\":{  \r\n      \"sub_bad\":\"{{test_user}}\",\r\n      \"tenant\":\"{{xokapitenant}}\"\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
+			"_postman_id": "ab61474d-1f47-4520-b6b8-d4af195f524c",
+			"name": "/token without payload",
+			"item": [
+				{
+					"_postman_id": "0ad8ebf1-39d4-43c0-9686-22f35a030871",
+					"name": "Positive",
+					"item": [
+						{
+							"_postman_id": "2bda261e-d090-4a8d-991b-ccd3bf6da8e7",
+							"name": "create test token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "92ec989f-8028-4641-a5c1-ff450992f289",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"to create a test token\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"// set test token to use by next request",
+											"pm.environment.set(\"test_token\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\": {  \r\n      \"sub\":\" {{test_user}}\",\r\n      \"tenant\": \"{{xokapitenant}}\",\r\n      \"extra_permissions\": [\"auth.signtoken\"]\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "7d9eb132-13f1-44fa-af5b-f2d11bfec5e2",
+							"name": "/token 200",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d37b953e-1507-403d-9363-cd89092c0ef1",
+										"type": "text/javascript",
+										"exec": [
+											"// unset to not interfere other tests",
+											"pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has no payload but token with auth.signtoken extra_permission\";",
+											"",
+											"pm.test(\"Response should be 202 if \" + msg, function () {",
+											"    pm.response.to.have.status(202);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-permissions header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});",
+											"",
+											"pm.test(\"Response should have auth.signtoken.execute in x-okapi-permissions header if \" + msg, function () {",
+											"    pm.expect(postman.getResponseHeader(\"x-okapi-permissions\")).to.include(\"auth.signtoken.execute\");",
+											"});",
+											"",
+											"pm.test(\"Response should have transfer-encoding header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"transfer-encoding\", \"chunked\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"_postman_id": "88096354-581c-4e39-b7e1-0ceac425fe71",
+					"name": "Negative",
+					"item": [
+						{
+							"_postman_id": "9bb08fb6-b8fd-4ae2-a5ff-96faddf91559",
+							"name": "create test token without required auth.signtoken permission",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0b752006-e338-44d4-b508-b78d1dc25153",
+										"type": "text/javascript",
+										"exec": [
+											"let msg = \"to create a test token\";",
+											"",
+											"pm.test(\"Response should be 200 if \" + msg, function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response should have x-okapi-token header if \" + msg, function () {",
+											"    pm.response.to.have.header(\"x-okapi-token\");",
+											"});",
+											"",
+											"// set test token for next request",
+											"pm.environment.set(\"test_token\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-permissions",
+										"value": "[\"auth.signtoken.execute\"]"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"payload\": {  \r\n      \"sub\":\" {{test_user}}\",\r\n      \"tenant\": \"{{xokapitenant}}\",\r\n      \"extra_permissions\": [\"random.perm\"]\r\n   }\r\n}"
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"_postman_id": "414643aa-2629-4c12-b502-bb60a33d2e00",
+							"name": "/token 401 missing module-level permission",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "97d94294-5313-41e7-a5b5-2b55e242b423",
+										"type": "text/javascript",
+										"exec": [
+											"// unset to not interfere other tests",
+											"pm.environment.unset(\"test_token\");",
+											"",
+											"let msg = \"request has no payload and no required auth.signtoken extra_permission in token\";",
+											"",
+											"pm.test(\"Response should be 401 if \" + msg, function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test(\"Response text should contain wording about missing module-level permissions for token signing request if \" + msg, function () {",
+											"    pm.expect(pm.response.text()).to.include(\"Missing module-level permissions for token signing request\");",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{test_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{mod_url}}/token",
+									"host": [
+										"{{mod_url}}"
+									],
+									"path": [
+										"token"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "11ec0ce1-f808-4242-bf1c-c785618fea52",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "0ea8c6a8-3a98-4135-ba1e-79d2c2b61d2a",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "107c0426-85b7-4d74-ab7b-5d6e491a69af",
+				"type": "text/javascript",
+				"exec": [
+					"let mod_url = pm.environment.get(\"mod_url\");",
+					"console.log(mod_url)",
+					"",
+					"if (mod_url.indexOf(\"localhost\") < 0 && mod_url.indexOf(\"mod-authtoken\") < 0) {",
+					"    pm.environment.set(\"mod_url\", mod_url + \"/mod-authtoken\");",
+					"}",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "0bf728bb-98b4-4762-a4bf-a5e7108d3a7f",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "cd41f99e-3fbf-4c38-a5b0-3424b58f2888",
+			"key": "test_user",
+			"value": "fse_test_authtoken_user",
+			"type": "string"
+		},
+		{
+			"id": "24fa57f8-4a95-4696-bd81-20f0c58442f9",
+			"key": "test_user_id",
+			"value": "fse_test_authtoken_user_id",
+			"type": "string"
+		},
+		{
+			"id": "dafc3738-3851-4ad4-9b4e-3b95b7f97a22",
+			"key": "test_perm_required_1",
+			"value": "login.item.get",
+			"type": "string"
+		},
+		{
+			"id": "91c5685b-3d17-425b-80e6-e88a615f1d17",
+			"key": "test_perm_required_2",
+			"value": "login.item.post",
+			"type": "string"
+		},
+		{
+			"id": "eed92173-57bc-4dd6-8ac2-78b70cbc7c46",
+			"key": "test_perm_desired_1",
+			"value": "login.item.put",
+			"type": "string"
+		},
+		{
+			"id": "735fce46-eaef-4bc7-a9f3-007ea28a727b",
+			"key": "test_perm_desired_2",
+			"value": "login.item.delete",
+			"type": "string"
+		},
+		{
+			"id": "82139ac0-6ef2-4173-8241-28f57703fd1e",
+			"key": "test_perm_fake_1",
+			"value": "fse.fake.perm.1",
+			"type": "string"
+		},
+		{
+			"id": "5727fb6e-875a-4d3e-b1cb-3104e0cd3a6c",
+			"key": "test_perm_fake_2",
+			"value": "fse.fake.perm.2",
+			"type": "string"
+		}
+	]
+}

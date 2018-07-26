@@ -1,0 +1,1464 @@
+{
+	"info": {
+		"_postman_id": "fa632e5d-688e-41df-a9cc-77f9e690840f",
+		"name": "okapi-proxy-upgrade",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "authenticate",
+			"description": "",
+			"item": [
+				{
+					"name": "/authn/login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var token = postman.getResponseHeader(\"x-okapi-token\")",
+									"pm.environment.set(\"xokapitoken\", token);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"authn",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "authn/login-supertenant",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "1f5a1b48-5a75-4fa2-ba0c-f539cc8cf7fc",
+								"type": "text/javascript",
+								"exec": [
+									"if(pm.response.headers.has(\"x-okapi-token\")) {",
+									"",
+									"    pm.environment.set(\"supertenantokapitoken\", pm.response.headers.get(\"x-okapi-token\"));",
+									"   ",
+									" }",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "supertenant"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\":\"admin\",\"password\":\"$ecrecy8egetsTyranny\"}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"authn",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "tenants/{id}/upgrade",
+			"description": "",
+			"item": [
+				{
+					"name": "Setting up the test data",
+					"description": "",
+					"item": [
+						{
+							"name": "/tenants  -- setting tennant for testing",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6867e26e-d82a-40b4-abd4-b67019f29d22",
+										"type": "text/javascript",
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"pm.environment.set(\"testupgradetenantid\", data.id);",
+											"",
+											"",
+											"pm.test(\"schema is valid\", function() {",
+											"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantDescriptorSchema\")))).to.be.true;",
+											"pm.expect(tv4.missing).to.be.empty;",
+											"});",
+											"",
+											"pm.test(\"Status is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"response is valid json and has a body\", function () {",
+											"     pm.response.to.be.withBody;",
+											"     pm.response.to.be.json; ",
+											"});",
+											"",
+											"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+											"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants : 201\");",
+											"});",
+											"",
+											"pm.test('Results have expected key attributes', function() {",
+											"  pm.expect(data).to.have.all.keys(\"id\", \"name\", \"description\");",
+											"});",
+											"",
+											"",
+											"",
+											"",
+											"",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n   \n\t\"id\": \"fsetestingmoduleupgradetenants\",\n\t\"name\" : \"fsetestingmoduleupgradetenants\",\n\t\"description\" : \"Testing module upgrade for a tenant\"\n}\n"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/modules -- setting module for testing",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "424e1789-9792-4dab-81db-d2ac45b0f9af",
+										"type": "text/javascript",
+										"exec": [
+											"var response = JSON.parse(responseBody);",
+											"",
+											"pm.environment.set(\"testtenantmoduleupgradeid\", response[0].srvcId);",
+											"pm.environment.set(\"testnodeid\", response[0].nodeId);",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"response must be valid and have a body\", function () {",
+											"     pm.response.to.be.ok;",
+											"     pm.response.to.be.json; ",
+											"});",
+											"",
+											"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+											"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/discovery/modules : 200\");",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"id\": \"fse-test-basic-2.2.0\",\r\n  \"name\": \"Okapi test module\",\r\n  \"provides\": [\r\n    {\r\n      \"id\": \"fse-test-basic\",\r\n      \"version\": \"2.2\",\r\n      \"handlers\": [\r\n        {\r\n          \"methods\": [ \"GET\", \"POST\", \"DELETE\" ],\r\n          \"pathPattern\": \"/testb\"\r\n        }\r\n      ]\r\n    }\r\n  ],\r\n  \"requires\": [],\r\n  \"launchDescriptor\": {\r\n    \"exec\": \"java -Dport=%p -jar okapi-test-module/target/okapi-test-module-fat.jar\"\r\n  }\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/discovery/modules",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"discovery",
+										"modules"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/modules",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "5b746eee-d292-4240-906f-a1bcddad7445",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/modules : 201\");",
+									"});",
+									"",
+									"pm.test('Results have expected key attributes', function() {",
+									"  pm.expect(data).to.have.all.keys(\"id\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"{{testtenantmoduleupgradeid}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/modules - module added",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "8cf36f74-8cd5-452b-9c4c-2bf3a415659d",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.ok; ",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantListSchema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") + \"/modules : 200\");",
+									"});",
+									"",
+									"",
+									"pm.test('Tenant does not have modules', function() {",
+									"  pm.expect(data.length).to.equal(1);",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fc27532d-de86-458a-bfe3-50c162f66299",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"{{testtenantmoduleid}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade?simulate=true",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "58a36429-fe08-4245-9d8f-5794335d7b2a",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade.. : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"{{testtenantmoduleid}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade?simulate=true",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							],
+							"query": [
+								{
+									"key": "simulate",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade?simulate=false",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "8df473b6-4496-45c1-b11b-76e03fd606c7",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade.. : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"{{testtenantmoduleid}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade?simulate=false",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							],
+							"query": [
+								{
+									"key": "simulate",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade?deploy=true",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "051e0744-b98c-45f6-985a-43cffb3bfda9",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade.. : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"{{testtenantmoduleid}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade?deploy=true",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							],
+							"query": [
+								{
+									"key": "deploy",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade?deploy=false",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a0cda5ac-7372-4e1c-9211-39e347ae0dc5",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade.. : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"{{testtenantmoduleid}}\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade?deploy=false",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							],
+							"query": [
+								{
+									"key": "deploy",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade - invalid_id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "97e557d1-fbc0-4448-933f-38f9fb6fab9d",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"invalid_id\"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/upgrade - invalid json",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d1353528-e7f9-4f80-8fc7-671887d063af",
+								"type": "text/javascript",
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantModulDescriptorListSchema\")))).to.be.true;",
+									"pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(\"OK\");",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") +\"/upgrade : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "17e2c498-d2fb-42e0-a82d-9a982dc261bc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "supertenant"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{supertenantokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"id\": \"\r\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/upgrade",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"upgrade"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testupgradetenantid}}/modules/{{testtenantmoduleupgradeid}}",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "a0ee5a03-63e9-43f8-91df-e89ee34948ef",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(\"No Content\");",
+									"});",
+									"",
+									"pm.test(\"response does not have a body\", function () {",
+									"     pm.response.to.not.be.withBody;",
+									"",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") + \"/modules/\" + pm.environment.get(\"testtenantmoduleupgradeid\") + \" : 200\");",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/modules/{{testtenantmoduleupgradeid}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"modules",
+								"{{testtenantmoduleupgradeid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testtenantmoduleid}}/modules - verify deleted",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f12e1070-5027-48cd-840c-68d3eff67b2a",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"response is valid json and has a body\", function () {",
+									"     pm.response.to.be.ok; ",
+									"     pm.response.to.be.withBody;",
+									"     pm.response.to.be.json; ",
+									"});",
+									"",
+									"var data = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"schema is valid\", function() {",
+									"    pm.expect(tv4.validate(data, JSON.parse(pm.variables.get(\"tenantListSchema\")))).to.be.true;",
+									"    pm.expect(tv4.missing).to.be.empty;",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get(\"testupgradetenantid\") + \"/modules : 200\");",
+									"});",
+									"",
+									"pm.test('Tenant does not have modules', function() {",
+									"  pm.expect(data.length).to.equal(0);",
+									"});",
+									"",
+									"",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}/modules",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}",
+								"modules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/tenants/{{testtenantid}}",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b4f24532-4f9b-4824-886b-0a59f65dc667",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/_/proxy/tenants/\" + pm.environment.get('testupgradetenantid') +  \" : 200\");",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testupgradetenantid}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testupgradetenantid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "e6973dce-08ad-44bc-86cd-5c42e0e1afc3",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "0dc60a59-7e8e-46a9-a5ef-178a87af728e",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "5627d6c0-4ede-4037-8e36-3c4f136baba6",
+			"key": "tenantListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"TenantList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"id\": {\"type\": \"string\"},\n      \"name\": {\"type\": \"string\"},\n      \"description\": {\"type\": \"string\"}\n    }\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "3e1358a0-f1b9-44d2-ac92-a8637f1d371a",
+			"key": "tenantDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"TenantDescriptor\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"id\": {\"type\": \"string\"},\n    \"name\": {\"type\": \"string\"},\n    \"description\": {\"type\": \"string\"}\n  },\n  \"required\": [\"id\", \"name\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "ee87f700-5a72-496c-ba69-6f7435a7e4f0",
+			"key": "tenantModulDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"TenantModuleDescriptor\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"id\": {\"type\": \"string\"},\n    \"from\": {\"type\": \"string\"},\n    \"action\" : {\n       \"type\" : \"string\",\n       \"enum\" : [ \"enable\", \"disable\", \"uptodate\", \"suggest\", \"conflict\" ]\n    },\n    \"message\": {\"type\": \"string\"}\n  },\n  \"required\" : [\"id\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "8f4ae1af-bd61-4378-a439-8c6a24af2d01",
+			"key": "tenantModulDescriptorListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"TenantModuleDescriptorList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"TenantModuleDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "f10b9105-7009-45c5-8af8-061a5d85fe2d",
+			"key": "nodeDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"NodeDescriptor\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"nodeId\": {\n      \"type\": \"string\"\n    },\n    \"url\": {\n      \"type\": \"string\"\n    },\n    \"nodeName\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"nodeId\", \"url\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "0c0e78f2-3abd-47e3-9bfa-e272c5628383",
+			"key": "nodeDescriptorListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"NodeDescriptorList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"NodeDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "28c9c024-937b-4488-adec-c624a2bb3a19",
+			"key": "moduleListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"ModuleList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"ModuleDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "f2b9e149-b5ca-4b82-9e6b-e34792618336",
+			"key": "moduleDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"ModuleDescriptor\",\n  \"description\": \"A Folio Module\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"id\": {\"type\": \"string\"},\n    \"name\": {\"type\": \"string\"},\n    \"tags\" : {\"type\" : [\"array\", \"null\"],\n      \"items\" : {\"type\": \"string\"}\n    },\n    \"requires\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\n        \"$ref\": \"InterfaceReference.json\"\n      }\n    },\n    \"provides\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\n        \"$ref\": \"InterfaceDescriptor.json\"\n      }\n    },\n    \"filters\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"$ref\": \"RoutingEntry.json\"\n      }\n    },\n    \"permissionSets\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\n        \"$ref\": \"Permission.json\"\n      }\n    },\n    \"uiDescriptor\": {\n      \"$ref\": \"UiModuleDescriptor.json\"\n    },\n    \"launchDescriptor\": {\n      \"$ref\": \"LaunchDescriptor.json\"\n    }\n  },\n  \"required\": [\"id\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "f0e3fd44-24ce-4efe-ae22-3b4ea277c360",
+			"key": "interfaceReferenceSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"InterfaceReference\",\n  \"description\": \"A reference to an interfaceDescriptor, by name and version\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"version\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"id\", \"version\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "afd61234-58b8-48ec-b7a7-e4e1f2d12157",
+			"key": "interfaceDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"InterfaceDescriptor\",\n  \"description\": \"An interface that a module can provide\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"version\": {\n      \"type\": \"string\"\n    },\n    \"interfaceType\": {\n      \"type\": [\"string\", \"null\"]\n    },\n    \"handlers\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\n        \"$ref\": \"RoutingEntry.json\"\n      }\n    },\n    \"permissionSets\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\n        \"$ref\": \"Permission.json\"\n      }\n    }\n  },\n  \"required\": [\"id\", \"version\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "370614e2-023e-44d1-b261-e61e83be3468",
+			"key": "routingEntrySchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"RoutingEntry\",\n  \"type\": \"object\",\n  \"items\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"methods\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"type\": \"string\"\n        }\n      },\n      \"pathPattern\": {\n        \"type\": \"string\"\n      },\n      \"path\": {\n        \"type\": \"string\"\n      },\n      \"phase\": {\n        \"type\": \"string\"\n      },\n      \"level\": {\n        \"type\": \"string\"\n      },\n      \"type\": {\n        \"type\": \"string\"\n      },\n      \"redirectPath\": {\n        \"type\": \"string\"\n      },\n      \"permissionsRequired\": {\n        \"type\": [\"array\", \"null\"],\n        \"items\": {\n          \"type\": \"string\"\n        }\n      },\n      \"permissionsDesired\": {\n        \"type\": [\"array\", \"null\"],\n        \"items\": {\n          \"type\": \"string\"\n        }\n      },\n      \"ModulePermissions\": {\n        \"type\": [\"array\", \"null\"],\n        \"items\": {\n          \"type\": \"string\"\n        }\n      }\n    }\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "614b1c62-c44b-4ab8-af3c-f09ed4eeb6b8",
+			"key": "permissionSchema",
+			"value": "{\n  \"title\": \"Permissions Definition Schema\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"permissionName\": {\n      \"type\": \"string\"\n    },\n    \"displayName\": {\n      \"type\": \"string\"\n    },\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"description\": {\n      \"type\": \"string\"\n    },\n    \"tags\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      }\n    },\n    \"subPermissions\": {\n      \"type\": \"array\"\n    },\n    \"childOf\": {\n      \"type\": \"array\"\n    },\n    \"grantedTo\": {\n      \"type\": \"array\"\n    },\n    \"mutable\": {\n      \"type\": \"boolean\"\n    },\n    \"visible\" : {\n      \"type\" : \"boolean\"\n    },\n    \"metadata\" : {\n      \"type\" : \"object\",\n      \"$ref\" : \"../metadata.schema\"\n    }\n  },\n  \"additionalProperties\" : false\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "1e6a8633-fd8e-4357-b408-4924c4aea5d1",
+			"key": "uiModuleDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"UiModuleDescriptor\",\n  \"type\": [\"object\", \"null\"],\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"npm\" : {\"type\" : [\"string\", \"null\"]},\n    \"url\" : {\"type\" : [\"string\", \"null\"]},\n    \"local\" : {\"type\" : [\"string\", \"null\"]},\n    \"args\" : {\"type\" : [\"string\", \"null\"]}\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "6ad03d76-da30-4c99-8cec-065f0d3651dd",
+			"key": "launchDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"LaunchDescriptor\",\n  \"type\": [ \"object\", \"null\" ],\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"exec\": {\"type\": [\"string\", \"null\"]},\n    \"cmdlineStart\": {\"type\": [\"string\", \"null\"]},\n    \"cmdlineStop\": {\"type\": [\"string\", \"null\"]},\n    \"dockerImage\": {\"type\": [\"string\", \"null\"]},\n    \"dockerPull\": {\"type\": \"boolean\"},\n    \"dockerCMD\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\"type\": \"string\"}\n    },\n    \"dockerArgs\": {\n       \"type\": \"object\",\n       \"additionalProperties\": true\n    },\n    \"env\" : { \"$ref\": \"EnvEntryList.json\" }\n  }\n}\n",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "b92c6013-c7af-4f0c-ab5d-041d9e8902c0",
+			"key": "enventrySchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"EnvEntry\",\n  \"type\" : \"object\",\n  \"additionalProperties\" : false,\n  \"properties\" : {\n    \"name\" : {\"type\": \"string\"},\n    \"value\" : {\"type\": \"string\"},\n    \"description\" : {\"type\": \"string\"}\n  },\n  \"required\" : [\"name\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "0daa1916-faa0-4f2d-9dfb-1134d6d70bca",
+			"key": "enventryListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"EnvEntryList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"EnvEntry.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "0499537c-453a-4783-a358-dec2fbabd3d6",
+			"key": "interfaceListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"InterfaceList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"InterfaceDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "ed777831-be01-4242-bf42-b96559837829",
+			"key": "deploymentDescriptorSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"DeploymentDescriptor\",\n  \"type\": \"object\",\n  \"additionalProperties\" : false,\n  \"properties\": {\n    \"srvcId\": {\"type\": \"string\"},\n    \"instId\": {\"type\": \"string\"},\n    \"nodeId\": {\"type\": [\"string\", \"null\"]},\n    \"url\": {\"type\": [\"string\", \"null\"]},\n    \"descriptor\" : {\n      \"$ref\": \"LaunchDescriptor.json\"\n    }\n  },\n  \"required\": [\"srvcId\"]\n}",
+			"type": "string",
+			"description": ""
+		},
+		{
+			"id": "72da3c24-9d16-467e-9320-56d07357ab2d",
+			"key": "deploymentDescriptorListSchema",
+			"value": "{\n  \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n  \"title\": \"DeploymentDescriptorList\",\n  \"type\": \"array\",\n  \"items\": {\n    \"$ref\": \"DeploymentDescriptor.json\"\n  }\n}",
+			"type": "string",
+			"description": ""
+		}
+	]
+}
