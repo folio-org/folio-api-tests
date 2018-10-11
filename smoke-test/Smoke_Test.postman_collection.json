@@ -9,7 +9,7 @@
 			"name": "health",
 			"item": [
 				{
-					"name": "GET tenants/iterfances  - vagrant box",
+					"name": "GET _/discovery/health",
 					"event": [
 						{
 							"listen": "test",
@@ -3683,6 +3683,1222 @@
 			]
 		},
 		{
+			"name": "mod-codex-ekb",
+			"item": [
+				{
+					"name": "Setup Configuration",
+					"item": [
+						{
+							"name": "Check if apiURL exists and generate okapi token",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5aff341e-ea9b-4b52-aa5d-66a15e9b0326",
+										"type": "text/javascript",
+										"exec": [
+											"var jsonData = pm.response.json();",
+											"pm.environment.set(\"apiUrlFlag\", true);",
+											"if(jsonData!==null && jsonData.configs.length!==0) {",
+											"    pm.environment.set(\"apiUrlFlag\", false);",
+											"    //\"Api Url exists -- do not POST\");",
+											"    postman.setNextRequest(\"Check if customerId exists\");",
+											"}",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response must be valid and have a body\", function () {",
+											"    pm.response.to.be.ok; ",
+											"    pm.response.to.be.withBody;",
+											"    pm.response.to.be.json; ",
+											"});",
+											"",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "71913edb-9235-4f27-afb3-b7bb5051e005",
+										"type": "text/javascript",
+										"exec": [
+											"pm.sendRequest({",
+											"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
+											"    method: 'POST',",
+											"    header: {",
+											"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+											"        'Content-Type': 'application/json'",
+											"    },",
+											"    body: {",
+											"        mode: 'raw',",
+											"        raw : JSON.stringify({ username: pm.environment.get(\"username\"), password: pm.environment.get(\"password\")})",
+											"    }",
+											"}, function(err, res) {",
+											"        if (err !== null) {",
+											"        console.log(\"Login error: \" + err);",
+											"        } else {",
+											"            if (res.code === 201) {",
+											"                pm.environment.set(\"xokapitoken-codex-ekb\", res.headers.get(\"X-Okapi-Token\"));",
+											"            }",
+											"            else {",
+											"                console.log(\"Could not generate token\" + res.code);",
+											"            }",
+											"        }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.url)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(module==EKB and configName==api_access and code==kb.ebsco.url)"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/configurations/entries - RM-API URL",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "6900a989-193a-42b8-ac1e-d1b0b185a148",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test on json response\", function() {",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"Status is 201 - configuration entry added successfully through RM-API URL\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+											"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+											"});",
+											"",
+											"pm.test(\"Content-Type header has expected value\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+											"});",
+											"",
+											"//Store api id temporarily for clean-up purpose",
+											"let body = JSON.parse(responseBody);",
+											"pm.environment.set(\"rm-api-url-id\", body.id);",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{modCodexEkb}}",
+										"disabled": true
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"module\": \"EKB\",\r\n    \"configName\": \"api_access\",\r\n    \"code\": \"kb.ebsco.url\",\r\n    \"description\": \"EBSCO RM-API URL\",\r\n    \"enabled\": true,\r\n    \"value\": \"https://sandbox.ebsco.io\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									]
+								},
+								"description": "Create configuration RM API URL"
+							},
+							"response": []
+						},
+						{
+							"name": "Check if customerId exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6cda9635-e356-4ca8-8af4-d6d54d055312",
+										"type": "text/javascript",
+										"exec": [
+											"var jsonData = pm.response.json();",
+											"pm.environment.set(\"customerIdFlag\", true);",
+											"if(jsonData!==null && jsonData.configs.length!==0) {",
+											"    pm.environment.set(\"customerIdFlag\", false);",
+											"    //\"Customer Id exists -- do not POST\");",
+											"    postman.setNextRequest(\"Check if apiKey exists\");",
+											"}",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response must be valid and have a body\", function () {",
+											"    pm.response.to.be.ok; ",
+											"    pm.response.to.be.withBody;",
+											"    pm.response.to.be.json; ",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.customerId)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(module==EKB and configName==api_access and code==kb.ebsco.customerId)"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/configurations/entries - RM-API customerId",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5c5c18b8-178f-4395-9e60-5313f2d03260",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "1ec4a5e5-bc72-48eb-8774-a365c615954e",
+										"type": "text/javascript",
+										"exec": [
+											"",
+											"pm.test(\"Success test on json response\", function() {",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"Status is 201 - configuration entry successfully created through customerId\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+											"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+											"});",
+											"",
+											"pm.test(\"Content-Type header has expected value\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+											"});",
+											"",
+											"//Store api id temporarily for clean-up purpose",
+											"let body = JSON.parse(responseBody);",
+											"pm.environment.set(\"rm-api-customer-id\", body.id);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{modCodexEkb}}",
+										"disabled": true
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"module\": \"EKB\",\r\n    \"configName\": \"api_access\",\r\n    \"code\": \"kb.ebsco.customerId\",\r\n    \"description\": \"EBSCO RM-API Customer ID\",\r\n    \"enabled\": true,\r\n    \"value\": \"apidvgvmt\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									]
+								},
+								"description": "Create customer id as part of configuration"
+							},
+							"response": []
+						},
+						{
+							"name": "Check if apiKey exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "107001c3-7c80-47bb-ab6b-f0330ae9b3e6",
+										"type": "text/javascript",
+										"exec": [
+											"var jsonData = pm.response.json();",
+											"pm.environment.set(\"apiKeyFlag\", true);",
+											"if(jsonData!==null && jsonData.configs.length!==0) {",
+											"    pm.environment.set(\"apiKeyFlag\", false);",
+											"    //\"Api key exists -- do not POST\");",
+											"    postman.setNextRequest(\"Get instance collection schema  and generate environment variables\");",
+											"}",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response must be valid and have a body\", function () {",
+											"    pm.response.to.be.ok; ",
+											"    pm.response.to.be.withBody;",
+											"    pm.response.to.be.json; ",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.apiKey)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(module==EKB and configName==api_access and code==kb.ebsco.apiKey)"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/configurations/entries - RM-API apiKey",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "68e1198a-c696-4a69-ab0c-563d7346e92d",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"success test on json response\", function() {",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"Status is 201 - apiKey entry successfully created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+											"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+											"});",
+											"",
+											"pm.test(\"Content-Type header has expected value\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+											"});",
+											"",
+											"//Store api id temporarily for clean-up purpose",
+											"let body = JSON.parse(responseBody);",
+											"pm.environment.set(\"rm-api-key-id\", body.id);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{modCodexEkb}}",
+										"disabled": true
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"module\": \"EKB\",\r\n    \"configName\": \"api_access\",\r\n    \"code\": \"kb.ebsco.apiKey\",\r\n    \"description\": \"EBSCO RM-API API Key\",\r\n    \"enabled\": true,\r\n    \"value\": \"{{rmapi_api_key}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									]
+								},
+								"description": "Create configuration api key"
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "7378bc5c-916f-41aa-b57e-b2c274efe3f3",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "a26b4778-0c56-409b-93fe-f848a949171b",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "codex-ekb",
+					"item": [
+						{
+							"name": "/codex-instances?query=(publisher=BMJ) - Get list of Ekb instances",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "3ad0229a-b11c-402f-bf6e-75b350e97811",
+										"type": "text/javascript",
+										"exec": [
+											"//Get okapi token for authn/login",
+											"pm.sendRequest({",
+											"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
+											"    method: 'POST',",
+											"    header: {",
+											"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+											"        'Content-Type': 'application/json'",
+											"    },",
+											"    body: {",
+											"        mode: 'raw',",
+											"        raw : JSON.stringify({ username: pm.environment.get(\"username\"), password: pm.environment.get(\"password\")})",
+											"    }",
+											"}, function(err, res) {",
+											"    if (err !== null) {",
+											"        console.log(\"Login error: \" + err);",
+											"    } else {",
+											"        if (res.code === 201) {",
+											"            pm.environment.set(\"xokapitoken-codex-ekb\", res.headers.get(\"X-Okapi-Token\"));",
+											"            pm.sendRequest({",
+											"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
+											"                method: 'POST',",
+											"                header: {",
+											"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+											"                    'Content-Type': 'application/json'",
+											"                },",
+											"                body: {",
+											"                    mode: 'raw',",
+											"                    raw : JSON.stringify({ username: pm.environment.get(\"username\"), password: pm.environment.get(\"password\")})",
+											"                }",
+											"        }, function(err, res) {",
+											"            //Get list of proxy tenant modules using same token generated above",
+											"            pm.sendRequest({",
+											"            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/_/proxy/tenants/\" + pm.environment.get(\"xokapitenant\") + \"/modules\",",
+											"            method: 'GET',",
+											"            header: {",
+											"                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+											"                'Content-Type': 'application/json',",
+											"                'X-Okapi-Token': res.headers.get(\"X-Okapi-Token\")",
+											"            },",
+											"        }, function(err, res) {",
+											"        if (err !== null) {",
+											"            console.log(\"user creation error: \" + err);",
+											"        } else {",
+											"            //Get and set latest mod codex ekb id",
+											"            var jsonData = res.json();",
+											"            for(var i=0; i< jsonData.length; i++) {",
+											"                if(jsonData[i].id.startsWith(\"mod-codex-ekb\")) {",
+											"                    pm.environment.set(\"modCodexEkb\", jsonData[i].id);",
+											"                    break;",
+											"            }",
+											"        }",
+											"        if(pm.environment.get(\"modCodexEkb\")!== null) {",
+											"            //Using the mod codex ekb id captured above, use that to retrieve list of mod codex ekb instances",
+											"            pm.sendRequest({",
+											"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/codex-instances?query=(publisher=BMJ)\",",
+											"                method: 'GET',",
+											"                header: {",
+											"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+											"                    'X-Okapi-Token': pm.environment.get(\"xokapitoken-codex-ekb\"),",
+											"                    'X-Okapi-Module-Id': pm.environment.get(\"modCodexEkb\"),",
+											"                    'Content-Type': 'application/json'",
+											"                },",
+											"            }, function(err, res) {",
+											"                 if (err !== null) {",
+											"                    console.log(\"codex instance error: \" + err);",
+											"                } else {",
+											"                    //Grab few fields from randomly generated mod codex ekb instance and save them in environment variables for testing purpose",
+											"                    var jsonData = res.json();",
+											"                    var randomIndex = Math.floor(Math.random()*jsonData.instances.length);",
+											"                    var storeInstance= {};",
+											"                    storeInstance.title = jsonData.instances[randomIndex].title;",
+											"                    storeInstance.type = jsonData.instances[randomIndex].type;",
+											"                    storeInstance.publisher = jsonData.instances[randomIndex].publisher;",
+											"                    storeInstance.source = jsonData.instances[randomIndex].source;",
+											"                    storeInstance.format = jsonData.instances[randomIndex].format;",
+											"                    pm.environment.set(\"EkbInstanceTitle\", storeInstance.title);",
+											"                    pm.environment.set(\"EkbInstanceType\", storeInstance.type);",
+											"                    pm.environment.set(\"EkbInstancePublisher\", storeInstance.publisher);",
+											"                    pm.environment.set(\"EkbInstanceSource\", storeInstance.source);",
+											"                    pm.environment.set(\"EkbInstanceFormat\", storeInstance.format);",
+											"                    pm.environment.set(\"id\", jsonData.instances[randomIndex].id);",
+											"                }",
+											"            });",
+											"        }",
+											"        else{",
+											"            console.log(\"Error getting Codex Instances\");",
+											"        }",
+											"    }",
+											"});",
+											"});",
+											"    } else {",
+											"            console.log(\"Login failed: \" + res.reason());",
+											"        }",
+											"    }",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "a1437dbd-37c3-4086-ac03-fa34fe1ab5d5",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Success test on json response when title exists\", function() {",
+											"    pm.response.to.be.json;",
+											"});",
+											"",
+											"pm.test(\"Response status is 200 when title exists\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{modCodexEkb}}"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-instances?query=(publisher=BMJ)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"codex-instances"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(publisher=BMJ)"
+										}
+									]
+								},
+								"description": "Test Ekb codex-instances listing"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Tear-Down Configuration",
+					"item": [
+						{
+							"name": "Check if apiKey exists to delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "87ce7882-a1cf-4799-87dc-71de37093375",
+										"type": "text/javascript",
+										"exec": [
+											"let jsonData = pm.response.json();",
+											"let flagApiKeyId = pm.environment.get(\"apiKeyFlag\");",
+											"if((jsonData !==null && jsonData.configs.length >0) && !flagApiKeyId) {",
+											"    //Api key do not exist -- DO NOT DELETE",
+											"    postman.setNextRequest(\"Check if customerId exists to delete\");",
+											"}",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response must be valid and have a body\", function () {",
+											"    pm.response.to.be.ok; ",
+											"    pm.response.to.be.withBody;",
+											"    pm.response.to.be.json; ",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.apiKey)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(module==EKB and configName==api_access and code==kb.ebsco.apiKey)"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/configurations/entries - Clean-up RM-API Key",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "e32fd54e-e57e-45d9-8a69-76fd0c81f95a",
+										"exec": [
+											"//Clean-up RM API Key configuration created during POST",
+											"pm.test(\"Verify RM API URL deletion with status 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
+											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
+											"});",
+											"",
+											"pm.test(\"'x-okapi-permissions' header is present\", function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{rm-api-key-id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries",
+										"{{rm-api-key-id}}"
+									]
+								},
+								"description": "Clean-up RM-API Key configuration"
+							},
+							"response": []
+						},
+						{
+							"name": "Check if customerId exists to delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5dbe6aec-56e0-42d8-a316-db054e72f2cf",
+										"type": "text/javascript",
+										"exec": [
+											"let jsonData = pm.response.json();",
+											"let flagCustomerId = pm.environment.get(\"customerIdFlag\");",
+											"if((jsonData !==null && jsonData.configs.length >0) && !flagCustomerId) {",
+											"    //Customer Id do not exists -- do not DELETE",
+											"    postman.setNextRequest(\"Check if apiUrl exists to delete\");",
+											"}",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response must be valid and have a body\", function () {",
+											"    pm.response.to.be.ok; ",
+											"    pm.response.to.be.withBody;",
+											"    pm.response.to.be.json; ",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.customerId)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(module==EKB and configName==api_access and code==kb.ebsco.customerId)"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/configurations/entries - Clean-up RM-API CustomerId",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5272edee-cb6c-40c9-8fc3-ff08585cd210",
+										"type": "text/javascript",
+										"exec": [
+											"//Clean-up RM API customer configuration created during POST",
+											"pm.test(\"Verify RM API URL deletion with status 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
+											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
+											"});",
+											"",
+											"pm.test(\"'x-okapi-permissions' header is present\", function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{rm-api-customer-id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries",
+										"{{rm-api-customer-id}}"
+									]
+								},
+								"description": "Clean-up RM-API CustomerId configuration"
+							},
+							"response": []
+						},
+						{
+							"name": "Check if apiUrl exists to delete",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "79e2224b-0330-4da2-8119-a4aa8063098f",
+										"type": "text/javascript",
+										"exec": [
+											"let jsonData = pm.response.json();",
+											"let flagApiUrl = pm.environment.get(\"apiUrlFlag\");",
+											"if((jsonData !==null && jsonData.configs.length >0) && !flagApiUrl) {",
+											"    //Api URL do not exists -- do not DELETE\");",
+											"    postman.setNextRequest(\"/codex-instances/{id} - invalid token\");",
+											"}",
+											"",
+											"pm.test(\"Status is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response must be valid and have a body\", function () {",
+											"    pm.response.to.be.ok; ",
+											"    pm.response.to.be.withBody;",
+											"    pm.response.to.be.json; ",
+											"});",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.url)",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "(module==EKB and configName==api_access and code==kb.ebsco.url)"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/configurations/entries - Clean-up RM-API URL",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d171baf7-b7ee-46d9-ac32-eb0a8fa3d38b",
+										"type": "text/javascript",
+										"exec": [
+											"//Clean-up RM API URL configuration created during POST",
+											"pm.test(\"Verify RM API URL deletion with status 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
+											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
+											"});",
+											"",
+											"pm.test(\"'x-okapi-permissions' header is present\", function () {",
+											"    pm.response.to.have.header(\"x-okapi-permissions\");",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{rm-api-url-id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries",
+										"{{rm-api-url-id}}"
+									]
+								},
+								"description": "Clean-up RM-API URL configuration"
+							},
+							"response": []
+						},
+						{
+							"name": "/codex-instances/{id} - invalid token",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "94093749-00a1-4128-9c27-45af0eb09324",
+										"type": "text/javascript",
+										"exec": [
+											"pm.environment.unset('xokapitoken-codex-ekb');"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4abbbf32-04b0-43f6-b3e8-9a0cf4cc8904",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"401 Not authorized to perform requested action test\", function() {",
+											"    pm.response.to.have.status(401);    //Fixed",
+											"    //https://issues.folio.org/browse/MODCXEKB-58",
+											"});",
+											"",
+											"//Clean-up",
+											"pm.environment.unset(\"EkbInstanceTitle\");",
+											"pm.environment.unset(\"EkbInstanceType\");",
+											"pm.environment.unset(\"EkbInstancePublisher\");",
+											"pm.environment.unset(\"EkbInstanceSource\");",
+											"pm.environment.unset(\"EkbInstanceFormat\");",
+											"pm.environment.unset(\"id\");",
+											"pm.environment.unset(\"rm-api-url-id\");",
+											"pm.environment.unset(\"rm-api-key-id\");",
+											"pm.environment.unset(\"rm-api-customer-id\");",
+											"pm.environment.unset(\"modCodexEkb\");",
+											"pm.environment.unset(\"instanceCollectionSchema\");",
+											"pm.environment.unset(\"instanceSchema\");",
+											"pm.environment.unset(\"resultInfoSchema\");",
+											"pm.environment.unset(\"apiKeyFlag\");",
+											"pm.environment.unset(\"customerIdFlag\");",
+											"pm.environment.unset(\"apiUrlFlag\");"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-codex-ekb}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{modCodexEkb}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-instances/{{id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"codex-instances",
+										"{{id}}"
+									]
+								},
+								"description": "This should return 401 if not authorized to access mod codex ekb instance but it is returning 500. Created jira - https://issues.folio.org/browse/MODCXEKB-58"
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "1027eea9-68c4-48eb-8193-b4c405e8f182",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "352349d2-1dae-47f1-b9bd-bccbc161503d",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
 			"name": "mod-codex-inventory",
 			"item": [
 				{
@@ -4637,12 +5853,15 @@
 								{
 									"listen": "test",
 									"script": {
-										"id": "b21780c5-a7b0-42e3-be52-bd847d4dc8e1",
+										"id": "c44caf26-cafd-42f2-a239-86c9349bea0e",
 										"type": "text/javascript",
 										"exec": [
 											"let response = JSON.parse(responseBody);",
 											"pm.environment.set(\"inventorytotalrecords\", response.totalRecords);",
 											"",
+											"if (response.items.lenght>0){",
+											"    pm.environment.set(\"existingHoldingsRecordId\", response.items[0].holdingsRecordId);",
+											"}",
 											"",
 											"pm.test(\"Status is 200\", function () {",
 											"    pm.response.to.have.status(200);",
@@ -4782,7 +6001,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{ \"holdingsRecordId\": \"1111222\",\r\n  \"title\": \"Cien años de soledad\",\r\n  \"barcode\": \"556303221992\",\r\n  \"status\": {\r\n    \"name\": \"Available\"\r\n  },\r\n  \"materialType\": {\r\n    \"id\": \"{{materialtypeid}}\",\r\n    \"name\": \"Book\"\r\n  },\r\n  \"permanentLoanType\": {\r\n    \"id\": \"{{loantypeid}}\",\r\n    \"name\": \"Can Circulate\"\r\n  }\r\n}"
+									"raw": "{ \"holdingsRecordId\": \"{{existingHoldingsRecordId}}\",\r\n  \"barcode\": \"556303221992\",\r\n  \"status\": {\r\n    \"name\": \"Available\"\r\n  },\r\n  \"materialType\": {\r\n    \"id\": \"{{materialtypeid}}\",\r\n    \"name\": \"Book\"\r\n  },\r\n  \"permanentLoanType\": {\r\n    \"id\": \"{{loantypeid}}\",\r\n    \"name\": \"Can Circulate\"\r\n  }\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/inventory/items",
@@ -6511,10 +7730,15 @@
 								{
 									"listen": "test",
 									"script": {
-										"id": "8546649e-3bcd-4749-92a6-7ca1ca13ce8a",
+										"id": "3933708a-e421-4ceb-a9b2-5db984663f93",
 										"type": "text/javascript",
 										"exec": [
 											"var response = JSON.parse(responseBody);",
+											"",
+											"if(response.holdingsRecords.length >0) {",
+											"    pm.environment.set(\"existingInstanceId\", response.holdingsRecords[0].instanceId);",
+											"}",
+											"",
 											"",
 											"pm.test(\"Status is 200\", function () {",
 											"    pm.response.to.have.status(200);",
@@ -6616,7 +7840,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \r\n  \"instanceId\": \"cd28da0f-a3e4-465c-82f1-acade4e8e170\"\r\n  \r\n}"
+									"raw": "{\r\n  \r\n  \"instanceId\": \"{{existingInstanceId}}\"\r\n  \r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/holdings-storage/holdings",
@@ -6731,7 +7955,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"id\" : \"{{newholdingstorage}}\",\r\n  \"instanceId\" : \"cd28da0f-a3e4-465c-82f1-acade4e8e170\",\r\n  \"holdingsStatements\" :  [ \"my first line of the holdings statement\", \"another line\" ]\r\n}"
+									"raw": "{\r\n  \"id\" : \"{{newholdingstorage}}\",\r\n  \"instanceId\" : \"{{existingInstanceId}}\",\r\n  \"holdingsStatements\" :  [ \"my first line of the holdings statement\", \"another line\" ]\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/holdings-storage/holdings/{{newholdingstorage}}",
@@ -8119,10 +9343,14 @@
 								{
 									"listen": "test",
 									"script": {
-										"id": "0c1da3df-6b40-45a2-af0d-b8125ff3f53c",
+										"id": "f5460dac-5cdd-4e3b-97af-eab1268b714d",
 										"type": "text/javascript",
 										"exec": [
 											"let response = JSON.parse(responseBody);",
+											"",
+											"if(response.items.length>0){",
+											"    pm.environment.set(\"existingHoldingsRecordId\", response.items[0].holdingsRecordId);",
+											"}",
 											"",
 											"pm.test(\"Status is 200\", function () {",
 											"    pm.response.to.have.status(200);",
@@ -8227,7 +9455,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"holdingsRecordId\": \"myholdingsRecordId\",\r\n  \"materialTypeId\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\",\r\n  \"permanentLoanTypeId\": \"{{testpermanentloantypeid}}\"\r\n}"
+									"raw": "{\r\n  \"holdingsRecordId\": \"{{existingHoldingsRecordId}}\",\r\n  \"materialTypeId\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\",\r\n  \"permanentLoanTypeId\": \"{{testpermanentloantypeid}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/item-storage/items",
@@ -8342,7 +9570,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"id\": \"{{newitemstorage}}\",\n    \"holdingsRecordId\": \"65cb2bf0-d4c2-4886-8ad0-b76f1ba75d61\",\n    \"pieceIdentifiers\": [\"here is my identifier\"],\n    \"notes\": [\"here are my notes\"],\n    \"materialTypeId\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\",\n    \"permanentLoanTypeId\": \"{{testpermanentloantypeid}}\"\n}"
+									"raw": "{\n    \"id\": \"{{newitemstorage}}\",\n    \"holdingsRecordId\": \"{{existingHoldingsRecordId}}\",\n    \"pieceIdentifiers\": [\"here is my identifier\"],\n    \"notes\": [\"here are my notes\"],\n    \"materialTypeId\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\",\n    \"permanentLoanTypeId\": \"{{testpermanentloantypeid}}\"\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/item-storage/items/{{newitemstorage}}",
@@ -8646,7 +9874,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\t\"id\" : \"{{svcptId}}\",\n\t\"name\" : \"{{svptName}}\",\n\t\"code\" : \"{{svcptCode}}\",\n\t\"discoveryDisplayName\" : \"{{discoveryDisplayName}}\",\n\t\"locationIds\" : [\n\t\t\"d9cd0bed-1b49-4b5e-a7bd-064b8d177231\"]\n\t\n}"
+									"raw": "{\n\t\"id\" : \"{{svcptId}}\",\n\t\"name\" : \"{{svptName}}\",\n\t\"code\" : \"{{svcptCode}}\",\n\t\"discoveryDisplayName\" : \"{{discoveryDisplayName}}\"\n\t\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/service-points",
@@ -8885,7 +10113,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\t\"id\" : \"{{svcptId}}\",\n\t\"name\" : \"{{svptName}}\",\n\t\"code\" : \"{{svcptCode}}\",\n\t\"discoveryDisplayName\" : \"{{discoveryDisplayName}}\",\n\t\"locationIds\" : [\n\t\t\"{{locationId}}\"\n\t]\n}"
+									"raw": "{\n\t\"id\" : \"{{svcptId}}\",\n\t\"name\" : \"{{svptName}}\",\n\t\"code\" : \"{{svcptCode}}\",\n\t\"discoveryDisplayName\" : \"{{discoveryDisplayName}}\"\n\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/service-points/{{svcptId}}",
@@ -12061,17 +13289,16 @@
 									"listen": "prerequest",
 									"script": {
 										"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
-										"type": "text/javascript",
 										"exec": [
 											""
-										]
+										],
+										"type": "text/javascript"
 									}
 								},
 								{
 									"listen": "test",
 									"script": {
 										"id": "45e87c73-961f-4262-973c-e6b5d8acac73",
-										"type": "text/javascript",
 										"exec": [
 											"//Clean-up RM API Key configuration created during POST",
 											"pm.test(\"Verify RM API URL deletion with status 204\", function () {",
@@ -12085,7 +13312,8 @@
 											"pm.test(\"'x-okapi-permissions' header is present\", function () {",
 											"    pm.response.to.have.header(\"x-okapi-permissions\");",
 											"});"
-										]
+										],
+										"type": "text/javascript"
 									}
 								}
 							],
@@ -12106,7 +13334,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{rm-api-url-id}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{rm-api-url-id}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -12115,7 +13343,7 @@
 									"path": [
 										"configurations",
 										"entries",
-										"{{rm-api-url-id}"
+										"{{rm-api-url-id}}"
 									]
 								},
 								"description": "Clean-up RM-API Key configuration"
@@ -14341,178 +15569,6 @@
 						}
 					],
 					"_postman_isSubFolder": true
-				}
-			]
-		},
-		{
-			"name": "mod-codex-ekb",
-			"item": [
-				{
-					"name": "/codex-instances?query=(publisher=BMJ) - Get list of Ekb instances",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "3ad0229a-b11c-402f-bf6e-75b350e97811",
-								"type": "text/javascript",
-								"exec": [
-									"//Get okapi token for authn/login",
-									"pm.sendRequest({",
-									"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
-									"    method: 'POST',",
-									"    header: {",
-									"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-									"        'Content-Type': 'application/json'",
-									"    },",
-									"    body: {",
-									"        mode: 'raw',",
-									"        raw : JSON.stringify({ username: pm.environment.get(\"username\"), password: pm.environment.get(\"password\")})",
-									"    }",
-									"}, function(err, res) {",
-									"    if (err !== null) {",
-									"        console.log(\"Login error: \" + err);",
-									"    } else {",
-									"        if (res.code === 201) {",
-									"            pm.environment.set(\"xokapitoken-codex-ekb\", res.headers.get(\"X-Okapi-Token\"));",
-									"            pm.sendRequest({",
-									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
-									"                method: 'POST',",
-									"                header: {",
-									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-									"                    'Content-Type': 'application/json'",
-									"                },",
-									"                body: {",
-									"                    mode: 'raw',",
-									"                    raw : JSON.stringify({ username: pm.environment.get(\"username\"), password: pm.environment.get(\"password\")})",
-									"                }",
-									"        }, function(err, res) {",
-									"            //Get list of proxy tenant modules using same token generated above",
-									"            pm.sendRequest({",
-									"            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/_/proxy/tenants/\" + pm.environment.get(\"xokapitenant\") + \"/modules\",",
-									"            method: 'GET',",
-									"            header: {",
-									"                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-									"                'Content-Type': 'application/json',",
-									"                'X-Okapi-Token': res.headers.get(\"X-Okapi-Token\")",
-									"            },",
-									"        }, function(err, res) {",
-									"        if (err !== null) {",
-									"            console.log(\"user creation error: \" + err);",
-									"        } else {",
-									"            //Get and set latest mod codex ekb id",
-									"            var jsonData = res.json();",
-									"            for(var i=0; i< jsonData.length; i++) {",
-									"                if(jsonData[i].id.startsWith(\"mod-codex-ekb\")) {",
-									"                    pm.environment.set(\"modCodexEkb\", jsonData[i].id);",
-									"                    break;",
-									"            }",
-									"        }",
-									"        if(pm.environment.get(\"modCodexEkb\")!== null) {",
-									"            //Using the mod codex ekb id captured above, use that to retrieve list of mod codex ekb instances",
-									"            pm.sendRequest({",
-									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/codex-instances?query=(publisher=BMJ)\",",
-									"                method: 'GET',",
-									"                header: {",
-									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-									"                    'X-Okapi-Token': pm.environment.get(\"xokapitoken-codex-ekb\"),",
-									"                    'X-Okapi-Module-Id': pm.environment.get(\"modCodexEkb\"),",
-									"                    'Content-Type': 'application/json'",
-									"                },",
-									"            }, function(err, res) {",
-									"                 if (err !== null) {",
-									"                    console.log(\"codex instance error: \" + err);",
-									"                } else {",
-									"                    //Grab few fields from randomly generated mod codex ekb instance and save them in environment variables for testing purpose",
-									"                    var jsonData = res.json();",
-									"                    var randomIndex = Math.floor(Math.random()*jsonData.instances.length);",
-									"                    var storeInstance= {};",
-									"                    storeInstance.title = jsonData.instances[randomIndex].title;",
-									"                    storeInstance.type = jsonData.instances[randomIndex].type;",
-									"                    storeInstance.publisher = jsonData.instances[randomIndex].publisher;",
-									"                    storeInstance.source = jsonData.instances[randomIndex].source;",
-									"                    storeInstance.format = jsonData.instances[randomIndex].format;",
-									"                    pm.environment.set(\"EkbInstanceTitle\", storeInstance.title);",
-									"                    pm.environment.set(\"EkbInstanceType\", storeInstance.type);",
-									"                    pm.environment.set(\"EkbInstancePublisher\", storeInstance.publisher);",
-									"                    pm.environment.set(\"EkbInstanceSource\", storeInstance.source);",
-									"                    pm.environment.set(\"EkbInstanceFormat\", storeInstance.format);",
-									"                    pm.environment.set(\"id\", jsonData.instances[randomIndex].id);",
-									"                }",
-									"            });",
-									"        }",
-									"        else{",
-									"            console.log(\"Error getting Codex Instances\");",
-									"        }",
-									"    }",
-									"});",
-									"});",
-									"    } else {",
-									"            console.log(\"Login failed: \" + res.reason());",
-									"        }",
-									"    }",
-									"});"
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "a1437dbd-37c3-4086-ac03-fa34fe1ab5d5",
-								"type": "text/javascript",
-								"exec": [
-									"pm.test(\"Success test on json response when title exists\", function() {",
-									"    pm.response.to.be.json;",
-									"});",
-									"",
-									"pm.test(\"Response status is 200 when title exists\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									""
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "X-Okapi-Module-Id",
-								"value": "{{modCodexEkb}}"
-							},
-							{
-								"key": "X-Okapi-Token",
-								"value": "{{xokapitoken-codex-ekb}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-instances?query=(publisher=BMJ)",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"codex-instances"
-							],
-							"query": [
-								{
-									"key": "query",
-									"value": "(publisher=BMJ)"
-								}
-							]
-						},
-						"description": "Test Ekb codex-instances listing"
-					},
-					"response": []
 				}
 			]
 		}
