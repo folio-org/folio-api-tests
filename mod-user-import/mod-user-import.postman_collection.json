@@ -1,0 +1,2106 @@
+{
+	"info": {
+		"_postman_id": "33271aea-817a-4d74-8d69-4f74308da677",
+		"name": "mod-user-import",
+		"description": "Tests for mod-user-import APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "user-import",
+			"item": [
+				{
+					"name": "/user-import - 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "daba9c28-606a-4952-b399-88207fe12dde",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "66cf63bd-fd50-4429-ae79-4c49a10054d0",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(400);",
+									"    pm.response.to.have.body;",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Test listing user imports. This is a \"fake endpoint\" and will always return 400. There may be some sort of RAML reason why there needs to be a GET method, either way, there is not much to test with this endpoint."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "735137e8-401c-4fee-9dca-c8d113d2b4c8",
+								"type": "text/javascript",
+								"exec": [
+									"pm.environment.unset('xokapitoken-' + pm.variables.get('module'));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "e66710cf-48ca-4c6d-a7bc-34b36c42b4b1",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"401 test\", function() {",
+									"    pm.response.to.have.status(401);",
+									"    pm.response.to.have.body();",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Check for auth token not set"
+					},
+					"response": []
+				},
+				{
+					"name": "/user/import - 403",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "20df9d7d-2d69-4159-aec8-fdc52e682aa7",
+								"exec": [
+									"// Here we need to cause a 403 to see if the backend will 1) be able to handle this and",
+									"// 2) see if it is checking for the proper permission. To do this we need to execute",
+									"// several additional API calls.",
+									"// 1. We create a user",
+									"// 2. If the user is created successfully, we add credentials to the user",
+									"// 3. If that succeeds, we add empty permissions to the user (otherwise, API calls for",
+									"//    the user would return 500).",
+									"// 4. If that succeeds, we log in the user and save the userr's auth token, which is",
+									"//    used as the X-Okapi-Token header for this test.",
+									"var uuid = require('uuid');",
+									"",
+									"pm.environment.set('test_user_id', uuid.v4());",
+									"",
+									"let token = pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
+									"",
+									"pm.sendRequest({",
+									"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/users\",",
+									"    method: 'POST',",
+									"    header: {",
+									"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token': token,",
+									"        'Content-Type': 'application/json'",
+									"    },",
+									"    body: {",
+									"        mode: 'raw',",
+									"        raw : JSON.stringify({ username: 'test_user', id: pm.environment.get('test_user_id'), active:true})",
+									"    }",
+									"}, function(err, res) {",
+									"    if (err !== null) {",
+									"        console.log(\"user creation error: \" + err);",
+									"    } else {",
+									"        if (res.code === 201) {",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/credentials\",",
+									"                method: 'POST',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': token,",
+									"                    'Content-Type': 'application/json'",
+									"                },",
+									"                body: {",
+									"                    mode: 'raw',",
+									"                    raw : JSON.stringify({ username: 'test_user', id: pm.environment.get('test_user_id'), password: 'test_user'})",
+									"                }",
+									"            }, function(err, res) {",
+									"                if (err !== null) {",
+									"                    console.log(\"Credential creation error: \" + err);",
+									"                } else {",
+									"                    if (res.code === 201) {",
+									"                        pm.environment.set('test_user_credId', res.json().id);",
+									"                        pm.sendRequest({",
+									"                            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/perms/users\",",
+									"                            method: 'POST',",
+									"                            header: {",
+									"                                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                                'X-Okapi-Token': token,",
+									"                                'Content-Type': 'application/json'",
+									"                            },",
+									"                            body: {",
+									"                                mode: 'raw',",
+									"                                raw : JSON.stringify({ userId: pm.environment.get('test_user_id'), permissions: []})",
+									"                            }",
+									"                        }, function(err, res) {",
+									"                            if (err !== null) {",
+									"                                console.log(\"permissions creation error: \" + err);",
+									"                            } else {",
+									"                                if (res.code === 201) {",
+									"                                    pm.environment.set('test_user_permsId', res.json().id);",
+									"                                    pm.sendRequest({",
+									"                                        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
+									"                                        method: 'POST',",
+									"                                        header: {",
+									"                                            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                                            'Content-Type': 'application/json'",
+									"                                        },",
+									"                                        body: {",
+									"                                            mode: 'raw',",
+									"                                            raw : JSON.stringify({ username: 'test_user', password: 'test_user'})",
+									"                                        }",
+									"                                    }, function(err, res) {",
+									"                                        if (err !== null) {",
+									"                                            console.log(\"Test user login error: \" + err);",
+									"                                        } else {",
+									"                                            if (res.code === 201) {",
+									"                                                pm.environment.set('test_user_token', res.headers.get(\"X-Okapi-Token\"));",
+									"                                            } else {",
+									"                                                console.log(\"Test user login failed: \" + res.reason());",
+									"                                            }",
+									"                                        }",
+									"                                    });",
+									"                                } else {",
+									"                                    console.log(\"permissions creation failed: \" + res.reason());",
+									"                                }",
+									"                            }",
+									"                        });",
+									"                    } else {",
+									"                        console.log(\"Auth creation failed: \" + res.reason());",
+									"                    }",
+									"                }",
+									"            });",
+									"        } else {",
+									"            console.log(\"User creation failed: \" + res.reason());",
+									"        }",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "4c2f9395-7b1b-4ba5-b9f7-eb917008cccb",
+								"exec": [
+									"pm.test(\"403 test\", function() {",
+									"    pm.response.to.have.status(403);",
+									"    pm.response.to.have.body();",
+									"});",
+									"",
+									"// Now we need to remove the test user and related data from the database by calling",
+									"// the DELETE APIs for what we issued in the pre-request script.",
+									"let token = pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
+									"",
+									"pm.environment.unset('test_user_token');",
+									"",
+									"pm.sendRequest({",
+									"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/users/\" + pm.environment.get('test_user_id'),",
+									"    method: 'DELETE',",
+									"    header: {",
+									"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token': token,",
+									"        'Content-Type': 'application/json'",
+									"    }",
+									"}, function(err, res) {",
+									"    if (err !== null) {",
+									"        console.log(\"user deletion error: \" + err);",
+									"    } else {",
+									"        if (res.code === 204) {",
+									"            pm.environment.unset('test_user_id');",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/credentials/\" + pm.environment.get('test_user_credId'),",
+									"                method: 'DELETE',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': token,",
+									"                    'Content-Type': 'application/json'",
+									"                }",
+									"            }, function(err, res) {",
+									"                if (err !== null) {",
+									"                    console.log(\"Credential deletion error: \" + err);",
+									"                } else {",
+									"                    if (res.code === 204) {",
+									"                        pm.environment.unset('test_user_credId');",
+									"                        pm.sendRequest({",
+									"                            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/perms/users/\" + pm.environment.get('test_user_permsId'),",
+									"                            method: 'DELETE',",
+									"                            header: {",
+									"                                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                                'X-Okapi-Token': token,",
+									"                                'Content-Type': 'application/json'",
+									"                            }",
+									"                        }, function(err, res) {",
+									"                            if (err !== null) {",
+									"                                console.log(\"Permissions deletion error: \" + err);",
+									"                            } else {",
+									"                                if (res.code === 204) {",
+									"                                    pm.environment.unset('test_user_permsId');",
+									"                                } else {",
+									"                                    console.log(\"Permissions deletion failed: \" + res.reason());",
+									"                                }",
+									"                            }",
+									"                        });",
+									"                    } else {",
+									"                        console.log(\"Credential deletion failed: \" + res.reason());",
+									"                    }",
+									"                }",
+									"            });",
+									"        } else {",
+									"            console.log(\"User deletion failed: \" + res.reason());",
+									"        }",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{test_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "List user imports with a user that does not have access"
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 200 (no users)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "4310bc0b-c649-4258-a85c-e1fa44e078f5",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "23bfc145-3b08-4a12-bcbb-352e68aaa137",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"failedUserdata.json\", pm.variables.get(\"failedUserdata.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"importResponse.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"pm.test(\"validate data\", function() {",
+									"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"users\": [],\n\t\"totalRecords\": 0\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 0 users."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 200 (1 user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "bceca510-a0f6-486f-a118-3fd3709b5397",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "1ed2c905-d91f-4fdb-87c8-8214ed4cef2d",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"failedUserdata.json\", pm.variables.get(\"failedUserdata.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"importResponse.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"let users = JSON.parse(pm.variables.get(\"body\")).users;",
+									"",
+									"pm.test(\"validate data\", function() {",
+									"    pm.expect(pm.response.json().totalRecords).to.equal(pm.variables.get('count'));",
+									"});",
+									"",
+									"utils.get(\"/users?query=username==\\\"\" + users[0].username + \"\\\"\", (err, json) => {",
+									"    let user = json.users[0];",
+									"    pm.test(\"validate data from mod-users\", function() {",
+									"        pm.expect(user.username).to.be.equal(users[0].username);",
+									"        pm.expect(user.externalSystemId).to.be.equal(users[0].externalSystemId);",
+									"        pm.expect(user.personal.lastName).to.be.equal(users[0].personal.lastName);",
+									"        pm.expect(user.personal.addresses[0].addressLine1).to.be.equal(users[0].personal.addresses[0].addressLine1);",
+									"        pm.expect(user.personal.addresses[0].city).to.be.equal(users[0].personal.addresses[0].city);",
+									"    });",
+									"});",
+									"",
+									"// Clean up user creation via the import",
+									"utils.cleanupUsers(JSON.parse(pm.variables.get(\"body\")).users, function(dele) {",
+									"    pm.test(\"cleanup\", function() {",
+									"        pm.expect(dele).to.be.true;",
+									"    });",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 1 user."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 200 (deactivate missing users)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "197d6f9e-e910-41a1-84a5-8b92782d6cca",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('originalBody', JSON.stringify(json));",
+									"",
+									"    // Import this list first",
+									"    utils.post(\"/user-import\", json, (err, res) => {",
+									"        // Create a new list of users",
+									"        utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"            let json = {",
+									"                users: users,",
+									"                totalRecords: users.length,",
+									"                deactivateMissingUsers: true // We are deactivating the original list",
+									"            };",
+									"",
+									"            // This is the list that is going to be imported by this test",
+									"            pm.variables.set('body', JSON.stringify(json));",
+									"        });",
+									"    });",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "01ec73bc-b2e6-48f0-8278-845510a81823",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"failedUserdata.json\", pm.variables.get(\"failedUserdata.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"importResponse.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"let originalUsers = JSON.parse(pm.variables.get(\"originalBody\")).users;",
+									"let users = JSON.parse(pm.variables.get(\"body\")).users;",
+									"",
+									"pm.test(\"validate data\", function() {",
+									"    pm.expect(pm.response.json().totalRecords).to.equal(pm.variables.get('count'));",
+									"});",
+									"",
+									"utils.get(\"/users?query=username==\\\"\" + originalUsers[0].username + \"\\\"\", (err, json) => {",
+									"    pm.test(\"validate original user is deactivated\", function() {",
+									"       pm.expect(json.users[0].active).to.be.false; ",
+									"    });",
+									"",
+									"    utils.get(\"/users?query=username==\\\"\" + users[0].username + \"\\\"\", (err, json) => {",
+									"        let user = json.users[0];",
+									"        pm.test(\"validate data from mod-users\", function() {",
+									"            pm.expect(user.username).to.be.equal(users[0].username);",
+									"            pm.expect(user.externalSystemId).to.be.equal(users[0].externalSystemId);",
+									"            pm.expect(user.personal.lastName).to.be.equal(users[0].personal.lastName);",
+									"            pm.expect(user.personal.addresses[0].addressLine1).to.be.equal(users[0].personal.addresses[0].addressLine1);",
+									"            pm.expect(user.personal.addresses[0].city).to.be.equal(users[0].personal.addresses[0].city);",
+									"        });",
+									"    ",
+									"        // Clean up user creation via the import. The deletes can be asynchronous.",
+									"        utils.cleanupUsers(JSON.parse(pm.variables.get(\"originalBody\")).users, function(dele) {",
+									"            pm.test(\"cleanup original users\", function() {",
+									"                pm.expect(dele).to.be.true;",
+									"            });",
+									"        });",
+									"",
+									"        utils.cleanupUsers(JSON.parse(pm.variables.get(\"body\")).users, function(dele) {",
+									"            pm.test(\"cleanup new users\", function() {",
+									"                pm.expect(dele).to.be.true;",
+									"            });",
+									"        });",
+									"    });",
+									"});",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import users deactivating missing users. First, import x users, then import y more users, but with the \"deactivatieMissingUsers\" set. The first x users should now all be deactivated."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 200 (import user with an existing username)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "1e6212ee-d87b-4f71-a71f-ec4608dc4ca1",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('originalBody', JSON.stringify(json));",
+									"",
+									"    // Import this list first",
+									"    utils.post(\"/user-import\", json, (err, res) => {",
+									"        // update the external system ID, but not the username",
+									"        json.users[0].externalSystemId = utils.randomString();",
+									"",
+									"        // This is the list that is going to be imported by this test",
+									"        pm.variables.set('body', JSON.stringify(json));",
+									"    });",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "05b45716-2dc6-40dc-bdbd-1d1dbcca51af",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"failedUserdata.json\", pm.variables.get(\"failedUserdata.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"importResponse.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"let originalUsers = JSON.parse(pm.variables.get(\"originalBody\")).users;",
+									"let users = JSON.parse(pm.variables.get(\"body\")).users;",
+									"",
+									"pm.test(\"validate data\", function() {",
+									"    pm.expect(pm.response.json().totalRecords).to.equal(pm.variables.get('count'));",
+									"    pm.expect(pm.response.json().failedRecords).to.equal(pm.variables.get('count'));",
+									"    pm.expect(pm.response.json().failedUsers[0].username).to.equal(users[0].username).and.to.equal(originalUsers[0].username);",
+									"    pm.expect(pm.response.json().failedUsers[0].externalSystemId).to.equal(users[0].externalSystemId).and.not.equal(originalUsers[0].externalSystemId);",
+									"});",
+									"",
+									"// Ensure nothing was updated",
+									"utils.get(\"/users?query=username==\\\"\" + originalUsers[0].username + \"\\\"\", (err, json) => {",
+									"    let user = json.users[0];",
+									"    pm.test(\"validate data from mod-users\", function() {",
+									"        pm.expect(user.username).to.be.equal(originalUsers[0].username);",
+									"        pm.expect(user.externalSystemId).to.be.equal(originalUsers[0].externalSystemId);",
+									"        pm.expect(user.personal.lastName).to.be.equal(originalUsers[0].personal.lastName);",
+									"        pm.expect(user.personal.addresses[0].addressLine1).to.be.equal(originalUsers[0].personal.addresses[0].addressLine1);",
+									"        pm.expect(user.personal.addresses[0].city).to.be.equal(originalUsers[0].personal.addresses[0].city);",
+									"    });",
+									"",
+									"    // Clean up user creation via the import. The deletes can be asynchronous.",
+									"    utils.cleanupUsers(JSON.parse(pm.variables.get(\"originalBody\")).users, function(dele) {",
+									"        pm.test(\"cleanup original users\", function() {",
+									"            pm.expect(dele).to.be.true;",
+									"        });",
+									"    });",
+									"});",
+									"",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import a user with a username that already exists in FOLIO. In this case, we import a user with a specific username and externalSystemId and then update the externalSystemId and try to import the same user. Both users have the same username, so the import should fail for this user, but the overall import will succeed (200). We verify the failure via the failedUsers list is the response JSON."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 200 (update only present fields)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "f5fce364-d2e6-41de-9f3e-a51f833a336f",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('originalBody', JSON.stringify(json));",
+									"",
+									"    // Import this list first",
+									"    utils.post(\"/user-import\", json, (err, res) => {",
+									"        // We need the address list for this test.",
+									"        utils.retrieveAddressTypes((err, addressTypes) => {",
+									"            // store the addresses so we can look up the ID in the test",
+									"            // since the ID is what is returned from mod-users, but",
+									"            // not what is used by mod-user-import",
+									"             pm.variables.set(\"addressMap\",",
+									"                addressTypes.addressTypes.reduce((map, obj) => (map[obj.addressType] = obj.id, map), {}));",
+									"",
+									"            // Use an addressTypeId that is not already being used (this is required by the module)",
+									"            let addressTypeId = \"\";",
+									"            while (addressTypes.addressTypes.length > 0) {",
+									"                addressTypeId = utils.randomItem(addressTypes.addressTypes).addressType;",
+									"                if (addressTypeId !== users[0].personal.addresses[0].addressTypeId) {",
+									"                    break;",
+									"                }",
+									"            }",
+									"",
+									"            // Add a new address to the existing imported user",
+									"            let user = {",
+									"                username: users[0].username,",
+									"                externalSystemId: users[0].externalSystemId,",
+									"                personal: {",
+									"                    lastName: users[0].personal.lastName,",
+									"                    addresses: [{",
+									"                        addressLine1: utils.randomString(),",
+									"                        city: utils.randomString(),",
+									"                        addressTypeId: addressTypeId",
+									"                    }]",
+									"                }",
+									"            };",
+									"",
+									"            // update the json to use the new user and set the updateOnlyPresentFields field",
+									"            json.users[0] = user;",
+									"            json.updateOnlyPresentFields = true;",
+									"",
+									"            // Set the body to be used for this test",
+									"            pm.variables.set('body', JSON.stringify(json));",
+									"        });",
+									"    });",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "500827b3-849e-4fdb-b505-1a36cd976338",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"failedUserdata.json\", pm.variables.get(\"failedUserdata.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"importResponse.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"let originalUsers = JSON.parse(pm.variables.get(\"originalBody\")).users;",
+									"let users = JSON.parse(pm.variables.get(\"body\")).users;",
+									"",
+									"pm.test(\"validate data\", function() {",
+									"    pm.expect(pm.response.json().totalRecords).to.equal(pm.variables.get('count'));",
+									"});",
+									"",
+									"utils.get(\"/users?query=username==\\\"\" + originalUsers[0].username + \"\\\"\", (err, json) => {",
+									"    let user = json.users[0];",
+									"    pm.test(\"validate data from mod-users\", function() {",
+									"        pm.expect(user.username).to.be.equal(originalUsers[0].username).and.to.be.equal(users[0].username);",
+									"        pm.expect(user.externalSystemId).to.be.equal(originalUsers[0].externalSystemId).and.to.be.equal(users[0].externalSystemId);",
+									"        pm.expect(user.personal.lastName).to.be.equal(originalUsers[0].personal.lastName).and.to.be.equal(users[0].personal.lastName);",
+									"",
+									"        pm.expect(user.personal.addresses).to.have.lengthOf(2);",
+									"        // Ensure both addresses are now stored in mod-users. Since the addressTypeId is set to the",
+									"        // UUID in mod-users, we need to update our user json so that we can use postman to check the",
+									"        // contents. The ordering of the array elements can vary and using \"members\" handles that.",
+									"        const map = pm.variables.get(\"addressMap\");",
+									"        originalUsers[0].personal.addresses[0].addressTypeId = map[originalUsers[0].personal.addresses[0].addressTypeId];",
+									"        users[0].personal.addresses[0].addressTypeId = map[users[0].personal.addresses[0].addressTypeId];",
+									"        pm.expect(user.personal.addresses).to.have.deep.members([originalUsers[0].personal.addresses[0], users[0].personal.addresses[0]]);",
+									"    });",
+									"",
+									"    // Clean up user creation via the import.",
+									"    utils.cleanupUsers(JSON.parse(pm.variables.get(\"originalBody\")).users, function(dele) {",
+									"        pm.test(\"cleanup users\", function() {",
+									"            pm.expect(dele).to.be.true;",
+									"        });",
+									"    });",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import users updating only the present fields. First, import n users, then import the same n users with updated data for certian, preferably new, fields, but with the \"updateOnlyPresentFields\" field set to true. The n users should now have the updated (new) data, but have not lost the old data."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 200 (source type present)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "53007554-bbac-444c-8d6b-ef48257d2ae8",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"let sourceType = utils.randomString();",
+									"pm.variables.set(\"sourceType\", sourceType);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"        sourceType: sourceType",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "db6330b3-2b2f-4b6f-ac6f-40e9acdbd05f",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"failedUserdata.json\", pm.variables.get(\"failedUserdata.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"importResponse.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"let users = JSON.parse(pm.variables.get(\"body\")).users;",
+									"",
+									"pm.test(\"validate data\", function() {",
+									"    pm.expect(pm.response.json().totalRecords).to.equal(pm.variables.get('count'));",
+									"});",
+									"",
+									"utils.get(\"/users?query=username==\\\"\" + users[0].username + \"\\\"\", (err, json) => {",
+									"    let user = json.users[0];",
+									"    pm.test(\"validate data from mod-users\", function() {",
+									"        pm.expect(user.username).to.be.equal(users[0].username);",
+									"        pm.expect(user.externalSystemId).to.be.equal(pm.variables.get(\"sourceType\") + \"_\" + users[0].externalSystemId);",
+									"        pm.expect(user.personal.lastName).to.be.equal(users[0].personal.lastName);",
+									"        pm.expect(user.personal.addresses[0].addressLine1).to.be.equal(users[0].personal.addresses[0].addressLine1);",
+									"        pm.expect(user.personal.addresses[0].city).to.be.equal(users[0].personal.addresses[0].city);",
+									"    });",
+									"});",
+									"",
+									"// Clean up user creation via the import",
+									"utils.cleanupUsers(JSON.parse(pm.variables.get(\"body\")).users, function(dele) {",
+									"    pm.test(\"cleanup\", function() {",
+									"        pm.expect(dele).to.be.true;",
+									"    });",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import users with the sourceType field set."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 400 (wrong type for deactivateMissingUsers)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "4310bc0b-c649-4258-a85c-e1fa44e078f5",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "4ded68ca-e499-4350-b5aa-fe0a43b321b4",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"400 - bad deactivateMissingUsers\", function() {",
+									"    pm.response.to.have.status(400);",
+									"    pm.response.to.have.body();",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"users\": [],\n\t\"totalRecords\": 0,\n\t\"deactivateMissingUsers\": \"xyzzy\"\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 0 users while setting deactivateMissingUsers to a non-boolean value. Though, not documented, it returns a 400. This test is to see if this changes in the future."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 400 (wrong type for updateOnlyPresentFields",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "4310bc0b-c649-4258-a85c-e1fa44e078f5",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "93139da3-1be9-4239-b1ac-e531a62d1e74",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"400 - bad updateOnlyPresentFields\", function() {",
+									"    pm.response.to.have.status(400);",
+									"    pm.response.to.have.body();",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"users\": [],\n\t\"totalRecords\": 0,\n\t\"updateOnlyPresentFields\": \"xyzzy\"\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 0 users while setting updateOnlyPresentFields to a non-boolean value. Though, not documented, it returns a 400. This test is to see if this changes in the future."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "00fd7902-1ddd-40e0-b263-dd00f99e1d28",
+								"type": "text/javascript",
+								"exec": [
+									"pm.environment.unset('xokapitoken-' + pm.variables.get('module'));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "efb9d1a5-d09f-4a98-9f16-55cf8556a01b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"401 test\", function() {",
+									"    pm.response.to.have.status(401);",
+									"    pm.response.to.have.body();",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import users with an invalid token"
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 403",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "3a7ba098-b64a-48a5-b73d-3e87d4104f6d",
+								"exec": [
+									"// Here we need to cause a 403 to see if the backend will 1) be able to handle this and",
+									"// 2) see if it is checking for the proper permission. To do this we need to execute",
+									"// several additional API calls.",
+									"// 1. We create a user",
+									"// 2. If the user is created successfully, we add credentials to the user",
+									"// 3. If that succeeds, we add empty permissions to the user (otherwise, API calls for",
+									"//    the user would return 500).",
+									"// 4. If that succeeds, we log in the user and save the userr's auth token, which is",
+									"//    used as the X-Okapi-Token header for this test.",
+									"var uuid = require('uuid');",
+									"",
+									"pm.environment.set('test_user_id', uuid.v4());",
+									"",
+									"let token = pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
+									"",
+									"pm.sendRequest({",
+									"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/users\",",
+									"    method: 'POST',",
+									"    header: {",
+									"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token': token,",
+									"        'Content-Type': 'application/json'",
+									"    },",
+									"    body: {",
+									"        mode: 'raw',",
+									"        raw : JSON.stringify({ username: 'test_user', id: pm.environment.get('test_user_id'), active: true})",
+									"    }",
+									"}, function(err, res) {",
+									"    if (err !== null) {",
+									"        console.log(\"user creation error: \" + err);",
+									"    } else {",
+									"        if (res.code === 201) {",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/credentials\",",
+									"                method: 'POST',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': token,",
+									"                    'Content-Type': 'application/json'",
+									"                },",
+									"                body: {",
+									"                    mode: 'raw',",
+									"                    raw : JSON.stringify({ username: 'test_user', id: pm.environment.get('test_user_id'), password: 'test_user'})",
+									"                }",
+									"            }, function(err, res) {",
+									"                if (err !== null) {",
+									"                    console.log(\"Credential creation error: \" + err);",
+									"                } else {",
+									"                    if (res.code === 201) {",
+									"                        pm.environment.set('test_user_credId', res.json().id);",
+									"                        pm.sendRequest({",
+									"                            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/perms/users\",",
+									"                            method: 'POST',",
+									"                            header: {",
+									"                                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                                'X-Okapi-Token': token,",
+									"                                'Content-Type': 'application/json'",
+									"                            },",
+									"                            body: {",
+									"                                mode: 'raw',",
+									"                                raw : JSON.stringify({ userId: pm.environment.get('test_user_id'), permissions: []})",
+									"                            }",
+									"                        }, function(err, res) {",
+									"                            if (err !== null) {",
+									"                                console.log(\"permissions creation error: \" + err);",
+									"                            } else {",
+									"                                if (res.code === 201) {",
+									"                                    pm.environment.set('test_user_permsId', res.json().id);",
+									"                                    pm.sendRequest({",
+									"                                        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
+									"                                        method: 'POST',",
+									"                                        header: {",
+									"                                            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                                            'Content-Type': 'application/json'",
+									"                                        },",
+									"                                        body: {",
+									"                                            mode: 'raw',",
+									"                                            raw : JSON.stringify({ username: 'test_user', password: 'test_user'})",
+									"                                        }",
+									"                                    }, function(err, res) {",
+									"                                        if (err !== null) {",
+									"                                            console.log(\"Test user login error: \" + err);",
+									"                                        } else {",
+									"                                            if (res.code === 201) {",
+									"                                                pm.environment.set('test_user_token', res.headers.get(\"X-Okapi-Token\"));",
+									"                                            } else {",
+									"                                                console.log(\"Test user login failed: \" + res.reason());",
+									"                                            }",
+									"                                        }",
+									"                                    });",
+									"                                } else {",
+									"                                    console.log(\"permissions creation failed: \" + res.reason());",
+									"                                }",
+									"                            }",
+									"                        });",
+									"                    } else {",
+									"                        console.log(\"Auth creation failed: \" + res.reason());",
+									"                    }",
+									"                }",
+									"            });",
+									"        } else {",
+									"            console.log(\"User creation failed: \" + res.reason());",
+									"        }",
+									"    }",
+									"});",
+									"",
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithPGandAT(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "d7dcfa73-d786-4978-ae34-26b6c100084f",
+								"exec": [
+									"pm.test(\"403 test\", function() {",
+									"    pm.response.to.have.status(403);",
+									"    pm.response.to.have.body();",
+									"});",
+									"",
+									"// Now we need to remove the test user and related data from the database by calling",
+									"// the DELETE APIs for what we issued in the pre-request script.",
+									"let token = pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
+									"",
+									"pm.environment.unset('test_user_token');",
+									"",
+									"pm.sendRequest({",
+									"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/users/\" + pm.environment.get('test_user_id'),",
+									"    method: 'DELETE',",
+									"    header: {",
+									"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token': token,",
+									"        'Content-Type': 'application/json'",
+									"    }",
+									"}, function(err, res) {",
+									"    if (err !== null) {",
+									"        console.log(\"user deletion error: \" + err);",
+									"    } else {",
+									"        if (res.code === 204) {",
+									"            pm.environment.unset('test_user_id');",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/credentials/\" + pm.environment.get('test_user_credId'),",
+									"                method: 'DELETE',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': token,",
+									"                    'Content-Type': 'application/json'",
+									"                }",
+									"            }, function(err, res) {",
+									"                if (err !== null) {",
+									"                    console.log(\"Credential deletion error: \" + err);",
+									"                } else {",
+									"                    if (res.code === 204) {",
+									"                        pm.environment.unset('test_user_credId');",
+									"                        pm.sendRequest({",
+									"                            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/perms/users/\" + pm.environment.get('test_user_permsId'),",
+									"                            method: 'DELETE',",
+									"                            header: {",
+									"                                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                                'X-Okapi-Token': token,",
+									"                                'Content-Type': 'application/json'",
+									"                            }",
+									"                        }, function(err, res) {",
+									"                            if (err !== null) {",
+									"                                console.log(\"Permissions deletion error: \" + err);",
+									"                            } else {",
+									"                                if (res.code === 204) {",
+									"                                    pm.environment.unset('test_user_permsId');",
+									"                                } else {",
+									"                                    console.log(\"Permissions deletion failed: \" + res.reason());",
+									"                                }",
+									"                            }",
+									"                        });",
+									"                    } else {",
+									"                        console.log(\"Credential deletion failed: \" + res.reason());",
+									"                    }",
+									"                }",
+									"            });",
+									"        } else {",
+									"            console.log(\"User deletion failed: \" + res.reason());",
+									"        }",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{test_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import users with a user that does not have access"
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 422 (username not set)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "aad4afa8-4821-4667-81d9-6400cb710cba",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserList(pm.variables.get('count'), function(users) {",
+									"    users[0].username = null;",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "51d7e65c-43c3-4b76-a77e-88008cf82a6b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"422 test - no lastName\", function() {",
+									"    pm.response.to.have.status(422);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
+									"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 1 user missing users[0].username."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 422 (externalSystemId not set)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "43591298-cdaa-4b33-a0a9-b73eb4cd61e2",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserList(pm.variables.get('count'), function(users) {",
+									"    users[0].externalSystemId = null;",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "51d7e65c-43c3-4b76-a77e-88008cf82a6b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"422 test - no lastName\", function() {",
+									"    pm.response.to.have.status(422);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
+									"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 1 user missing users[0].externalSystemId."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 422 (lastName not set)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "b27ad994-800b-4f86-a646-c49de8d21a12",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithRandomAddressType(pm.variables.get('count'), function(users) {",
+									"    users[0].personal.lastName = null;",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: users.length,",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "51d7e65c-43c3-4b76-a77e-88008cf82a6b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"422 test - no lastName\", function() {",
+									"    pm.response.to.have.status(422);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
+									"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 1 user missing users[0].personal.lastName."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 422 (users not set)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "20ed3823-a605-4072-94fa-d36fb05f472c",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserListWithRandomAddressType(pm.variables.get('count'), function(users) {",
+									"    users = null;",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: 1,",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "51d7e65c-43c3-4b76-a77e-88008cf82a6b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"422 test - no lastName\", function() {",
+									"    pm.response.to.have.status(422);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
+									"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 1 user missing users array."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 422 (totalRecords not set)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "e469dba4-9906-4a2b-a042-55c2c08ae297",
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.variables.get(\"utils\"));",
+									"",
+									"pm.variables.set('count', 1);",
+									"",
+									"// Build an array of users to import via the Utils helper function and create",
+									"// a JSON body to send to the user import API.",
+									"utils.buildUserList(pm.variables.get('count'), function(users) {",
+									"    let json = {",
+									"        users: users,",
+									"        totalRecords: null",
+									"    };",
+									"",
+									"    pm.variables.set('body', JSON.stringify(json));",
+									"});",
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "51d7e65c-43c3-4b76-a77e-88008cf82a6b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"422 test - no lastName\", function() {",
+									"    pm.response.to.have.status(422);",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
+									"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+									"",
+									"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{body}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import 1 user missing totalRecords. Current behavior: while totalRecords is required, it is not used apart from checking if it is 0. If it is, the API returns immediately with nothing to do. Any other int value positive or negative is ignored. If totalRecords is not an int, the API returns 400 due to the JSON unmarshalling process' inability to construct an int. Perhaps it will be used in the future."
+					},
+					"response": []
+				},
+				{
+					"name": "/user-import - 400 (bad JSON)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "69886924-2ba1-40d2-99a9-25878557c868",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "accb4c86-5b9e-4d08-9be2-4f6c50cb02c8",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"400 test - bad JSON\", function() {",
+									"    pm.response.to.have.status(400);",
+									"    pm.response.to.have.body();",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/user-import",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"user-import"
+							]
+						},
+						"description": "Import users with a bad JSON body"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for the /authn/credentials endpoint.",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "3093a1a6-dca1-4207-8798-0cd465bf758b",
+						"type": "text/javascript",
+						"exec": [
+							"// Clear out the previously set token as it may be expired or invalid",
+							"// by the time this test runs again, since it is stored in an",
+							"// environment variable.",
+							"let mod = pm.variables.get(\"module\");",
+							"",
+							"if (pm.variables.has(\"auth_complete\") === false) {",
+							"    pm.environment.unset(\"xokapitoken-\" + mod);",
+							"}",
+							"",
+							"// Acquire a valid auth token",
+							"if (pm.environment.has(\"xokapitoken-\" + mod) === false) {",
+							"    pm.sendRequest({",
+							"        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
+							"        method: 'POST',",
+							"        header: {",
+							"            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+							"            'Content-Type': 'application/json'",
+							"        },",
+							"        body: {",
+							"            mode: 'raw',",
+							"            raw : JSON.stringify({ username: pm.environment.get(\"username\"), password: pm.environment.get(\"password\")})",
+							"        }",
+							"    }, function(err, res) {",
+							"        if (err !== null) {",
+							"            console.log(\"Login error: \" + err);",
+							"        } else {",
+							"            if (res.code === 201) {",
+							"                pm.environment.set(\"xokapitoken-\" + mod, res.headers.get(\"X-Okapi-Token\"));",
+							"                pm.variables.set(\"auth_complete\", \"true\");",
+							"            } else {",
+							"                console.log(\"Login failed: \" + res.reason());",
+							"            }",
+							"        }",
+							"    });",
+							"}"
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "b05034ac-88cd-4f34-b464-b41439b16d1e",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{xokapitoken-{{module}}}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "fca30909-e0e1-41ed-b515-ec8220c2dabe",
+				"type": "text/javascript",
+				"exec": [
+					"eval(pm.variables.get(\"retrieveSchemaFunction\"));",
+					"",
+					"if (pm.variables.has(\"importResponse.schema\") === false) {",
+					"    retrieveSchema(\"schemas/importResponse.json\", function(err, res) {",
+					"        pm.variables.set(\"importResponse.schema\", res);",
+					"    });",
+					"}",
+					"",
+					"if (pm.variables.has(\"failedUserdata.schema\") === false) {",
+					"    retrieveSchema(\"schemas/failedUserdata.json\", function(err, res) {",
+					"        pm.variables.set(\"failedUserdata.schema\", res);",
+					"    });",
+					"}",
+					"",
+					"if (pm.variables.has(\"error.schema\") === false) {",
+					"    retrieveRAMLUtilsSchema(\"error.schema\", function(err, res) {",
+					"        pm.variables.set(\"error.schema\", res);",
+					"    });",
+					"}",
+					"",
+					"if (pm.variables.has(\"parameters.schema\") === false) {",
+					"    retrieveRAMLUtilsSchema(\"parameters.schema\", function(err, res) {",
+					"        pm.variables.set(\"parameters.schema\", res);",
+					"    });",
+					"}",
+					"",
+					"if (pm.variables.has(\"errors.schema\") === false) {",
+					"    retrieveRAMLUtilsSchema(\"errors.schema\", function(err, res) {",
+					"        pm.variables.set(\"errors.schema\", res);",
+					"    });",
+					"}",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "8b3e72ff-9550-41f7-935e-de6c849e2a21",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "8652a61f-e07c-43f5-ba6a-1c363c08436b",
+			"key": "module",
+			"value": "mod-user-import",
+			"type": "string"
+		},
+		{
+			"id": "d9cceb51-c057-4244-8bd5-566b51a73c15",
+			"key": "module_version",
+			"value": "v3.0.0",
+			"type": "string"
+		},
+		{
+			"id": "50aa9db2-8496-49ff-8dc2-8a6cca7dc7e0",
+			"key": "raml-utils_version",
+			"value": "37a69ca5eff48182b2c6d1805ded7f53f2ab8e68",
+			"type": "string"
+		},
+		{
+			"id": "7eae7db0-94c6-4e7d-9dea-eb877e9ec434",
+			"key": "retrieveSchemaFunction",
+			"value": "var retrieveSchema = function(schemaName, cb) {\n    pm.sendRequest({\n        url: \"https://raw.githubusercontent.com/folio-org/\" + pm.variables.get(\"module\") + \"/\" + pm.variables.get(\"module_version\") + \"/ramls/\" + schemaName,\n        method: 'GET',\n    }, function(err, res) {\n        if (err !== null) {\n            console.log(\"Schema retrieval error: \" + err);\n            cb(\"failed\", null);\n        } else {\n            if (res.code === 200) {\n                cb(null, res.json());\n            } else {\n                console.log(\"Schema retrieval falied: \" + res.reason());\n            cb(\"failed\", null);\n            }\n        }\n    });\n};\n\nvar retrieveRAMLUtilsSchema = function(schemaName, cb) {\n    pm.sendRequest({\n        url: \"https://raw.githubusercontent.com/folio-org/raml/\" + pm.variables.get(\"raml-utils_version\") + \"/schemas/\" + schemaName,\n        method: 'GET',\n    }, function(err, res) {\n        if (err !== null) {\n            console.log(\"Schema retrieval error: \" + err);\n            cb(\"failed\", null);\n        } else {\n            if (res.code === 200) {\n                cb(null, res.json());\n            } else {\n                console.log(\"Schema retrieval falied: \" + res.reason());\n            cb(\"failed\", null);\n            }\n        }\n    });\n};",
+			"type": "string"
+		},
+		{
+			"id": "ae7fb035-7945-4fe8-832d-9d2d06153293",
+			"key": "utils",
+			"value": "class Utils {\n    // Generic \"get\" for API data\n    get(path, cb) {\n        pm.sendRequest({\n            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path,\n            method: 'GET',\n            header: {\n                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),\n                'X-Okapi-Token': pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\")),\n                'Content-Type': 'application/json'\n            },\n        }, function(err, res) {\n            if (err !== null) {\n                console.log(\"Retrieval error: \" + err);\n                cb(\"failed\", null);\n            } else {\n                if (res.code === 200) {\n                    cb(null, res.json());\n                } else {\n                    console.log(\"Retrieval falied: \" + res.reason());\n                    cb(\"failed\", null);\n                }\n            }\n        });\n    }\n\n    // Generic \"delete\" for removing API data\n    delete(path, cb) {\n        pm.sendRequest({\n            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path,\n            method: 'DELETE',\n            header: {\n                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),\n                'X-Okapi-Token': pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\")),\n                'Content-Type': 'application/json'\n            },\n        }, function(err, res) {\n            if (err !== null) {\n                console.log(\"Deletion error: \" + err);\n                cb(\"failed\", false);\n            } else {\n                if (res.code === 204) {\n                    cb(null, true);\n                } else {\n                    console.log(\"Deletion falied: \" + res.reason());\n                    cb(\"failed\", false);\n                }\n            }\n        });\n    }\n\n    // Generic POST method that takes a JSON body as an argument\n    post(path, body, cb) {\n        pm.sendRequest({\n            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path,\n            method: 'POST',\n            header: {\n                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),\n                'X-Okapi-Token': pm.environment.get(\"xokapitoken-\" + pm.variables.get(\"module\")),\n                'Content-Type': 'application/json'\n            },\n            body: {\n                mode: 'raw',\n                raw : JSON.stringify(body)\n            }\n        }, function(err, res) {\n            if (err !== null) {\n                console.log(\"Creation error: \" + err);\n                cb(\"failed\", null);\n            } else {\n                if (res.code === 200) {\n                    cb(null, res.json());\n                } else {\n                    console.log(\"Creation falied: \" + res.reason());\n                    cb(\"failed\", null);\n                }\n            }\n        });\n    }\n\n    // retrieves the patron groups\n    retrievePatronGroups(cb) {\n        this.get(\"/groups\", cb);\n    }\n\n    // retrieves the address types\n    retrieveAddressTypes(cb) {\n        this.get(\"/addresstypes\", cb);\n    }\n\n    // returns a random string of alphanumeric [a-z0-9] (base 36) characters of\n    // the specified length.\n    randomString(len) {\n        if (typeof len === \"undefined\") {\n            len = 10;\n        }\n        return (Math.random().toString(36)+'00000000000000000').slice(2, len + 2);\n    }\n\n    // Returns a random item from an array of items\n    randomItem(list) {\n        return list[list.length * Math.random() | 0];\n    }    \n\n    // Create an array of <count> users passed to the callback\n    buildUserList(count, cb) {\n        let users = [];\n\n        for (let i = 0; i < count; i++) {\n            users[i] = {\n                active: true,\n                username: this.randomString(),\n                externalSystemId: this.randomString()\n            };\n        }\n\n        cb(users);\n    }\n\n    // Create an array of <count> users passed to the callback\n    buildUserListWithRandomPatronGroup(count, cb) {\n        this.retrievePatronGroups((err, patronGroups) => {\n            let users = [];\n\n            for (let i = 0; i < count; i++) {\n                users[i] = {\n                    active: true,\n                    username: this.randomString(),\n                    externalSystemId: this.randomString(),\n                    patronGroup: this.randomItem(patronGroups.usergroups).group\n                };\n            }\n\n            cb(users);\n        });\n    }\n\n    // Create an array of <count> users passed to the callback\n    buildUserListWithRandomAddressType(count, cb) {\n        this.retrieveAddressTypes((err, addressTypes) => {\n            let users = [];\n\n            for (let i = 0; i < count; i++) {\n                users[i] = {\n                    active: true,\n                    lastName: this.randomString(),\n                    username: this.randomString(),\n                    externalSystemId: this.randomString(),\n                    personal: {\n                        addresses: [{\n                            addressLine1: this.randomString(),\n                            city: this.randomString(),\n                            addressTypeId: this.randomItem(addressTypes.addressTypes).addressType\n                        }]\n                    }\n                };\n            }\n\n            cb(users);\n        });\n    }\n\n    // Create an array of <count> users passed to the callback\n    buildUserListWithPGandAT(count, cb) {\n        this.retrievePatronGroups((err, patronGroups) => {\n            this.retrieveAddressTypes((err, addressTypes) => {\n                let users = [];\n\n                for (let i = 0; i < count; i++) {\n                    users[i] = {\n                        active: true,\n                        username: this.randomString(),\n                        externalSystemId: this.randomString(),\n                        patronGroup: this.randomItem(patronGroups.usergroups).group,\n                        personal: {\n                            lastName: this.randomString(),\n                            addresses: [{\n                                addressLine1: this.randomString(),\n                                city: this.randomString(),\n                                addressTypeId: this.randomItem(addressTypes.addressTypes).addressType\n                            }]\n                        }\n                    };\n                }\n\n                cb(users);\n            });\n        });\n    }\n\n    // Internal helper function for deleting users recursively\n    _cleanupUsers(users, i, total, dele, cb) {\n        if ( i < total) {\n            // Since mod-user-import users do not have UUIDs, nor are they returned via the import\n            // POST, we need to lookup each user by username so we can then delete it by ID.\n            this.get(\"/users?query=username==\\\"\" + users[i].username + \"\\\"\", (err, userList) => {\n                this.delete(\"/users/\" + userList.users[0].id, (err, _dele) => {\n                    this._cleanupUsers(users, i + 1, total, dele && _dele, cb); \n                });\n            });\n        } else {\n            cb(dele);\n        }\n    }\n\n    // Deletes the users (specified as an array of mod-user-import users)\n    cleanupUsers(users, cb) {\n        this._cleanupUsers(users, 0, users.length, true, cb);\n    }\n}\n\nvar utils = new Utils();",
+			"type": "string"
+		}
+	]
+}
