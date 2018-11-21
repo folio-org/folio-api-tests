@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "b1629ac1-a699-47a0-9970-8c2295eb40c1",
+		"_postman_id": "d3f72c8f-0425-4222-a7a1-24018c414bf2",
 		"name": "mod-gobi",
 		"description": "Tests for mod-gobi",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -353,12 +353,12 @@
 							"listen": "test",
 							"script": {
 								"id": "c6566d89-e8ea-4fca-a388-d40938eb27f0",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Status code is 200\", function () {",
 									"    pm.response.to.have.status(200);",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1246,6 +1246,293 @@
 			]
 		},
 		{
+			"name": "Tenant Configuration Tests",
+			"item": [
+				{
+					"name": "/configuration",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "5a666e96-205a-4f75-ad7b-3a7a17add0b9",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.environment.set(\"configuration_id\", jsonData.id);",
+									"",
+									"pm.test(\"Configuration Entry was created. Status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}",
+								"type": "text"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"module\": \"GOBI\",\r\n  \"configName\": \"orderMappings\",\r\n  \"code\": \"gobi.order.ListedPrintMonograph\",\r\n  \"description\": \"Order Mappings for types\",\r\n  \"default\": true,\r\n  \"enabled\": true,\r\n  \"value\": \"{      \\\"orderType\\\": \\\"ListedPrintMonograph\\\",      \\\"mappings\\\": [        {          \\\"field\\\": \\\"NOTES\\\",          \\\"dataSource\\\": {\\\"default\\\": \\\"Notes from tenant configuration\\\"}}]}\"\r\n}\r\n"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"configurations",
+								"entries"
+							]
+						},
+						"description": "Create a user with insufficient privs to negative testing"
+					},
+					"response": []
+				},
+				{
+					"name": "/gobi/orders (listed print monograph) with overrides",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "f07624dc-c22d-4952-8d93-b85401f7458c",
+								"exec": [
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_print_monograph.xml\",",
+									"        method: \"GET\"",
+									"    },",
+									"    function (err, res) {",
+									"        pm.globals.set(\"po_listed_print_monograph\", res.text());     ",
+									"    }",
+									");",
+									"        "
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "85d36fe8-71fe-4b6b-9f1e-32cef766ef90",
+								"exec": [
+									"let jsonData = xml2Json(responseBody);",
+									"console.log(jsonData);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Is XML\", function () {",
+									"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('application/xml');",
+									"});",
+									"",
+									"pm.test(\"PoLineNumber is returned\", function() {",
+									"    pm.expect(jsonData.Response).to.have.property('PoLineNumber');",
+									"});",
+									"",
+									"pm.test(\"PoLineNumber is valid\", function() {",
+									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"     pm.globals.set(\"po_listed_print_monograph_poLineNumber\", polNumber);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/xml"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{po_listed_print_monograph}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/gobi/orders",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"gobi",
+								"orders"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/po_line get Purchase order Id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "c6566d89-e8ea-4fca-a388-d40938eb27f0",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"po_lines exist\", function () {",
+									"    pm.expect(jsonData.po_lines).to.have.lengthOf(1);",
+									"});",
+									"",
+									"pm.test(\"purchase_order_id exist\", function () {",
+									"    pm.expect(jsonData.po_lines[0].purchase_order_id).to.exist;",
+									"      pm.globals.set(\"po_listed_print_monograph_purchaseid\", jsonData.po_lines[0].purchase_order_id);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "content-type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/po_line?limit=999&query=po_line_number={{po_listed_print_monograph_poLineNumber}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"po_line"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "999"
+								},
+								{
+									"key": "query",
+									"value": "po_line_number={{po_listed_print_monograph_poLineNumber}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/orders/{{id}} validate Override Configs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "c6566d89-e8ea-4fca-a388-d40938eb27f0",
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"notes exist\", function () {",
+									"    pm.expect(jsonData.notes).to.have.lengthOf(1);",
+									"});",
+									"",
+									"pm.test(\"notes text is fetched from tenant configuration\", function () {",
+									"    pm.expect(jsonData.notes[0]).to.eql(\"Notes from tenant configuration\");",
+									"});",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "content-type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/{{po_listed_print_monograph_purchaseid}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"{{po_listed_print_monograph_purchaseid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Cleanup",
 			"item": [
 				{
@@ -1286,7 +1573,10 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {},
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor/{{vendorId}}",
 							"protocol": "{{protocol}}",
@@ -1391,7 +1681,10 @@
 								"value": "{{xokapitenant}}"
 							}
 						],
-						"body": {},
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{noPrivPermId}}",
 							"protocol": "{{protocol}}",
@@ -1467,6 +1760,69 @@
 								"{{noPrivCredId}}"
 							]
 						}
+					},
+					"response": []
+				},
+				{
+					"name": "/configuration/entries",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{configuration_id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"configurations",
+								"entries",
+								"{{configuration_id}}"
+							]
+						},
+						"description": "GET /orders/id requests that return 200"
 					},
 					"response": []
 				}
