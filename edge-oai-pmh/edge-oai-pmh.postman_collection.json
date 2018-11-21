@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "6c43053a-f9ba-475c-ac75-2f55c5d0e359",
+		"_postman_id": "4b234b63-15de-487f-95c9-5859d64c35ea",
 		"name": "edge-oai-pmh",
 		"description": "edge-oai-pmh api tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -391,11 +391,64 @@
 									"  \"X-Okapi-Token:\" + pm.globals.get(\"xokapitoken\")],",
 									"};",
 									"",
-									"pm.test(\"Testing instance retrieved (200)\", function () {",
-									"    pm.sendRequest(getInstanceRequest, function (err, response) {",
-									"    console.log(response);",
-									"    });",
-									"});"
+									"//create instances for testing List verbs",
+									"for (var i = 0; i < 10; i++) {",
+									"    createInstanceWithSource();",
+									"}",
+									"",
+									"function createInstanceWithSource() {",
+									"    let instance2 = pm.globals.get(\"testData\").instance2;",
+									"    let uuid = require('uuid');",
+									"    instance2.id = uuid.v4();",
+									"    pm.sendRequest({",
+									"            url: pm.variables.get(\"protocol\") + \"://\" ",
+									"                + pm.variables.get(\"url\") + \":\" ",
+									"                + pm.variables.get(\"okapiport\") + \"/instance-storage/instances\",",
+									"            method: \"POST\",",
+									"            header: {",
+									"                \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
+									"                \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
+									"                \"Content-type\": \"application/json\",",
+									"                \"Accept-Encoding\": \"identity\"",
+									"            },",
+									"            body: JSON.stringify(instance2, null, 2)",
+									"        }, function (err, response) {",
+									"           // if instance created then create source",
+									"            if (response.code == 201) {",
+									"                pm.sendRequest({",
+									"                    url: pm.variables.get(\"protocol\") + \"://\" ",
+									"                        + pm.variables.get(\"url\") + \":\" ",
+									"                        + pm.variables.get(\"okapiport\") + \"/instance-storage/instances/\"",
+									"                        + response.json().id + \"/source-record/marc-json\",",
+									"                    method: \"PUT\",",
+									"                    header: {",
+									"                        \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
+									"                        \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
+									"                        \"Content-type\": \"application/json\",",
+									"                        \"Accept-Encoding\": \"identity\"",
+									"                    },",
+									"                    body: JSON.stringify(pm.globals.get(\"testData\").marcjson1, null, 2)",
+									"                }, function (err, responce) {",
+									"                    console.log(response.json().id);",
+									"                    var aDataEntry = pm.globals.get('id_array');",
+									"                    if (aDataEntry == null) {",
+									"                        aDataEntry = [];",
+									"                    } else {",
+									"                        aDataEntry = JSON.parse(aDataEntry);",
+									"                    }",
+									"                    aDataEntry.push(response.json().id);",
+									"                    pm.globals.set('id_array', JSON.stringify(aDataEntry));",
+									"                    pm.test(\"Expected created instance with source (201)\", function () {",
+									"                        pm.expect(response.code).to.eql(201);",
+									"                    });",
+									"                     ",
+									"                })",
+									"            } else {",
+									"                createInstanceWithSource();",
+									"            }",
+									"        })",
+									"}",
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -521,10 +574,3975 @@
 			]
 		},
 		{
-			"name": "MetadataFormats",
+			"name": "Positive scenarios",
 			"item": [
 				{
-					"name": "/oai/ - ListMetadataFormats",
+					"name": "Identify",
+					"item": [
+						{
+							"name": "/oai/ - Identify",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Identify successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(1);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"Identify is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('Identify');",
+											"});",
+											"",
+											"let identify = jsonData.Identify;",
+											"",
+											"pm.test(\"Contains repository name\", function() {",
+											"    pm.expect(identify).to.have.property('repositoryName');",
+											"});",
+											"",
+											"pm.test(\"Contains base URL\", function() {",
+											"    pm.expect(identify).to.have.property('baseURL');",
+											"});",
+											"",
+											"pm.test(\"Contains protocol version\", function() {",
+											"    pm.expect(identify).to.have.property('protocolVersion');",
+											"});",
+											"",
+											"pm.test(\"Contains admin's emails\", function() {",
+											"    pm.expect(identify).to.have.property('adminEmail');",
+											"});",
+											"",
+											"pm.test(\"Contains earliest datestamp\", function() {",
+											"    pm.expect(identify).to.have.property('earliestDatestamp');",
+											"});",
+											"",
+											"pm.test(\"Contains deleted record\", function() {",
+											"    pm.expect(identify).to.have.property('deletedRecord');",
+											"});",
+											"",
+											"pm.test(\"Contains granularity\", function() {",
+											"    pm.expect(identify).to.have.property('granularity');",
+											"});",
+											"",
+											"pm.test(\"Contains compression\", function() {",
+											"    pm.expect(identify).to.have.property('compression');",
+											"});",
+											"",
+											"",
+											"let urlapi = require('url');",
+											"let baseURL = urlapi.parse(identify.baseURL);",
+											"pm.globals.set(\"identifierPrefix\", baseURL.pathname.substring(1) + \":\" + baseURL.hostname + \":\" + pm.environment.get(\"xokapitenant\"));",
+											"",
+											"console.log(pm.globals.get(\"identifierPrefix\"));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=Identify&apikey={{edge.apikey}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "Identify"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - Identify",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Identify successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(1);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"Identify is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('Identify');",
+											"});",
+											"",
+											"let identify = jsonData.Identify;",
+											"",
+											"pm.test(\"Contains repository name\", function() {",
+											"    pm.expect(identify).to.have.property('repositoryName');",
+											"});",
+											"",
+											"pm.test(\"Contains base URL\", function() {",
+											"    pm.expect(identify).to.have.property('baseURL');",
+											"});",
+											"",
+											"pm.test(\"Contains protocol version\", function() {",
+											"    pm.expect(identify).to.have.property('protocolVersion');",
+											"});",
+											"",
+											"pm.test(\"Contains admin's emails\", function() {",
+											"    pm.expect(identify).to.have.property('adminEmail');",
+											"});",
+											"",
+											"pm.test(\"Contains earliest datestamp\", function() {",
+											"    pm.expect(identify).to.have.property('earliestDatestamp');",
+											"});",
+											"",
+											"pm.test(\"Contains deleted record\", function() {",
+											"    pm.expect(identify).to.have.property('deletedRecord');",
+											"});",
+											"",
+											"pm.test(\"Contains granularity\", function() {",
+											"    pm.expect(identify).to.have.property('granularity');",
+											"});",
+											"",
+											"pm.test(\"Contains compression\", function() {",
+											"    pm.expect(identify).to.have.property('compression');",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=Identify",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "Identify"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "22c3bfd2-9f52-43e1-b817-943eed5deb3c",
+								"type": "text/javascript",
+								"exec": [
+									"let utils = eval(globals.loadUtils);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "8449ade2-9446-45b1-8549-ec8a1242fbbc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "MetadataFormats",
+					"item": [
+						{
+							"name": "/oai/ - ListMetadataFormats",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListMetadataFormats successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(1);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListMetadataFormats');",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats support two formats\", function() {",
+											"    let length = jsonData.ListMetadataFormats.metadataFormat.length;",
+											"    pm.expect(length).to.eql(2);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListMetadataFormats"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - Existing_Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListMetadataFormats successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListMetadataFormats');",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats support two formats\", function() {",
+											"    let length = jsonData.ListMetadataFormats.metadataFormat.length;",
+											"    pm.expect(length).to.eql(2);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListMetadataFormats"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - ListMetadataFormats",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListMetadataFormats successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(1);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListMetadataFormats');",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats support two formats\", function() {",
+											"    let length = jsonData.ListMetadataFormats.metadataFormat.length;",
+											"    pm.expect(length).to.eql(2);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListMetadataFormats",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListMetadataFormats"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - Existing_Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListMetadataFormats successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListMetadataFormats');",
+											"});",
+											"",
+											"pm.test(\"ListMetadataFormats support two formats\", function() {",
+											"    let length = jsonData.ListMetadataFormats.metadataFormat.length;",
+											"    pm.expect(length).to.eql(2);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListMetadataFormats&identifier={{identifierPrefix}}/{{identifier}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListMetadataFormats"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "beab1fcc-f6a9-4310-b904-1c14ce99b95c",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "527b9579-4fda-40a6-862a-1d7dfc19899c",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ListSets",
+					"item": [
+						{
+							"name": "/oai/ - ListSets",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListSets successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"ListSets contains request\", function() {",
+											"    pm.expect(jsonData).to.have.property('request');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(1);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"ListSets is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListSets');",
+											"});",
+											"",
+											"pm.test(\"ListSets supports only set all\", function() {",
+											"    pm.expect(jsonData.ListSets.set.setSpec).to.eql('all');",
+											"    pm.expect(jsonData.ListSets.set.setName).to.eql('All records');",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListSets&apikey={{edge.apikey}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListSets"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - ListSets",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListSets successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"ListSets contains request\", function() {",
+											"    pm.expect(jsonData).to.have.property('request');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(1);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"ListSets is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListSets');",
+											"});",
+											"",
+											"pm.test(\"ListSets supports only set all\", function() {",
+											"    pm.expect(jsonData.ListSets.set.setSpec).to.eql('all');",
+											"    pm.expect(jsonData.ListSets.set.setName).to.eql('All records');",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListSets",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListSets"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "GetRecord",
+					"item": [
+						{
+							"name": "/oai/ - Existing_Identifier_oai_dc",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"GetRecord successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"GetRecord is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('GetRecord');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has header\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('header');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has metadata\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('metadata');",
+											"});",
+											"",
+											"pm.test(\"GetRecord metadata is valid\", function() {",
+											"    pm.expect(jsonData.GetRecord.record.metadata).to.have.property('oai_dc:dc');",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=GetRecord&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}&metadataPrefix={{dc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - Existing_Identifier_oai_dc",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"GetRecord successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"GetRecord is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('GetRecord');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has header\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('header');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has metadata\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('metadata');",
+											"});",
+											"",
+											"pm.test(\"GetRecord metadata is valid\", function() {",
+											"    pm.expect(jsonData.GetRecord.record.metadata).to.have.property('oai_dc:dc');",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=GetRecord&identifier={{identifierPrefix}}/{{identifier}}&metadataPrefix={{dc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - Existing_Identifier_marc_xml",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"GetRecord successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"GetRecord is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('GetRecord');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has header\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('header');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has metadata\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('metadata');",
+											"});",
+											"",
+											"pm.test(\"GetRecord metadata is valid\", function() {",
+											"    pm.expect(jsonData.GetRecord.record.metadata).to.have.property('marc:record');",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=GetRecord&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}&metadataPrefix={{marc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - Existing_Identifier_marc_xml",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"GetRecord successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"GetRecord is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('GetRecord');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has header\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('header');",
+											"});",
+											"",
+											"pm.test(\"GetRecord has metadata\", function() {",
+											"    pm.expect(jsonData.GetRecord.record).to.have.property('metadata');",
+											"});",
+											"",
+											"pm.test(\"GetRecord metadata is valid\", function() {",
+											"    pm.expect(jsonData.GetRecord.record.metadata).to.have.property('marc:record');",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=GetRecord&identifier={{identifierPrefix}}/{{identifier}}&metadataPrefix={{marc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ListIdentifiers",
+					"item": [
+						{
+							"name": "/oai/ - ListIdentifiers resumption token flow",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"});",
+											"",
+											"pm.test(\"ListIdentifiers is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListIdentifiers');",
+											"});",
+											"",
+											"",
+											"pm.test(\"ListIdentifiers resumption token flow\", function() {",
+											"    if (jsonData.ListIdentifiers.resumptionToken) {",
+											"        utils.sendRequestWithResumptionToken(jsonData, \"ListIdentifiers\");",
+											"        ",
+											"    }",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept-Encoding",
+										"value": "identity",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix={{marc}}&set=all",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - ListIdentifiers resumption token flow",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"});",
+											"",
+											"pm.test(\"ListIdentifiers is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListIdentifiers');",
+											"});",
+											"",
+											"",
+											"pm.test(\"ListIdentifiers resumption token flow\", function() {",
+											"    if (jsonData.ListIdentifiers.resumptionToken) {",
+											"        utils.sendRequestWithResumptionToken(jsonData, \"ListIdentifiers\");",
+											"        ",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListIdentifiers&metadataPrefix={{marc}}&set=all",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - ListIdentifiers date range",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment');\r",
+											"pm.globals.set(\"from\", moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));\r",
+											"pm.globals.set(\"until\", moment().utc().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(5);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"    pm.expect(jsonData.request.$.until).to.eql(utils.findObjectByKey(pm.request.url.query, \"until\"));",
+											"});",
+											"",
+											"pm.test(\"ListIdentifiers is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListIdentifiers');",
+											"});",
+											"",
+											"pm.test(\"Number of headers greater than 11\", function() {",
+											"    let numberOfRecords = 0;",
+											"    let resumptionToken = jsonData.ListIdentifiers.resumptionToken;",
+											"    if (resumptionToken) {",
+											"        numberOfRecords = resumptionToken.$.completeListSize;",
+											"    } else {",
+											"        numberOfRecords = jsonData.ListIdentifiers.header.length",
+											"    }",
+											"    console.log(numberOfRecords);",
+											"    pm.expect(Number(numberOfRecords)).to.be.at.least(11);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept-Encoding",
+										"value": "identity",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListIdentifiers&metadataPrefix={{dc}}&set=all&from={{from}}&until={{until}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
+											"key": "until",
+											"value": "{{until}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListIdentifiers date range",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment');\r",
+											"pm.globals.set(\"from\", moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));\r",
+											"pm.globals.set(\"until\", moment().utc().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(5);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"    pm.expect(jsonData.request.$.until).to.eql(utils.findObjectByKey(pm.request.url.query, \"until\"));",
+											"});",
+											"",
+											"pm.test(\"ListIdentifiers is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListIdentifiers');",
+											"});",
+											"",
+											"pm.test(\"Number of headers greater than 11\", function() {",
+											"    let numberOfRecords = 0;",
+											"    let resumptionToken = jsonData.ListIdentifiers.resumptionToken;",
+											"    if (resumptionToken) {",
+											"        numberOfRecords = resumptionToken.$.completeListSize;",
+											"    } else {",
+											"        numberOfRecords = jsonData.ListIdentifiers.header.length",
+											"    }",
+											"    console.log(numberOfRecords);",
+											"    pm.expect(Number(numberOfRecords)).to.be.at.least(11);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?apikey={{edge.apikey}}&verb=ListIdentifiers&metadataPrefix={{dc}}&set=all&from={{from}}&until={{until}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
+											"key": "until",
+											"value": "{{until}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ListRecords",
+					"item": [
+						{
+							"name": "/oai/ - ListRecords resumption token flow",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"});",
+											"",
+											"pm.test(\"ListRecords is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListRecords');",
+											"});",
+											"",
+											"pm.test(\"ListRecords resumption token flow\", function() {",
+											"    if (jsonData.ListRecords.resumptionToken) {",
+											"        utils.sendRequestWithResumptionToken(jsonData, \"ListRecords\");",
+											"        ",
+											"    }",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept-Encoding",
+										"value": "identity",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{dc}}&set=all",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - ListRecords resumption token flow",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"});",
+											"",
+											"pm.test(\"ListRecords is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property(\"ListRecords\");",
+											"});",
+											"",
+											"pm.test(\"ListRecords resumption token flow\", function() {",
+											"    if (jsonData.ListRecords.resumptionToken) {",
+											"        utils.sendRequestWithResumptionToken(jsonData, \"ListRecords\");",
+											"        ",
+											"    }",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListRecords&metadataPrefix={{dc}}&set=all",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListRecords  date range",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment');\r",
+											"pm.globals.set(\"from\", moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));\r",
+											"pm.globals.set(\"until\", moment().utc().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(5);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"    pm.expect(jsonData.request.$.until).to.eql(utils.findObjectByKey(pm.request.url.query, \"until\"));",
+											"});",
+											"",
+											"pm.test(\"ListRecords is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListRecords');",
+											"});",
+											"",
+											"pm.test(\"Number of record greater  11\", function() {",
+											"    let numberOfRecords = 0;",
+											"    let resumptionToken = jsonData.ListRecords.resumptionToken;",
+											"    if (resumptionToken) {",
+											"        numberOfRecords = resumptionToken.$.completeListSize;",
+											"    } else {",
+											"        numberOfRecords = jsonData.ListRecords.record.length",
+											"    }",
+											"    console.log(numberOfRecords);",
+											"    pm.expect(Number(numberOfRecords)).to.be.at.least(11);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept-Encoding",
+										"value": "identity",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{dc}}&set=all&from={{from}}&until={{until}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
+											"key": "until",
+											"value": "{{until}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/apiKeyPath - ListRecords  date range",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment')\r",
+											"pm.globals.set(\"from\", moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"))\r",
+											"pm.globals.set(\"until\", moment().utc().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"))"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords successfully completed (200)\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(5);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"    pm.expect(jsonData.request.$.until).to.eql(utils.findObjectByKey(pm.request.url.query, \"until\"));",
+											"});",
+											"",
+											"pm.test(\"ListRecords is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('ListRecords');",
+											"});",
+											"",
+											"pm.test(\"Number of record greater than 11\", function() {",
+											"    let numberOfRecords = 0;",
+											"    let resumptionToken = jsonData.ListRecords.resumptionToken;",
+											"    if (resumptionToken) {",
+											"        numberOfRecords = resumptionToken.$.completeListSize;",
+											"    } else {",
+											"        numberOfRecords = jsonData.ListRecords.record.length",
+											"    }",
+											"    console.log(numberOfRecords);",
+											"    pm.expect(Number(numberOfRecords)).to.be.at.least(11);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListRecords&metadataPrefix={{dc}}&set=all&from={{from}}&until={{until}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai",
+										"{{edge.apikey}}"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										},
+										{
+											"key": "set",
+											"value": "all"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
+											"key": "until",
+											"value": "{{until}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
+			"name": "Negative scenarios",
+			"item": [
+				{
+					"name": "Identify",
+					"item": [
+						{
+							"name": "/oai/ - Identify_badArgument",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Identify completed with (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=Identify&apikey={{edge.apikey}}&metadataPrefix={{dc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "Identify"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "22c3bfd2-9f52-43e1-b817-943eed5deb3c",
+								"type": "text/javascript",
+								"exec": [
+									"let utils = eval(globals.loadUtils);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "8449ade2-9446-45b1-8549-ec8a1242fbbc",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "MetadataFormats",
+					"item": [
+						{
+							"name": "/oai/ - Invalid_Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Expected Unprocessable Entity (422)\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"});",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}&identifier=invalid-identifier",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListMetadataFormats"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "invalid-identifier"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - Not_Existing_Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Expected Not Found (404)\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"});",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"idDoesNotExist\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fd390222-84f7-4ca5-add1-e0c51e94a698",
+										"exec": [
+											"let testData = pm.globals.get(\"testData\");",
+											"pm.globals.set(\"identifier\", testData.instance1.id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}A",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListMetadataFormats"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}A"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "beab1fcc-f6a9-4310-b904-1c14ce99b95c",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "527b9579-4fda-40a6-862a-1d7dfc19899c",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ListSets",
+					"item": [
+						{
+							"name": "/oai/ - ListSets_badArgument",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"console.log(jsonData);",
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"ListSets completed with (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListSets&apikey={{edge.apikey}}&metadataPrefix=oai_dc",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListSets"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "oai_dc"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListSets_badResumptionToken",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"console.log(jsonData);",
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"ListSets completed with (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.resumptionToken).to.eql(utils.findObjectByKey(pm.request.url.query, \"resumptionToken\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badResumptionToken\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListSets&apikey={{edge.apikey}}&resumptionToken=any_resumption_token",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListSets"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "resumptionToken",
+											"value": "any_resumption_token"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "GetRecord",
+					"item": [
+						{
+							"name": "/oai/ - Invalid_Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Identifier has invalid structure (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=GetRecord&apikey={{edge.apikey}}&identifier=invalid-identifier&metadataPrefix={{marc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "invalid-identifier"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - Not_Existing_Identifier",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"No matching identifier in repository (404)\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"idDoesNotExist\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=GetRecord&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}B&metadataPrefix={{dc}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}B"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{dc}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - missing metadataPrefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Missing required parameter (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"});",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=GetRecord&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - invalid metadataPrefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"Cannot disseminate format (422)\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.identifier).to.eql(utils.findObjectByKey(pm.request.url.query, \"identifier\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"cannotDisseminateFormat\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=GetRecord&apikey={{edge.apikey}}&identifier={{identifierPrefix}}/{{identifier}}&metadataPrefix=mark_xml",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "GetRecord"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "identifier",
+											"value": "{{identifierPrefix}}/{{identifier}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "mark_xml"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ListIdentifiers",
+					"item": [
+						{
+							"name": "/oai/ - ListIdentifiers empty result",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment')\r",
+											"pm.globals.set(\"from\", moment().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"))"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers no any record found matching search criteria (404)\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"noRecordsMatch\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from={{from}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListIdentifiers invalid date",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers illegal date format (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from=2018-11-13T12:13:50",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "2018-11-13T12:13:50"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListIdentifiers invalid metadataPrefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers cannot disseminate format (422)\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"cannotDisseminateFormat\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix=mark_xml",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "mark_xml"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListIdentifiers bad resumption token",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers The value of the resumptionToken argument is invalid (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.resumptionToken).to.eql(utils.findObjectByKey(pm.request.url.query, \"resumptionToken\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badResumptionToken\");",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&resumptionToken=bWV0YWRhdGFQcmVmaXhhPW9haV9kYyZzZXQ9YWxsJnRvdGFsUmVjb3Jkcz0xMSZvZmZzZXQ9MiZuZXh0UmVjb3JkSWQ9NmI0YWUwODktZTFlZS00MzFmLWFmODMtZTExMzNmOGUzZGEwJnVudGlsPTIwMTgtMTEtMTRUMTQ6MzY6NTZa",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "resumptionToken",
+											"value": "bWV0YWRhdGFQcmVmaXhhPW9haV9kYyZzZXQ9YWxsJnRvdGFsUmVjb3Jkcz0xMSZvZmZzZXQ9MiZuZXh0UmVjb3JkSWQ9NmI0YWUwODktZTFlZS00MzFmLWFmODMtZTExMzNmOGUzZGEwJnVudGlsPTIwMTgtMTEtMTRUMTQ6MzY6NTZa"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListIdentifiers from grater than until",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment');\r",
+											"pm.globals.set(\"from\", moment().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));\r",
+											"pm.globals.set(\"until\", moment().hours(0).format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListIdentifiers 'from' must be less than or equal to 'until' (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(4);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"    pm.expect(jsonData.request.$.until).to.eql(utils.findObjectByKey(pm.request.url.query, \"until\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from={{from}}&until={{until}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListIdentifiers"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
+											"key": "until",
+											"value": "{{until}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ListRecords",
+					"item": [
+						{
+							"name": "/oai/ - ListIRecords bad resumption token",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords The value of the resumptionToken argument is invalid (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.resumptionToken).to.eql(utils.findObjectByKey(pm.request.url.query, \"resumptionToken\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badResumptionToken\");",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&resumptionToken=bWV0YWRhdGFQcmVmaXhhPW9haV9kYyZzZXQ9YWxsJnRvdGFsUmVjb3Jkcz0xMSZvZmZzZXQ9MiZuZXh0UmVjb3JkSWQ9NmI0YWUwODktZTFlZS00MzFmLWFmODMtZTExMzNmOGUzZGEwJnVudGlsPTIwMTgtMTEtMTRUMTQ6MzY6NTZa",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "resumptionToken",
+											"value": "bWV0YWRhdGFQcmVmaXhhPW9haV9kYyZzZXQ9YWxsJnRvdGFsUmVjb3Jkcz0xMSZvZmZzZXQ9MiZuZXh0UmVjb3JkSWQ9NmI0YWUwODktZTFlZS00MzFmLWFmODMtZTExMzNmOGUzZGEwJnVudGlsPTIwMTgtMTEtMTRUMTQ6MzY6NTZa"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListRecords empty result",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment')\r",
+											"pm.globals.set(\"from\", moment().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"))"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords no any record found matching search criteria (404)\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"noRecordsMatch\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from={{from}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListRecords invalid date",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords illegal date format (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from=2018-11-13T12:13:50",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "2018-11-13T12:13:50"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListRecords invalid metadataPrefix",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+										"exec": [
+											"let jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords cannot disseminate format (422)\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(2);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"cannotDisseminateFormat\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix=mark_xml",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "mark_xml"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "/oai/ - ListRecords from grater than until",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+										"exec": [
+											"var moment = require('moment');\r",
+											"pm.globals.set(\"from\", moment().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));\r",
+											"pm.globals.set(\"until\", moment().hours(0).format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "32277bc7-451d-4d58-828b-944c885e1698",
+										"exec": [
+											"var jsonData = xml2Json(responseBody)[\"OAI-PMH\"];",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"console.log(jsonData);",
+											"",
+											"pm.test(\"ListRecords 'from' must be less than or equal to 'until' (400)\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Is XML\", function () {",
+											"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+											"});",
+											"",
+											"pm.test(\"Request is correct\", function() {",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(4);",
+											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
+											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
+											"    pm.expect(jsonData.request.$.until).to.eql(utils.findObjectByKey(pm.request.url.query, \"until\"));",
+											"});",
+											"",
+											"pm.test(\"Error is returned\", function() {",
+											"    pm.expect(jsonData).to.have.property('error');",
+											"});",
+											"",
+											"pm.test(\"Error is valid\", function() {",
+											"    let errorCode = jsonData.error.$.code;",
+											"    pm.expect(errorCode).to.eql(\"badArgument\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Accept-Encoding",
+										"type": "text",
+										"value": "identity"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from={{from}}&until={{until}}",
+									"protocol": "{{edge.protocol}}",
+									"host": [
+										"{{edge.host}}"
+									],
+									"port": "{{edge.port}}",
+									"path": [
+										"oai"
+									],
+									"query": [
+										{
+											"key": "verb",
+											"value": "ListRecords"
+										},
+										{
+											"key": "apikey",
+											"value": "{{edge.apikey}}"
+										},
+										{
+											"key": "metadataPrefix",
+											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
+											"key": "until",
+											"value": "{{until}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "/oai/ - Acces denied",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -541,9 +4559,14 @@
 							"script": {
 								"id": "32277bc7-451d-4d58-828b-944c885e1698",
 								"exec": [
-									"pm.test(\"ListMetadataFormats successfully completed (200)\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
+									"pm.test(\"Acces denied (403)\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"pm.test(\"Is plain text\", function () {",
+									"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/plain');",
+									"});",
+									"",
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -553,71 +4576,7 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "x-okapi-tenant",
-								"value": "{{xokapitenant}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}",
-							"protocol": "{{edge.protocol}}",
-							"host": [
-								"{{edge.host}}"
-							],
-							"port": "{{edge.port}}",
-							"path": [
-								"oai"
-							],
-							"query": [
-								{
-									"key": "verb",
-									"value": "ListMetadataFormats"
-								},
-								{
-									"key": "apikey",
-									"value": "{{edge.apikey}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/oai/ - Existing_Identifier",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "62f17e5f-76a3-4e79-83a9-e28dcbce0292",
-								"exec": [
-									"pm.test(\"ListMetadataFormats successfully completed (200)\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "41e05ac3-988a-4e22-b15f-a1693e9205a3",
-								"exec": [
-									"let testData = pm.globals.get(\"testData\");",
-									"pm.globals.set(\"identifier\", testData.instance1.id);"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-okapi-tenant",
+								"key": "X-Okapi-Tenant",
 								"type": "text",
 								"value": "{{xokapitenant}}"
 							}
@@ -627,7 +4586,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}&identifier=oai:tbd.later.folio.org:diku/{{identifier}}",
+							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=Identify&apikey={{edge.apikey}}aad",
 							"protocol": "{{edge.protocol}}",
 							"host": [
 								"{{edge.host}}"
@@ -639,15 +4598,11 @@
 							"query": [
 								{
 									"key": "verb",
-									"value": "ListMetadataFormats"
+									"value": "Identify"
 								},
 								{
 									"key": "apikey",
-									"value": "{{edge.apikey}}"
-								},
-								{
-									"key": "identifier",
-									"value": "oai:tbd.later.folio.org:diku/{{identifier}}"
+									"value": "{{edge.apikey}}aad"
 								}
 							]
 						}
@@ -655,15 +4610,93 @@
 					"response": []
 				},
 				{
-					"name": "/oai/ - Invalid_Identifier",
+					"name": "/oai/apiKeyPath - Acces denied",
 					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
 						{
 							"listen": "test",
 							"script": {
-								"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+								"id": "32277bc7-451d-4d58-828b-944c885e1698",
 								"exec": [
-									"pm.test(\"Expected Unprocessable Entity (422)\", function () {",
-									"    pm.response.to.have.status(422);",
+									"pm.test(\"Acces denied (403)\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"pm.test(\"Is plain text\", function () {",
+									"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/plain');",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"type": "text",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}aad?verb=Identify",
+							"protocol": "{{edge.protocol}}",
+							"host": [
+								"{{edge.host}}"
+							],
+							"port": "{{edge.port}}",
+							"path": [
+								"oai",
+								"{{edge.apikey}}aad"
+							],
+							"query": [
+								{
+									"key": "verb",
+									"value": "Identify"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/oai/ - Invalid apKey",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "32277bc7-451d-4d58-828b-944c885e1698",
+								"exec": [
+									"pm.test(\"Invalid API Key (401)\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"pm.test(\"Is plain text\", function () {",
+									"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/plain');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -684,7 +4717,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}&identifier=invalid-identifier",
+							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=Identify&apikey=a",
 							"protocol": "{{edge.protocol}}",
 							"host": [
 								"{{edge.host}}"
@@ -696,15 +4729,11 @@
 							"query": [
 								{
 									"key": "verb",
-									"value": "ListMetadataFormats"
+									"value": "Identify"
 								},
 								{
 									"key": "apikey",
-									"value": "{{edge.apikey}}"
-								},
-								{
-									"key": "identifier",
-									"value": "invalid-identifier"
+									"value": "a"
 								}
 							]
 						}
@@ -712,15 +4741,28 @@
 					"response": []
 				},
 				{
-					"name": "/oai/ - Not_Existing_Identifier",
+					"name": "/oai/apiKeyPath - Invalid apKeyPath Copy",
 					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
 						{
 							"listen": "test",
 							"script": {
-								"id": "cf13b3e1-a311-4deb-a43e-0d6d4303ae61",
+								"id": "32277bc7-451d-4d58-828b-944c885e1698",
 								"exec": [
-									"pm.test(\"Expected Not Found (404)\", function () {",
-									"    pm.response.to.have.status(404);",
+									"pm.test(\"IInvalid apiKey (401)\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"pm.test(\"Is plain text\", function () {",
+									"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/plain');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -731,7 +4773,7 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "x-okapi-tenant",
+								"key": "X-Okapi-Tenant",
 								"type": "text",
 								"value": "{{xokapitenant}}"
 							}
@@ -741,7 +4783,84 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListMetadataFormats&apikey={{edge.apikey}}&identifier=oai:tbd.later.folio.org:diku/{{identifier}}A",
+							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/a?verb=Identify",
+							"protocol": "{{edge.protocol}}",
+							"host": [
+								"{{edge.host}}"
+							],
+							"port": "{{edge.port}}",
+							"path": [
+								"oai",
+								"a"
+							],
+							"query": [
+								{
+									"key": "verb",
+									"value": "Identify"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/oai/ - badVerb",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "32277bc7-451d-4d58-828b-944c885e1698",
+								"exec": [
+									"let jsonData = xml2Json(responseBody);",
+									"console.log(jsonData);",
+									"",
+									"pm.test(\"Identify completed with (400)\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"pm.test(\"Is XML\", function () {",
+									"    pm.expect(postman.getResponseHeader('Content-Type')).to.equal('text/xml');",
+									"});",
+									"",
+									"pm.test(\"Error is returned\", function() {",
+									"    pm.expect(jsonData[\"OAI-PMH\"]).to.have.property('error');",
+									"});",
+									"",
+									"pm.test(\"Error is valid\", function() {",
+									"    let errorCode = jsonData[\"OAI-PMH\"].error.$.code;",
+									"    pm.expect(errorCode).to.eql(\"badVerb\");",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"type": "text",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=badVerb&apikey={{edge.apikey}}",
 							"protocol": "{{edge.protocol}}",
 							"host": [
 								"{{edge.host}}"
@@ -753,42 +4872,16 @@
 							"query": [
 								{
 									"key": "verb",
-									"value": "ListMetadataFormats"
+									"value": "badVerb"
 								},
 								{
 									"key": "apikey",
 									"value": "{{edge.apikey}}"
-								},
-								{
-									"key": "identifier",
-									"value": "oai:tbd.later.folio.org:diku/{{identifier}}A"
 								}
 							]
 						}
 					},
 					"response": []
-				}
-			],
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"id": "beab1fcc-f6a9-4310-b904-1c14ce99b95c",
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"id": "527b9579-4fda-40a6-862a-1d7dfc19899c",
-						"type": "text/javascript",
-						"exec": [
-							""
-						]
-					}
 				}
 			]
 		},
@@ -801,7 +4894,7 @@
 						{
 							"listen": "prerequest",
 							"script": {
-								"id": "8f499eb4-6dcf-4d3c-a5bc-fa649b5312d4",
+								"id": "123459a0-b737-4767-a32c-1c5692b8d920",
 								"exec": [
 									"let userId = pm.globals.get(\"testData\").user.id;",
 									"pm.globals.set(\"userId\", userId);"
@@ -812,7 +4905,7 @@
 						{
 							"listen": "test",
 							"script": {
-								"id": "246f2ca6-d980-4ae7-907c-2038bc99dd34",
+								"id": "ac493f0c-3e8c-4c07-94d2-6105617f0384",
 								"exec": [
 									"pm.test(\"User deleted - Expected No Content (204)\", function () {",
 									"    pm.response.to.have.status(204);",
@@ -826,19 +4919,19 @@
 						"method": "DELETE",
 						"header": [
 							{
-								"key": "content-type",
-								"type": "text",
-								"value": "application/json"
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
 							},
 							{
-								"key": "x-okapi-tenant",
-								"type": "text",
-								"value": "{{xokapitenant}}"
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}",
+								"type": "text"
 							},
 							{
-								"key": "x-okapi-token",
-								"type": "text",
-								"value": "{{xokapitoken}}"
+								"key": "X-Okapi-Token",
+								"value": "{{xokapitoken}}",
+								"type": "text"
 							}
 						],
 						"body": {
@@ -998,9 +5091,63 @@
 							"script": {
 								"id": "976c44b6-9efa-4f76-8818-aa488c6ceb15",
 								"exec": [
-									"pm.test(\"Expected Created (204)\", function () {",
+									"pm.test(\"Expected Deleted (204)\", function () {",
 									"    pm.response.to.have.status(204);",
-									"});"
+									"});",
+									"",
+									"deleteInstances();",
+									"",
+									"//delete instances which were created for testing List verbs",
+									"function deleteInstances() {",
+									"    let idArray = pm.globals.get('id_array');",
+									"    if (idArray == null) {",
+									"        return;",
+									"    }",
+									"    ",
+									"    idArray = JSON.parse(idArray);",
+									"    ",
+									"    for (var i = 0; i < idArray.length; i++) {",
+									"        console.log(idArray[i]);",
+									"        pm.sendRequest({",
+									"                url: pm.variables.get(\"protocol\") + \"://\" ",
+									"                    + pm.variables.get(\"url\") + \":\" ",
+									"                    + pm.variables.get(\"okapiport\") + \"/instance-storage/instances/\"",
+									"                    + idArray[i] + \"/source-record/marc-json\",",
+									"                method: \"DELETE\",",
+									"                header: {",
+									"                    \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
+									"                    \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
+									"                    \"Content-type\": \"application/json\",",
+									"                    \"Accept-Encoding\": \"identity\"",
+									"                }",
+									"            }, function (err, response) {",
+									"                console.log(response.code);",
+									"                pm.test(\"Expected deleted source (204)\", function () {",
+									"                    pm.expect(response.code).to.eql(204);",
+									"                });",
+									"            });",
+									"            ",
+									"        pm.sendRequest({",
+									"                url: pm.variables.get(\"protocol\") + \"://\" ",
+									"                    + pm.variables.get(\"url\") + \":\" ",
+									"                    + pm.variables.get(\"okapiport\") + \"/instance-storage/instances/\"",
+									"                    + idArray[i],",
+									"                method: \"DELETE\",",
+									"                header: {",
+									"                    \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
+									"                    \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
+									"                    \"Content-type\": \"application/json\",",
+									"                    \"Accept-Encoding\": \"identity\"",
+									"                }",
+									"            }, function (err, response) {",
+									"                console.log(response.code);",
+									"                pm.test(\"Expected deleted instance (204)\", function () {",
+									"                    pm.expect(response.code).to.eql(204);",
+									"                });",
+									"            });",
+									"        ",
+									"    }",
+									"}"
 								],
 								"type": "text/javascript"
 							}
@@ -1066,7 +5213,7 @@
 							"script": {
 								"id": "2cc46022-e60f-4734-b0b5-a23ca495b282",
 								"exec": [
-									"pm.test(\"Testing instance created (204)\", function () {",
+									"pm.test(\"Testing instance deleted (204)\", function () {",
 									"    pm.response.to.have.status(204);",
 									"});",
 									"",
@@ -1234,6 +5381,30 @@
 					"        \"updatedByUserId\": \"cda822d8-09c9-5676-a743-d6311e148146\"",
 					"    },",
 					"    \"holdingsRecords2\": []",
+					"    },",
+					"    instance2: {",
+					"      \"id\": \"601a8dc4-dee7-48eb-b03f-d02fdf0debd0\",",
+					"      \"source\": \"MARC\",",
+					"      \"title\": \"ADVANCING LIBRARY EDUCATION: TECHNOLOGICAL INNOVATION AND INSTRUCTIONAL DESIGN\",",
+					"      \"contributors\": [",
+					"        {",
+					"          \"name\": \"Sigal, Ari\",",
+					"          \"contributorNameTypeId\": \"2b94c631-fca9-4892-a730-03ee529ffe2a\",",
+					"          \"primary\": true",
+					"        }",
+					"      ],",
+					"      \"identifiers\": [",
+					"        {",
+					"          \"identifierTypeId\": \"2e48e713-17f3-4c13-a9f8-23845bb210af\",",
+					"          \"value\": \"9781466636897\"",
+					"        },",
+					"        {",
+					"          \"identifierTypeId\": \"6051f95c-028e-4c6a-8a9e-ee689dd51453\",",
+					"          \"value\": \"1\"",
+					"        }",
+					"      ],",
+					"      \"sourceRecordFormat\": \"MARC-JSON\",",
+					"      \"instanceTypeId\": \"2b94c631-fca9-4892-a730-03ee529ffe2c\"",
 					"    },",
 					"    marcjson1: {",
 					"    \"leader\": \"01860nam a2200337 ca4500\",",
@@ -1624,7 +5795,65 @@
 					"",
 					"// Global testing object - used in further tests",
 					"pm.globals.set(\"testData\", testData);",
-					""
+					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
+					"    let utils = {};",
+					"",
+					"    utils.findObjectByKey = function findObjectByKey(queryParams, key) {",
+					"        var array = queryParams.members;",
+					"        for (var i = 0; i < array.length; i++) {",
+					"            if (array[i].key === key) {",
+					"                return array[i][\"value\"];",
+					"            }",
+					"        ",
+					"        }",
+					"        return null;",
+					"    }",
+					"    ",
+					"   utils.sendRequestWithResumptionToken = function sendRequestWithResumptionToken(oaiResponse, verb) {",
+					"        let resumptionToken = oaiResponse[verb].resumptionToken._;",
+					"        console.log(resumptionToken);",
+					"        let paths = pm.request.url.path; ",
+					"        let path = \"\";",
+					"        for ( var i = 0; i < paths.length; i++) {",
+					"            path += \"/\" + paths[i];",
+					"        }",
+					"        pm.sendRequest({",
+					"            url: pm.variables.get(\"edge.protocol\") + \"://\" ",
+					"                + pm.variables.get(\"edge.host\") + \":\" ",
+					"                + pm.variables.get(\"edge.port\") + \"/\"",
+					"                + path + \"?apikey=\"",
+					"                + pm.variables.get(\"edge.apikey\") + \"&resumptionToken=\"",
+					"                + resumptionToken + \"&verb=\"",
+					"                + verb,",
+					"            method: \"GET\",",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
+					"                \"Accept-Encoding\": \"identity\"",
+					"            }",
+					"        }, function (err, response) {",
+					"            let result = xml2Json(response.text())[\"OAI-PMH\"];",
+					"            console.log(result);",
+					"            pm.test(\"Request with resumption token successfully completed (200)\", function () {",
+					"                 pm.expect(response.code).to.equal(200);",
+					"            });",
+					"            var key = Object.keys(result[verb]);",
+					"            var recordsLength = Number(result[verb][key[0]].length);",
+					"            recordsLength = recordsLength ? recordsLength : 1;",
+					"            let currentListSize = Number(result[verb].resumptionToken.$.cursor) + recordsLength;",
+					"            let completeListSize = result[verb].resumptionToken.$.completeListSize;",
+					"            if (currentListSize < completeListSize) {",
+					"                sendRequestWithResumptionToken(result, verb)",
+					"            } else {",
+					"                pm.test(\"Resumption token is empty\", function () {",
+					"                    pm.expect(result[verb].resumptionToken._).to.equal(undefined);",
+					"                });",
+					"            }",
+					"        });",
+					"    }",
+					"",
+					"    return utils;",
+					"",
+					"} + '; loadUtils();');"
 				]
 			}
 		},
@@ -1637,6 +5866,20 @@
 					""
 				]
 			}
+		}
+	],
+	"variable": [
+		{
+			"id": "3178f38e-6846-4e42-b4d7-52f6ae10a80e",
+			"key": "dc",
+			"value": "oai_dc",
+			"type": "string"
+		},
+		{
+			"id": "244a1cb8-a1c5-478c-8ed2-e730f3ea683b",
+			"key": "marc",
+			"value": "marc21",
+			"type": "string"
 		}
 	]
 }
