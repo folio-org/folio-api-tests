@@ -98,7 +98,10 @@
 										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
 										"exec": [
 											"pm.test(\"User created - Expected Created (201)\", function () {",
-											"    pm.response.to.have.status(201);",
+											"    if (pm.response.code != 201) {",
+											"        postman.setNextRequest(null);",
+											"    }",
+											"    pm.response.to.have.status(201)",
 											"});",
 											"",
 											""
@@ -164,14 +167,11 @@
 										"exec": [
 											"let EXPECTED_STATUS = 201;",
 											"",
-											"if(pm.response.to.have.status(EXPECTED_STATUS)) {",
-											"    let credentialsId = pm.response.json().id;",
-											"    pm.globals.set(\"credentialsId\", credentialsId);",
-											"    console.log(\"credentialsId: \" + credentialsId);",
-											"}",
-											"",
 											"pm.test(\"Credentials created - Expected Created (201)\", function () {",
-											"    pm.response.to.have.status(EXPECTED_STATUS);",
+											"    if (pm.response.code != EXPECTED_STATUS) {",
+											"        postman.setNextRequest(null);",
+											"    }",
+											"    pm.response.to.have.status(EXPECTED_STATUS)",
 											"});"
 										],
 										"type": "text/javascript"
@@ -236,14 +236,15 @@
 										"exec": [
 											"let EXPECTED_STATUS = 201;",
 											"",
-											"if(pm.response.to.have.status(EXPECTED_STATUS)) {",
-											"    let permissionsId = pm.response.json().id;",
-											"    pm.globals.set(\"permissionsId\", permissionsId);",
-											"    console.log(\"permissionsId: \" + permissionsId);",
-											"}",
-											"",
 											"pm.test(\"Permissions created - Expected Created (201)\", function () {",
-											"    pm.response.to.have.status(EXPECTED_STATUS);",
+											"    if (pm.response.code != EXPECTED_STATUS) {",
+											"        postman.setNextRequest(null);",
+											"    }",
+											"    pm.response.to.have.status(EXPECTED_STATUS)",
+											"",
+											"    // Set the fromDate param value as current time",
+											"    var moment = require('moment');",
+											"    pm.environment.set(\"fromDate\", moment().utc().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));",
 											"",
 											"    // 'storageType' is edge-oai-pmh collection variable",
 											"    if (pm.variables.get(\"storageType\") === \"SRS\") {",
@@ -251,11 +252,6 @@
 											"    } else {",
 											"        postman.setNextRequest(\"/instance-storage/instances\");",
 											"    }",
-											"",
-											"    // Set the fromDate param value as current time",
-											"    var moment = require('moment');",
-											"    pm.globals.set(\"fromDate\", moment().utc().format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));",
-											"    console.log(\"fromDate: \" + pm.globals.get(\"fromDate\"));",
 											"});"
 										],
 										"type": "text/javascript"
@@ -536,7 +532,7 @@
 										"id": "f7bced58-ce19-4644-b63a-5c8ea3316a5f",
 										"exec": [
 											"var uuid = require('uuid');",
-											"pm.globals.set('srsSnapshotId', uuid.v4());",
+											"pm.environment.set('srsSnapshotId', uuid.v4());",
 											""
 										],
 										"type": "text/javascript"
@@ -549,7 +545,14 @@
 										"exec": [
 											"pm.test(\"Snapshot creation status\", function () {",
 											"    pm.response.to.have.status(201);",
-											"    pm.response.to.have.jsonBody(\"jobExecutionId\", pm.globals.get('srsSnapshotId'));",
+											"    pm.response.to.have.jsonBody(\"jobExecutionId\", pm.environment.get('srsSnapshotId'));",
+											"",
+											"    // Set the fromDate param value as current time",
+											"    let moment = require('moment');",
+											"    let metadata = pm.response.json().metadata;",
+											"    let currentDateTime = metadata ? moment(metadata.createdDate) : moment();",
+											"    pm.environment.set(\"fromDate\", currentDateTime.utc().subtract(1, 'seconds').format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));",
+											"    console.log(\"From date: \" + pm.environment.get(\"fromDate\"));",
 											"});"
 										],
 										"type": "text/javascript"
@@ -581,11 +584,12 @@
 									"raw": "{\r\n  \"jobExecutionId\": \"{{srsSnapshotId}}\",\r\n  \"status\": \"PARSING_FINISHED\"\r\n}"
 								},
 								"url": {
-									"raw": "{{host}}:{{port}}/source-storage/snapshot",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/source-storage/snapshot",
+									"protocol": "{{protocol}}",
 									"host": [
-										"{{host}}"
+										"{{url}}"
 									],
-									"port": "{{port}}",
+									"port": "{{okapiport}}",
 									"path": [
 										"source-storage",
 										"snapshot"
@@ -602,7 +606,9 @@
 									"script": {
 										"id": "976c44b6-9efa-4f76-8818-aa488c6ceb15",
 										"exec": [
-											"pm.test(\"Record created\", function () {",
+											"let currentIteration = parseInt(pm.variables.get(\"currentIteration\"));",
+											"",
+											"pm.test(\"Record created #\" + currentIteration, function () {",
 											"    pm.response.to.have.status(201);",
 											"    let recordId = pm.response.json().id;",
 											"    let metadata = pm.response.json().metadata;",
@@ -616,13 +622,13 @@
 											"    pm.environment.set(\"createdRecords\", JSON.stringify(records));",
 											"",
 											"    // Check if all desired records created or request should be repeated",
-											"    let currentIteration = parseInt(pm.variables.get(\"currentIteration\"));",
 											"    let recordsToCreate = pm.variables.get(\"recordsToCreate\");",
 											"    if (recordsToCreate >= ++currentIteration) {",
 											"        postman.setNextRequest(\"Create record\");",
 											"        pm.variables.set(\"currentIteration\", currentIteration);",
 											"    } else {",
 											"        pm.variables.unset(\"currentIteration\");",
+											"        pm.variables.unset(\"parsedRecordContent\");",
 											"        postman.setNextRequest();",
 											"    }",
 											"});"
@@ -642,12 +648,12 @@
 											"",
 											"let parsedRecords = pm.globals.get(\"testData\").srsData.parsedRecords;",
 											"let parsedRecordsCount = parsedRecords.length;",
-											"let index = currentIteration;",
-											"while (index > parsedRecordsCount) {",
+											"let index = currentIteration - 1;",
+											"while (index >= parsedRecordsCount) {",
 											"    index -= parsedRecordsCount;",
 											"}",
 											"",
-											"pm.variables.set(\"parsedRecordContent\",  JSON.stringify(parsedRecords[index - 1]));"
+											"pm.variables.set(\"parsedRecordContent\",  JSON.stringify(parsedRecords[index]));"
 										],
 										"type": "text/javascript"
 									}
@@ -727,11 +733,12 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{host}}:{{port}}/source-storage/result?query=recordType=MARC and metadata.createdDate>{{fromDate}}&limit=1",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/source-storage/result?query=recordType=MARC and metadata.createdDate>{{fromDate}}&limit=1",
+									"protocol": "{{protocol}}",
 									"host": [
-										"{{host}}"
+										"{{url}}"
 									],
-									"port": "{{port}}",
+									"port": "{{okapiport}}",
 									"path": [
 										"source-storage",
 										"result"
@@ -1985,7 +1992,9 @@
 									"script": {
 										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
 										"exec": [
-											""
+											"var moment = require('moment');\r",
+											"// Limit by from param because in case there are a lot of records exist, the test will run quite long time\r",
+											"pm.variables.set(\"from\", pm.environment.get(\"fromDate\") ? pm.environment.get(\"fromDate\") : moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
 										],
 										"type": "text/javascript"
 									}
@@ -2009,9 +2018,10 @@
 											"});",
 											"",
 											"pm.test(\"Request is correct\", function() {",
-											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(4);",
 											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
 											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
 											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
 											"});",
 											"",
@@ -2047,7 +2057,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix={{marc}}&set=all",
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListIdentifiers&apikey={{edge.apikey}}&metadataPrefix={{marc}}&from={{from}}&set=all",
 									"protocol": "{{edge.protocol}}",
 									"host": [
 										"{{edge.host}}"
@@ -2070,6 +2080,10 @@
 											"value": "{{marc}}"
 										},
 										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
 											"key": "set",
 											"value": "all"
 										}
@@ -2086,7 +2100,9 @@
 									"script": {
 										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
 										"exec": [
-											""
+											"var moment = require('moment');\r",
+											"// Limit by from param because in case there are a lot of records exist, the test will run quite long time\r",
+											"pm.variables.set(\"from\", pm.environment.get(\"fromDate\") ? pm.environment.get(\"fromDate\") : moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
 										],
 										"type": "text/javascript"
 									}
@@ -2110,9 +2126,10 @@
 											"});",
 											"",
 											"pm.test(\"Request is correct\", function() {",
-											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(4);",
 											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
 											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
 											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
 											"});",
 											"",
@@ -2146,7 +2163,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListIdentifiers&metadataPrefix={{marc}}&set=all",
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListIdentifiers&metadataPrefix={{marc}}&from={{from}}&set=all",
 									"protocol": "{{edge.protocol}}",
 									"host": [
 										"{{edge.host}}"
@@ -2164,6 +2181,10 @@
 										{
 											"key": "metadataPrefix",
 											"value": "{{marc}}"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
 										},
 										{
 											"key": "set",
@@ -2418,7 +2439,9 @@
 									"script": {
 										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
 										"exec": [
-											""
+											"var moment = require('moment');\r",
+											"// Limit by from param because in case there are a lot of records exist, the test will run quite long time\r",
+											"pm.variables.set(\"from\", pm.environment.get(\"fromDate\") ? pm.environment.get(\"fromDate\") : moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
 										],
 										"type": "text/javascript"
 									}
@@ -2442,9 +2465,10 @@
 											"});",
 											"",
 											"pm.test(\"Request is correct\", function() {",
-											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(4);",
 											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
 											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
 											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
 											"});",
 											"",
@@ -2478,7 +2502,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{dc}}&set=all",
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai?verb=ListRecords&apikey={{edge.apikey}}&metadataPrefix={{dc}}&from={{from}}&set=all",
 									"protocol": "{{edge.protocol}}",
 									"host": [
 										"{{edge.host}}"
@@ -2501,6 +2525,10 @@
 											"value": "{{dc}}"
 										},
 										{
+											"key": "from",
+											"value": "{{from}}"
+										},
+										{
 											"key": "set",
 											"value": "all"
 										}
@@ -2517,7 +2545,9 @@
 									"script": {
 										"id": "930715a0-e0fd-4545-9cd3-9740f467a953",
 										"exec": [
-											""
+											"var moment = require('moment');\r",
+											"// Limit by from param because in case there are a lot of records exist, the test will run quite long time\r",
+											"pm.variables.set(\"from\", pm.environment.get(\"fromDate\") ? pm.environment.get(\"fromDate\") : moment().utc().zone(\"-00:05\").format(\"YYYY-MM-DDTHH:mm:ss[Z]\"));"
 										],
 										"type": "text/javascript"
 									}
@@ -2540,9 +2570,10 @@
 											"});",
 											"",
 											"pm.test(\"Request is correct\", function() {",
-											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(3);",
+											"    pm.expect(Object.keys(jsonData.request.$).length).to.eql(4);",
 											"    pm.expect(jsonData.request.$.verb).to.eql(utils.findObjectByKey(pm.request.url.query, \"verb\"));",
 											"    pm.expect(jsonData.request.$.metadataPrefix).to.eql(utils.findObjectByKey(pm.request.url.query, \"metadataPrefix\"));",
+											"    pm.expect(jsonData.request.$.from).to.eql(utils.findObjectByKey(pm.request.url.query, \"from\"));",
 											"    pm.expect(jsonData.request.$.set).to.eql(utils.findObjectByKey(pm.request.url.query, \"set\"));",
 											"});",
 											"",
@@ -2576,7 +2607,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListRecords&metadataPrefix={{dc}}&set=all",
+									"raw": "{{edge.protocol}}://{{edge.host}}:{{edge.port}}/oai/{{edge.apikey}}?verb=ListRecords&metadataPrefix={{dc}}&from={{from}}&set=all",
 									"protocol": "{{edge.protocol}}",
 									"host": [
 										"{{edge.host}}"
@@ -2594,6 +2625,10 @@
 										{
 											"key": "metadataPrefix",
 											"value": "{{dc}}"
+										},
+										{
+											"key": "from",
+											"value": "{{from}}"
 										},
 										{
 											"key": "set",
@@ -3068,7 +3103,7 @@
 										"id": "fd390222-84f7-4ca5-add1-e0c51e94a698",
 										"exec": [
 											"let testData = pm.globals.get(\"testData\");",
-											"pm.globals.set(\"identifier\", testData.instance1.id);"
+											"pm.variables.set(\"identifier\", testData.instance1.id);"
 										],
 										"type": "text/javascript"
 									}
@@ -4945,7 +4980,7 @@
 									},
 									{
 										"key": "X-Okapi-Token",
-										"value": "{{X-Okapi-Token}}"
+										"value": "{{xokapitoken}}"
 									}
 								],
 								"body": {
@@ -5078,7 +5113,7 @@
 									},
 									{
 										"key": "X-Okapi-Token",
-										"value": "{{X-Okapi-Token}}"
+										"value": "{{xokapitoken}}"
 									}
 								],
 								"body": {
@@ -5258,6 +5293,11 @@
 									"script": {
 										"id": "123459a0-b737-4767-a32c-1c5692b8d920",
 										"exec": [
+											"let currentIteration = parseInt(pm.variables.get(\"currentIteration\")) || 1;",
+											"if (currentIteration == 1) {",
+											"    pm.variables.set(\"currentIteration\", currentIteration)",
+											"}",
+											"",
 											"let records = pm.environment.get(\"createdRecords\") ? JSON.parse(pm.environment.get(\"createdRecords\")) : [\"No record to delete\"];",
 											"pm.variables.set(\"recordId\", records[0]);"
 										],
@@ -5269,7 +5309,8 @@
 									"script": {
 										"id": "ac493f0c-3e8c-4c07-94d2-6105617f0384",
 										"exec": [
-											"pm.test(\"SRS record deleted by id=\" + pm.variables.get(\"recordId\"), function () {",
+											"let currentIteration = parseInt(pm.variables.get(\"currentIteration\"));",
+											"pm.test(\"SRS record #\" + currentIteration + \" deleted by id=\" + pm.variables.get(\"recordId\"), function () {",
 											"    pm.response.to.have.status(204);",
 											"",
 											"    // Send request again if there are records to delete",
@@ -5277,9 +5318,11 @@
 											"    if (records.length > 1) {",
 											"        records.shift();",
 											"        pm.environment.set(\"createdRecords\", JSON.stringify(records));",
+											"        pm.variables.set(\"currentIteration\", ++currentIteration);",
 											"        postman.setNextRequest(\"Delete SRS record\");",
 											"    } else {",
 											"        pm.environment.unset(\"createdRecords\");",
+											"        pm.variables.unset(\"currentIteration\");",
 											"        postman.setNextRequest();",
 											"    }",
 											"});"
@@ -5348,6 +5391,7 @@
 											"pm.test(\"SRS snapshot deleted by id=\" + pm.variables.get(\"srsSnapshotId\"), function () {",
 											"    pm.response.to.have.status(204);",
 											"    pm.environment.unset(\"srsSnapshotId\");",
+											"    pm.environment.unset(\"fromDate\");",
 											"    postman.setNextRequest(null);",
 											"});"
 										],
@@ -6201,25 +6245,25 @@
 	],
 	"variable": [
 		{
-			"id": "554503e7-06f1-4453-9026-2e225c51b3ce",
+			"id": "6696764f-4370-4ab7-b098-6fa5997f026c",
 			"key": "dc",
 			"value": "oai_dc",
 			"type": "string"
 		},
 		{
-			"id": "460023bf-4c87-47a8-a989-b06a857b67a3",
+			"id": "c175dfa8-bd54-4e39-8344-43d5feced0a9",
 			"key": "marc",
 			"value": "marc21",
 			"type": "string"
 		},
 		{
-			"id": "b476473e-018d-4bab-bb86-ce616314b51c",
+			"id": "2be85a41-24d3-4daf-a71a-8d0a98e5e08f",
 			"key": "storageType",
 			"value": "SRS",
 			"type": "string"
 		},
 		{
-			"id": "5100ba35-1348-49b8-88cd-a5256abca4fc",
+			"id": "bbc08eb2-0c47-4581-bf67-2b5a8e68a3ab",
 			"key": "recordsToCreate",
 			"value": "115",
 			"type": "string"
