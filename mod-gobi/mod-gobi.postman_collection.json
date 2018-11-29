@@ -404,7 +404,6 @@
 							"listen": "prerequest",
 							"script": {
 								"id": "f07624dc-c22d-4952-8d93-b85401f7458c",
-								"type": "text/javascript",
 								"exec": [
 									"pm.sendRequest({",
 									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_print_monograph.xml\",",
@@ -415,17 +414,18 @@
 									"    }",
 									");",
 									"        "
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "85d36fe8-71fe-4b6b-9f1e-32cef766ef90",
-								"type": "text/javascript",
 								"exec": [
 									"let jsonData = xml2Json(responseBody);",
-									"console.log(jsonData);",
+									"let polNumber;",
+									"let poNumber;",
 									"",
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -440,10 +440,48 @@
 									"});",
 									"",
 									"pm.test(\"PoLineNumber is valid\", function() {",
-									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"    polNumber = jsonData.Response.PoLineNumber;",
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
+									"        method: \"GET\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"    pm.test(\"get PONumber\", function(){",
+									"       pm.expect(res).to.have.property('code', 200);",
+									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
+									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
+									"       ",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
+									"        method: \"DELETE\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"      pm.test(\"delete created PO\", function(){",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 204);",
+									"        pm.expect(res).to.have.property('status', 'No Content');",
+									"    });",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -489,7 +527,6 @@
 							"listen": "prerequest",
 							"script": {
 								"id": "ba67fd6b-2941-4f3d-a167-c4154a58e13d",
-								"type": "text/javascript",
 								"exec": [
 									"pm.sendRequest({",
 									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_electronic_monograph.xml\",",
@@ -500,17 +537,19 @@
 									"    }",
 									");",
 									"        "
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "fdb8eea7-15e1-4b4e-921b-b645972bffe5",
-								"type": "text/javascript",
 								"exec": [
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
+									"let polNumber;",
+									"let poNumber;",
 									"",
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -525,10 +564,49 @@
 									"});",
 									"",
 									"pm.test(\"PoLineNumber is valid\", function() {",
-									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"     polNumber = jsonData.Response.PoLineNumber;",
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"});",
+									"",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
+									"        method: \"GET\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"    pm.test(\"get PONumber\", function(){",
+									"       pm.expect(res).to.have.property('code', 200);",
+									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
+									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
+									"       ",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
+									"        method: \"DELETE\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"      pm.test(\"delete created PO\", function(){",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 204);",
+									"        pm.expect(res).to.have.property('status', 'No Content');",
+									"    });",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -574,7 +652,6 @@
 							"listen": "prerequest",
 							"script": {
 								"id": "97bf73f4-bcfb-4f68-8b67-c65ffc12120c",
-								"type": "text/javascript",
 								"exec": [
 									"pm.sendRequest({",
 									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_print_serial.xml\",",
@@ -585,17 +662,19 @@
 									"    }",
 									");",
 									"        "
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "2ce0cff0-60aa-4941-b876-854cc9456c97",
-								"type": "text/javascript",
 								"exec": [
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
+									"let polNumber;",
+									"let poNumber;",
 									"",
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -610,10 +689,47 @@
 									"});",
 									"",
 									"pm.test(\"PoLineNumber is valid\", function() {",
-									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"    polNumber = jsonData.Response.PoLineNumber;",
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"});",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
+									"        method: \"GET\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"    pm.test(\"get PONumber\", function(){",
+									"       pm.expect(res).to.have.property('code', 200);",
+									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
+									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
+									"       ",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
+									"        method: \"DELETE\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"      pm.test(\"delete created PO\", function(){",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 204);",
+									"        pm.expect(res).to.have.property('status', 'No Content');",
+									"    });",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -659,7 +775,6 @@
 							"listen": "prerequest",
 							"script": {
 								"id": "4951c45a-52cc-47b3-b1d0-d5267dd1c1b2",
-								"type": "text/javascript",
 								"exec": [
 									"pm.sendRequest({",
 									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_electronic_serial.xml\",",
@@ -670,17 +785,19 @@
 									"    }",
 									");",
 									"        "
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "eb8d424d-e53e-46a0-bc72-75d5aabcdd65",
-								"type": "text/javascript",
 								"exec": [
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
+									"let polNumber;",
+									"let poNumber;",
 									"",
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -695,10 +812,47 @@
 									"});",
 									"",
 									"pm.test(\"PoLineNumber is valid\", function() {",
-									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"    polNumber = jsonData.Response.PoLineNumber;",
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"});",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
+									"        method: \"GET\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"    pm.test(\"get PONumber\", function(){",
+									"       pm.expect(res).to.have.property('code', 200);",
+									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
+									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
+									"       ",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
+									"        method: \"DELETE\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"      pm.test(\"delete created PO\", function(){",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 204);",
+									"        pm.expect(res).to.have.property('status', 'No Content');",
+									"    });",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -744,7 +898,6 @@
 							"listen": "prerequest",
 							"script": {
 								"id": "d4d0c278-0d94-4672-a0ff-404ec22de58e",
-								"type": "text/javascript",
 								"exec": [
 									"pm.sendRequest({",
 									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_unlisted_print_monograph.xml\",",
@@ -755,17 +908,19 @@
 									"    }",
 									");",
 									"        "
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "3a5cc5c1-f90f-4a64-90d7-b6e9b7e6dd98",
-								"type": "text/javascript",
 								"exec": [
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
+									"let polNumber;",
+									"let poNumber;",
 									"",
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -780,10 +935,47 @@
 									"});",
 									"",
 									"pm.test(\"PoLineNumber is valid\", function() {",
-									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"    polNumber = jsonData.Response.PoLineNumber;",
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"});",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
+									"        method: \"GET\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"    pm.test(\"get PONumber\", function(){",
+									"       pm.expect(res).to.have.property('code', 200);",
+									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
+									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
+									"       ",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
+									"        method: \"DELETE\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"      pm.test(\"delete created PO\", function(){",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 204);",
+									"        pm.expect(res).to.have.property('status', 'No Content');",
+									"    });",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -829,7 +1021,6 @@
 							"listen": "prerequest",
 							"script": {
 								"id": "ad293aeb-90c0-4785-ba61-05f0f2b81556",
-								"type": "text/javascript",
 								"exec": [
 									"pm.sendRequest({",
 									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_unlisted_print_serial.xml\",",
@@ -840,17 +1031,19 @@
 									"    }",
 									");",
 									"        "
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "ad69215a-c9b8-49b5-8f40-bdbcff98c8ea",
-								"type": "text/javascript",
 								"exec": [
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
+									"let polNumber;",
+									"let poNumber;",
 									"",
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -865,10 +1058,47 @@
 									"});",
 									"",
 									"pm.test(\"PoLineNumber is valid\", function() {",
-									"    let polNumber = jsonData.Response.PoLineNumber;",
+									"    polNumber = jsonData.Response.PoLineNumber;",
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
+									"});",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
+									"        method: \"GET\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"    pm.test(\"get PONumber\", function(){",
+									"       pm.expect(res).to.have.property('code', 200);",
+									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
+									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
+									"       ",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
+									"        method: \"DELETE\",",
+									"        header: {",
+									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+									"            'Content-Type': 'application/json'",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"      pm.test(\"delete created PO\", function(){",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 204);",
+									"        pm.expect(res).to.have.property('status', 'No Content');",
+									"    });",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1289,7 +1519,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"module\": \"GOBI\",\r\n  \"configName\": \"orderMappings\",\r\n  \"code\": \"gobi.order.ListedPrintMonograph\",\r\n  \"description\": \"Order Mappings for types\",\r\n  \"default\": true,\r\n  \"enabled\": true,\r\n  \"value\": \"{      \\\"orderType\\\": \\\"ListedPrintMonograph\\\",      \\\"mappings\\\": [        {          \\\"field\\\": \\\"NOTES\\\",          \\\"dataSource\\\": {\\\"default\\\": \\\"Notes from tenant configuration\\\"}}]}\"\r\n}\r\n"
+							"raw": "{\r\n  \"module\": \"GOBI\",\r\n  \"configName\": \"orderMappings\",\r\n  \"code\": \"gobi.order.ListedPrintMonograph\",\r\n  \"description\": \"Order Mappings for types\",\r\n  \"default\": true,\r\n  \"enabled\": true,\r\n  \"value\": \"{      \\\"orderType\\\": \\\"ListedPrintMonograph\\\",      \\\"mappings\\\": [        {          \\\"field\\\": \\\"NOTES\\\",          \\\"dataSource\\\": {\\\"default\\\": \\\"Notes from tenant configuration\\\"}},{ \\\"field\\\": \\\"TITLE\\\",  \\\"dataSource\\\": { \\\"from\\\": \\\"//datafield[@tag='245']/* | //datafield[@tag='100']\\\", \\\"combinator\\\": \\\"concat\\\"}},{\\\"field\\\": \\\"COLLECTION\\\",\\\"dataSource\\\": {\\\"default\\\": \\\"true\\\",\\\"translation\\\": \\\"toBoolean\\\",\\\"translateDefault\\\": true} }]}\"\r\n}\r\n"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries",
@@ -1399,7 +1629,7 @@
 						{
 							"listen": "test",
 							"script": {
-								"id": "c6566d89-e8ea-4fca-a388-d40938eb27f0",
+								"id": "2f98b70e-bbfb-43ab-8747-f332f36ad530",
 								"exec": [
 									"var jsonData = pm.response.json();",
 									"",
@@ -1415,6 +1645,9 @@
 									"    pm.expect(jsonData.po_lines[0].purchase_order_id).to.exist;",
 									"      pm.globals.set(\"po_listed_print_monograph_purchaseid\", jsonData.po_lines[0].purchase_order_id);",
 									"});",
+									"",
+									"",
+									"",
 									"",
 									""
 								],
@@ -1487,6 +1720,15 @@
 									"pm.test(\"notes text is fetched from tenant configuration\", function () {",
 									"    pm.expect(jsonData.notes[0]).to.eql(\"Notes from tenant configuration\");",
 									"});",
+									"",
+									"pm.test(\"Testing Combinator: Title is a combination of two fields\", function () {",
+									"    pm.expect(jsonData.po_lines[0].title).to.eql(\"\\n            DICK, PHILIP K\\n          MAN IN THE HIGH CASTLE.\");",
+									"});",
+									"",
+									"pm.test(\"Testing Translator: collection returns a boolean\", function () {",
+									"    pm.expect(jsonData.po_lines[0].collection).to.eql(true);",
+									"});",
+									"",
 									"",
 									"",
 									""
@@ -1764,7 +2006,7 @@
 					"response": []
 				},
 				{
-					"name": "/configuration/entries",
+					"name": "/configurations/entries",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -1820,6 +2062,68 @@
 								"configurations",
 								"entries",
 								"{{configuration_id}}"
+							]
+						},
+						"description": "GET /orders/id requests that return 200"
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /orders/id - delete order",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/{{poNumber}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"{{poNumber}}"
 							]
 						},
 						"description": "GET /orders/id requests that return 200"
