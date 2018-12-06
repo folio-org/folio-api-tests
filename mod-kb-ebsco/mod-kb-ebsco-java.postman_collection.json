@@ -959,6 +959,158 @@
 						"description": "Retrieves unique id of the customer specific provider. All Custom Packages are created as part of a customer specific provider. "
 					},
 					"response": []
+				},
+				{
+					"name": "Create Custom Package",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b94cf55d-e934-4cfb-aba0-764ceabcc156",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response must have a json body\", function () {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"var jsonData = pm.response.json();",
+									"pm.environment.set(\"custom-packageid\", jsonData.data.id);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "48db7d0e-1db4-405e-adf2-aec6a7ef90e8",
+								"exec": [
+									"var uuid = require('uuid');",
+									"pm.variables.set(\"package-uuid\", uuid.v4());",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n   \"data\": {\n     \"type\": \"packages\",\n     \"attributes\": {\n       \"name\": \"custom-package-{{package-uuid}}\",\n       \"contentType\": \"Unknown\"\n     }\n   }\n }"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"eholdings",
+								"packages"
+							]
+						},
+						"description": "Create a uniquely named custom package. Custom titles need to be created as part of a custom package."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Sample Managed Package",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "bedb142d-bc23-4284-837f-d3db06542991",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response must have a json body\", function () {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"",
+									"var managedPackages = jsonData.data.filter(",
+									"    function(packageRecord) {",
+									"        if (!packageRecord.attributes.isCustom) {",
+									"           return packageRecord;",
+									"        }",
+									"    }",
+									");",
+									"",
+									"pm.test('at least 1 managed package is returned from query', function() {",
+									"    pm.expect(managedPackages.length).to.be.above(0);",
+									"});",
+									"",
+									"if (managedPackages.length > 0) {",
+									"    pm.environment.set(\"managed-packageid\", managedPackages[0].id);",
+									"} else {",
+									"    console.log(\"Unable to find managed package id for custom title testing\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=abc\n",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"eholdings",
+								"packages"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "abc\n"
+								}
+							]
+						},
+						"description": "Locate a random managed package to test custom title create error scenario."
+					},
+					"response": []
 				}
 			]
 		},
@@ -6588,7 +6740,7 @@
 													"let firstAttributes = firstRecord.attributes;",
 													"pm.test('expected attributes are present in a record', function() {",
 													"    pm.expect(firstAttributes).to.be.an('object');",
-													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"edition\", \"description\", \"isPeerReviewed\", \"contributors\");",
+													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"isPeerReviewed\", \"contributors\");",
 													"});",
 													"",
 													"pm.test('title with requested id is returned', function() {",
@@ -6691,7 +6843,7 @@
 													"let firstAttributes = firstRecord.attributes;",
 													"pm.test('expected attributes are present in a record', function() {",
 													"    pm.expect(firstAttributes).to.be.an('object');",
-													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"edition\", \"description\", \"isPeerReviewed\", \"contributors\");",
+													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"isPeerReviewed\", \"contributors\");",
 													"});",
 													"",
 													"pm.test('title id is as requested', function() {",
@@ -6816,7 +6968,7 @@
 													"let firstAttributes = firstRecord.attributes;",
 													"pm.test('expected attributes are present in a record', function() {",
 													"    pm.expect(firstAttributes).to.be.an('object');",
-													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"edition\", \"description\", \"isPeerReviewed\", \"contributors\");",
+													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"isPeerReviewed\", \"contributors\");",
 													"});",
 													"",
 													"pm.test('title id is as requested', function() {",
@@ -7072,9 +7224,9 @@
 													"pm.test(\"contributors are as expected\", function () {",
 													"   pm.expect(firstAttributes.contributors).to.be.an('array').that.is.not.empty;",
 													"   pm.expect(firstAttributes.contributors.length).to.eql(2);",
-													"   pm.expect(firstAttributes.contributors[0].type).to.eql(\"author\");",
+													"   pm.expect(firstAttributes.contributors[0].type.toLowerCase()).to.eql(\"author\");",
 													"   pm.expect(firstAttributes.contributors[0].contributor).to.eql(\"smith, john\");",
-													"   pm.expect(firstAttributes.contributors[1].type).to.eql(\"illustrator\");",
+													"   pm.expect(firstAttributes.contributors[1].type.toLowerCase()).to.eql(\"illustrator\");",
 													"   pm.expect(firstAttributes.contributors[1].contributor).to.eql(\"smith, ralph\");",
 													"});",
 													"",
@@ -7327,39 +7479,8 @@
 													"    pm.response.to.have.status(422);",
 													"});",
 													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.have.jsonBody();",
-													"});",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
-													"});",
-													"",
 													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
 													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid titleName\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Titlename can't be blank\");",
 													"});",
 													""
 												],
@@ -7444,8 +7565,8 @@
 													"pm.test(\"Errors array is as expected\", function () {",
 													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
 													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid titleName\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Titlename is too long (maximum is 400 characters)\");",
+													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid Title Name\");",
+													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Title Name is too long (maximum is 400 characters)\");",
 													"});",
 													""
 												],
@@ -7515,34 +7636,8 @@
 													"    pm.response.to.have.jsonBody();",
 													"});",
 													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
-													"});",
-													"",
 													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
 													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid pubType\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Pubtype can't be blank\");",
 													"});",
 													""
 												],
@@ -7593,52 +7688,9 @@
 											"script": {
 												"id": "667a70dd-fa5a-4b12-bc74-5921146cbb19",
 												"exec": [
-													"pm.test(\"Status is 200\", function () {",
-													"    pm.response.to.have.status(200);",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"});",
-													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.be.ok;",
-													"    pm.response.to.be.withBody;",
-													"    pm.response.to.be.json; ",
-													"});",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//Get the first record",
-													"let firstRecord = jsonData.data;",
-													"    ",
-													"//Test that object has the expected keys",
-													"pm.test('expected keys are present in a record', function() {",
-													"    pm.expect(firstRecord).to.be.an('object');",
-													"    pm.expect(firstRecord).to.include.all.keys(\"id\", \"type\", \"attributes\",\"relationships\");",
-													"});",
-													"",
-													"// Test that attributes have the expected keys",
-													"let firstAttributes = firstRecord.attributes;",
-													"pm.test('expected attributes are present in a record', function() {",
-													"    pm.expect(firstAttributes).to.be.an('object');",
-													"    pm.expect(firstAttributes).to.include.all.keys(\"name\", \"publisherName\", \"isTitleCustom\",\"subjects\", \"identifiers\", \"publicationType\", \"edition\", \"description\", \"isPeerReviewed\", \"contributors\");",
-													"});",
-													"",
-													"pm.test(\"data type is as expected\", function () {",
-													"    pm.expect(firstRecord.type).eq(\"titles\");",
-													"});",
-													"",
-													"pm.test(\"title name is as expected\", function () {",
-													"    pm.expect(firstAttributes.name).eq(\"custom title-\" + pm.variables.get(\"custom-title-pubtype-uuid\"));",
-													"});",
-													"",
-													"pm.test(\"publicationType is as expected\", function () {",
-													"   pm.expect(firstAttributes.publicationType).to.eql(\"Unspecified\");",
-													"});",
-													"",
 													""
 												],
 												"type": "text/javascript"
@@ -7699,12 +7751,12 @@
 											"script": {
 												"id": "f0bb3470-357f-4091-bd65-4ae98776525f",
 												"exec": [
-													"pm.test(\"Status is 400\", function () {",
-													"    pm.response.to.have.status(400);",
+													"pm.test(\"Status is 422\", function () {",
+													"    pm.response.to.have.status(422);",
 													"});",
 													"",
 													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.be.badRequest;",
+													"    pm.expect(pm.response.reason()).to.equal(\"Unprocessable Entity\")",
 													"    pm.response.to.have.jsonBody();",
 													"});",
 													"",
@@ -7790,39 +7842,8 @@
 													"    pm.response.to.have.status(422);",
 													"});",
 													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.have.jsonBody();",
-													"});",
-													"",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
-													"});",
-													"",
 													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
 													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid packageId\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Packageid can't be blank\");",
 													"});",
 													""
 												],
@@ -7992,8 +8013,8 @@
 													"pm.test(\"Errors array is as expected\", function () {",
 													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
 													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid publisherName\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Publishername is too long (maximum is 250 characters)\");",
+													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid Publisher name\");",
+													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Publisher name is too long (maximum is 250 characters)\");",
 													"});",
 													""
 												],
@@ -8055,44 +8076,13 @@
 											"script": {
 												"id": "f0efc105-bc87-4095-96e4-3338f8e9b9bd",
 												"exec": [
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
-													"});",
-													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.have.jsonBody();",
-													"});",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"});",
 													"",
 													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
 													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid isPeerReviewed\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Ispeerreviewed Invalid value\");",
-													"});",
-													""
+													"});"
 												],
 												"type": "text/javascript"
 											}
@@ -8185,7 +8175,7 @@
 													"pm.test(\"Errors array is as expected\", function () {",
 													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
 													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid edition\");",
+													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid Edition\");",
 													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Edition is too long (maximum is 250 characters)\");",
 													"});",
 													""
@@ -8283,7 +8273,7 @@
 													"pm.test(\"Errors array is as expected\", function () {",
 													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
 													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid description\");",
+													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid Description\");",
 													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Description is too long (maximum is 1500 characters)\");",
 													"});",
 													""
@@ -8434,102 +8424,6 @@
 									"response": []
 								},
 								{
-									"name": "/titles POST numeric identifier id",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "b09ba9a0-d292-4585-9ac3-6417e00aad10",
-												"exec": [
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
-													"});",
-													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.have.jsonBody();",
-													"});",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
-													"});",
-													"",
-													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
-													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid IdentifierId\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Identifierid :Invalid Identifier id\");",
-													"});",
-													""
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "95c918dc-0a63-4431-9f67-cce088064b54",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/vnd.api+json"
-											},
-											{
-												"key": "x-okapi-tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": " {\n  \"data\": {\n    \"type\": \"titles\",\n    \"attributes\": {\n      \"name\": \"Test Title\",\n      \"edition\": \"\",\n      \"publisherName\": \"\",\n      \"publicationType\": \"Unspecified\",\n      \"isPeerReviewed\": false,\n      \"contributors\": [\n      ],\n      \"identifiers\": [\n      {\n        \"id\":112222,\n        \"type\":\"ISSN\",\n        \"subtype\":\"Online\"\n        }              \n      ],\n      \"description\": \"\"\n    }\n  },\n  \"included\": [\n    {\n      \"type\": \"resource\",\n      \"attributes\": {\n        \"packageId\": \"{{custom-packageid}}\"\n      }\n    }\n  ]\n}\n        "
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"eholdings",
-												"titles"
-											]
-										}
-									},
-									"response": []
-								},
-								{
 									"name": "/titles POST long identifier id",
 									"event": [
 										{
@@ -8571,8 +8465,8 @@
 													"pm.test(\"Errors array is as expected\", function() {",
 													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
 													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid IdentifierId\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Identifierid :Invalid Identifier id\");",
+													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid Identifier id\");",
+													"    pm.expect(jsonData.errors[0].detail).to.equal(\"\");",
 													"});"
 												],
 												"type": "text/javascript"
@@ -8667,8 +8561,7 @@
 													"pm.test(\"Errors array is as expected\", function () {",
 													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
 													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid IdentifierId\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Identifierid :Invalid Identifier id\");",
+													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid Identifier id\");",
 													"});",
 													""
 												],
@@ -8729,44 +8622,13 @@
 											"script": {
 												"id": "44ca0f42-3739-4491-89d5-889b73115164",
 												"exec": [
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
-													"});",
-													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.have.jsonBody();",
-													"});",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"});",
 													"",
 													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
 													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid IdentifierType\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Identifiertype :Invalid Identifier type\");",
-													"});",
-													""
+													"});"
 												],
 												"type": "text/javascript"
 											}
@@ -8825,45 +8687,13 @@
 											"script": {
 												"id": "a7d72877-8b9a-4b28-af26-50f3ebb07fbb",
 												"exec": [
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
-													"});",
-													"",
-													"pm.test(\"Response must have a json body\", function () {",
-													"    pm.response.to.have.jsonBody();",
-													"});",
-													"",
-													"var jsonData = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"     tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(jsonData, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"",
-													"//verify headers",
-													"pm.test(\"'Content-Type'header is present and has 'application/vnd.api+json' value\", function () {",
-													"    pm.response.to.have.header(\"Content-Type\");",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/vnd.api+json\");",
-													"});",
-													"",
-													"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
-													"    pm.response.to.have.header(\"Transfer-Encoding\");",
-													"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"});",
 													"",
 													"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
 													"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-													"});",
-													"",
-													"pm.test(\"Errors array is as expected\", function () {",
-													"    pm.expect(jsonData.errors).to.be.an('array').that.is.not.empty;",
-													"    pm.expect(jsonData.errors.length).to.eql(1);",
-													"    pm.expect(jsonData.errors[0].title).to.equal(\"Invalid IdentifierSubType\");",
-													"    pm.expect(jsonData.errors[0].detail).to.equal(\"Identifiersubtype :Invalid Identifier subtype\");",
-													"});",
-													""
+													"});"
 												],
 												"type": "text/javascript"
 											}
@@ -9889,6 +9719,98 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
+			"name": "tear-down titles test",
+			"item": [
+				{
+					"name": "Delete Custom Package",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "967dd204-5352-4475-940d-0d16f2b81eee",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "67c6fa5e-953a-4222-bc89-1e86fb2900f4",
+								"exec": [
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{custom-packageid}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"eholdings",
+								"packages",
+								"{{custom-packageid}}"
+							]
+						},
+						"description": "Delete custom package which was set up for testing. This will also delete any custom titles that have been created as part of the custom package"
+					},
+					"response": []
+				}
+			],
+			"description": "Deletes newly created custom package which is used for custom titles testing. Deleting a custom package deletes all custom titles that are contained within the package ",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "e2aff0ec-6089-4e7d-b3bf-7803ac05390d",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "80be542a-4821-49a5-b810-4b30cfd2d93a",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
 				}
 			]
 		},
