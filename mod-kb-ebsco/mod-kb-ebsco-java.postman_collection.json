@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "1f4ff03a-541c-40ea-91af-c3464610ed57",
+		"_postman_id": "7ec826b7-b080-45ea-a18e-6a4771ecaa2a",
 		"name": "mod-kb-ebsco-java",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -9,12 +9,553 @@
 			"name": "schemas",
 			"item": [
 				{
-					"name": "JSON API schema",
+					"name": "setup",
+					"item": [
+						{
+							"name": "setup environment variables",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "41dde41e-77c3-4f8a-a8e9-5125e58d8897",
+										"exec": [
+											"const moduleName = 'mod-kb-ebsco-java';",
+											"pm.test(\"GET json schemas response OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET json schemas has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"pm.test(\"GET contains ebsco-java module\", function () {",
+											"    pm.expect(pm.response.text()).to.include(moduleName);",
+											"});",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"json.forEach((element) => {",
+											"\tvar moduleId = element.id;",
+											"\tif(moduleId.includes(moduleName)){",
+											"\t\tpm.environment.set('kb-ebsco-java-module-id', moduleId);",
+											"\t}",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{xokapitenant}}/interfaces/_jsonSchemas",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{xokapitenant}}",
+										"interfaces",
+										"_jsonSchemas"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "package",
+					"item": [
+						{
+							"name": "GET package collection schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "93293945-b442-4fea-9469-f263180e0bd2",
+										"exec": [
+											"pm.test(\"GET schema_parameters OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_parameters has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"packageCollection\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/packages/packageCollection.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/packages/packageCollection.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GET package by Id schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f782e6b7-79d1-47e3-b0f1-3e13ead3c2c5",
+										"exec": [
+											"pm.test(\"GET schema_package OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_package has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"var response =  pm.response.text();",
+											"setEnvironmentVariable(\"package\", replaceResponseRefWithName(response));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"type": "text",
+										"value": "{{kb-ebsco-java-module-id}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/packages/package.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/packages/package.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GET package post schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "08b3608d-8d28-4013-88e3-fec45d3dd9d2",
+										"exec": [
+											"pm.test(\"GET schema_packagePostRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_packagePostRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"var response =  pm.response.text();",
+											"setEnvironmentVariable(\"packagePostRequest\", replaceResponseRefWithName(response));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/packages/packagePostRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/packages/packagePostRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "package put schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d5847b0b-e0fb-401c-a10a-d8af13757d5e",
+										"exec": [
+											"pm.test(\"GET schema_packagePutRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_packagePutRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"packagePutRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/packages/packagePutRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/packages/packagePutRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+								"id": "94f9f95c-3d5d-423d-806b-c33085e8502f",
 								"type": "text/javascript",
 								"exec": [
 									""
@@ -24,7 +565,1919 @@
 						{
 							"listen": "test",
 							"script": {
-								"id": "f061e372-511f-4136-98bc-32651b757f0e",
+								"id": "c2f559ca-8246-4235-980e-871472f7bba6",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "provider",
+					"item": [
+						{
+							"name": "provider collection schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "21f0812d-fe54-4062-b0ba-837ef40a69a2",
+										"exec": [
+											"pm.test(\"GET schema_providerCollection OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_providerCollection has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"providerCollection\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/providers/providerCollection.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/providers/providerCollection.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "provider by id schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "64fb42d1-6bbc-425e-a171-ad00fce9c2be",
+										"exec": [
+											"pm.test(\"GET schema_provider OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_provider has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"provider\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/providers/provider.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/providers/provider.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "provider put schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "7633572e-8118-4c9d-acee-99e4dd7aa576",
+										"exec": [
+											"pm.test(\"GET schema_providerPutRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_providerPutRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"providerPutRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/providers/providerPutRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/providers/providerPutRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "title",
+					"item": [
+						{
+							"name": "title collection schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22922cb4-11cb-4e3d-bfe7-f8d538cdcb68",
+										"exec": [
+											"pm.test(\"GET schema_titleCollection OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_titleCollection has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"titleCollection\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/titles/titleCollection.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/titles/titleCollection.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "title by id schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "51d73086-db70-43b2-968b-c3a41f4c054d",
+										"exec": [
+											"pm.test(\"GET schema_title OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_title has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"title\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/titles/title.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/titles/title.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "title post schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "e7bebd27-511c-49ca-86bb-85d99b0382c5",
+										"exec": [
+											"pm.test(\"GET schema_titlePostRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_titlePostRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"titlePostRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/titles/titlePostRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/titles/titlePostRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "status",
+					"item": [
+						{
+							"name": "GET status shema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "77293c92-40c5-4a2d-8a31-d292a2cd784c",
+										"exec": [
+											"pm.test(\"GET schema_status OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_status has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"var response =  pm.response.text();",
+											"setEnvironmentVariable(\"status\", replaceResponseRefWithName(response));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/status/status.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/status/status.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "proxy",
+					"item": [
+						{
+							"name": "proxy types schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0b61b834-3636-4f50-812c-754a6214d49e",
+										"exec": [
+											"pm.test(\"GET schema_proxyTypes OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_proxyTypes has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"proxyTypes\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/proxies/proxyTypes.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/proxies/proxyTypes.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "root proxy schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "82d91ef2-1a33-45de-9a5e-d90e3be03157",
+										"exec": [
+											"pm.test(\"GET schema_rootProxy OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_rootProxy has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"rootProxy\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/proxies/rootProxy.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/proxies/rootProxy.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "root proxy put schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d87bccd2-4e24-478c-9102-702b80e48449",
+										"exec": [
+											"pm.test(\"GET schema_rootProxyPutRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_prootProxyPutRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"rootProxyPutRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/proxies/rootProxyPutRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/proxies/rootProxyPutRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "configuration",
+					"item": [
+						{
+							"name": "GET configuration schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "833b4b8a-b77e-4c69-8877-6a4c43285fcd",
+										"exec": [
+											"pm.test(\"GET schema_configuration OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_configuration has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"configuration\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/configuration/configuration.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/configuration/configuration.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "GET configuration put schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "73bdeb5a-3381-43a3-b592-3c4848ea6ccf",
+										"exec": [
+											"pm.test(\"GET schema_configurationPutRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_configurationPutRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"configurationPutRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/configuration/configurationPutRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/configuration/configurationPutRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "resource",
+					"item": [
+						{
+							"name": "resource collection schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "8af112c9-9f75-44a9-af08-e602de4af165",
+										"exec": [
+											"pm.test(\"GET schema_provider OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_provider has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"provider\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/resources/resourceCollection.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/resources/resourceCollection.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "resource by id schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bf2cbd16-6fd5-412c-b620-dd550fc5e9ee",
+										"exec": [
+											"pm.test(\"GET schema_resource OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_resource has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"resource\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/resources/resource.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/resources/resource.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "resource post schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "ea965066-f314-4676-8963-ce8a29d9c89c",
+										"exec": [
+											"pm.test(\"GET schema_resourcePostRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_resourcePostRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"resourcePostRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/resources/resourcePostRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/resources/resourcePostRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "resource put schema",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "3665a224-1855-4642-818e-94c6ade5afb0",
+										"exec": [
+											"pm.test(\"GET schema_resourcePutRequest OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"GET schema_resourcePutRequest has JSON body\", function () {",
+											"    pm.response.to.have.jsonBody();",
+											"});",
+											"",
+											"setEnvironmentVariable(\"resourcePutRequest\", replaceResponseRefWithName(pm.response.text()));",
+											"",
+											"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+											"",
+											"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+											"",
+											"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+											"",
+											"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+											"",
+											"function fetchSchema(url){",
+											"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+											"  const echoGetRequest = {",
+											"    url: url,",
+											"    method: 'GET',",
+											"    header: {",
+											"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+											"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+											"  }",
+											"};",
+											"return new Promise(function(resolve, reject) {",
+											"  pm.sendRequest(echoGetRequest, (err, response) => {",
+											"   if (!err) {",
+											"      var resp = response.text(); ",
+											"      var name = extractName(url);",
+											"      if(!checkVariableExist(name)){",
+											"        resp = replaceResponseRefWithName(resp);",
+											"        setEnvironmentVariable(name, resp);",
+											"      }",
+											"       traverse(JSON.parse(response.text()));",
+											"       resolve(resp);",
+											"   }else{",
+											"       reject(err);",
+											"   }",
+											"  });",
+											"});",
+											"}",
+											"",
+											"function traverse(data){",
+											"     Object.entries(data).forEach(([key, value]) => {",
+											"     if(key == '$ref'){",
+											"          fetchSchema(value).then(response => {",
+											"              response = replaceResponseRefWithName(response);",
+											"              var name = extractName(value);",
+											"              if(!checkVariableExist(name)){",
+											"                setEnvironmentVariable(name, response);",
+											"              }",
+											"          });",
+											"     }",
+											"     if ((typeof value === 'object') && (value !== null)){",
+											"        traverse(value);",
+											"      }",
+											"    });",
+											"}",
+											"",
+											"traverse(JSON.parse(responseBody));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"value": "{{kb-ebsco-java-module-id}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/resources/resourcePutRequest.json",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									],
+									"query": [
+										{
+											"key": "path",
+											"value": "types/resources/resourcePutRequest.json"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "JSON API schema",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "1568b4da-e2aa-4152-9cd3-2486e86df10b",
 								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"GET schema_parameters OK\", function () {",
@@ -72,6 +2525,122 @@
 							]
 						},
 						"description": "GET JSON API standard schema and store in collection environment variable - schema_jsonapi_content"
+					},
+					"response": []
+				},
+				{
+					"name": "jsonapi error",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d13c1f35-28df-47ff-b9b9-cccffa9f1a3e",
+								"exec": [
+									"pm.test(\"GET schema_jsonapiError OK\", function () {",
+									"    pm.response.to.be.ok;",
+									"});",
+									"",
+									"pm.test(\"GET schema_jsonapiError has JSON body\", function () {",
+									"    pm.response.to.have.jsonBody();",
+									"});",
+									"",
+									"setEnvironmentVariable(\"jsonapiError\", replaceResponseRefWithName(pm.response.text()));",
+									"",
+									"function checkVariableExist(name){ return pm.environment.has(\"schema_\"+ name);}",
+									"",
+									"function setEnvironmentVariable(name, data){ pm.environment.set(\"schema_\"+ name, data) }",
+									"",
+									"function extractName(url){ return url.substring(url.lastIndexOf(\"/\") + 1, url.lastIndexOf(\".\")); }",
+									"",
+									"function replaceResponseRefWithName(text){ return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*\\.json)/g, \"\\\"$ref\\\":\\\"schema_\"); }",
+									"",
+									"function fetchSchema(url){",
+									"  url = url.replace(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/, pm.variables.get(\"url\"));",
+									"  const echoGetRequest = {",
+									"    url: url,",
+									"    method: 'GET',",
+									"    header: {",
+									"      'X-Okapi-Module-Id' : pm.variables.get(\"kb-ebsco-java-module-id\"),",
+									"      'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\")",
+									"  }",
+									"};",
+									"return new Promise(function(resolve, reject) {",
+									"  pm.sendRequest(echoGetRequest, (err, response) => {",
+									"   if (!err) {",
+									"      var resp = response.text(); ",
+									"      var name = extractName(url);",
+									"      if(!checkVariableExist(name)){",
+									"        resp = replaceResponseRefWithName(resp);",
+									"        setEnvironmentVariable(name, resp);",
+									"      }",
+									"       traverse(JSON.parse(response.text()));",
+									"       resolve(resp);",
+									"   }else{",
+									"       reject(err);",
+									"   }",
+									"  });",
+									"});",
+									"}",
+									"",
+									"function traverse(data){",
+									"     Object.entries(data).forEach(([key, value]) => {",
+									"     if(key == '$ref'){",
+									"          fetchSchema(value).then(response => {",
+									"              response = replaceResponseRefWithName(response);",
+									"              var name = extractName(value);",
+									"              if(!checkVariableExist(name)){",
+									"                setEnvironmentVariable(name, response);",
+									"              }",
+									"          });",
+									"     }",
+									"     if ((typeof value === 'object') && (value !== null)){",
+									"        traverse(value);",
+									"      }",
+									"    });",
+									"}",
+									"",
+									"traverse(JSON.parse(responseBody));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Module-Id",
+								"value": "{{kb-ebsco-java-module-id}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas?path=types/jsonapiError.json",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"jsonSchemas"
+							],
+							"query": [
+								{
+									"key": "path",
+									"value": "types/jsonapiError.json"
+								}
+							]
+						}
 					},
 					"response": []
 				}
@@ -4671,8 +7240,22 @@
 													"});",
 													"",
 													"pm.test(\"Validate schema\", function () {",
-													"    tv4.addSchema(\"JSONAPI.json\", JSON.parse(pm.variables.get(\"schema_jsonapi_content\")));",
-													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_jsonapi_content\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    tv4.addSchema(\"schema_packageCollectionItem.json\", JSON.parse(pm.variables.get(\"schema_packageCollectionItem\")));",
+													"    tv4.addSchema(\"schema_packageDataAttributes.json\", JSON.parse(pm.variables.get(\"schema_packageDataAttributes\")));",
+													"     tv4.addSchema(\"schema_contentTypeEnum.json\", JSON.parse(pm.variables.get(\"schema_contentTypeEnum\")));",
+													"     tv4.addSchema(\"schema_coverage.json\", JSON.parse(pm.variables.get(\"schema_coverage\")));",
+													"     tv4.addSchema(\"schema_visibilityData.json\", JSON.parse(pm.variables.get(\"schema_visibilityData\")));",
+													"     tv4.addSchema(\"schema_token.json\", JSON.parse(pm.variables.get(\"schema_token\")));",
+													"     tv4.addSchema(\"schema_proxy.json\", JSON.parse(pm.variables.get(\"schema_proxy\")));",
+													"    tv4.addSchema(\"schema_packageRelationships.json\", JSON.parse(pm.variables.get(\"schema_packageRelationships\")));",
+													"     tv4.addSchema(\"schema_hasManyRelationship.json\", JSON.parse(pm.variables.get(\"schema_hasManyRelationship\")));",
+													"     tv4.addSchema(\"schema_hasOneRelationship.json\", JSON.parse(pm.variables.get(\"schema_hasOneRelationship\")));",
+													"      tv4.addSchema(\"schema_relationshipData.json\", JSON.parse(pm.variables.get(\"schema_relationshipData\")));",
+													"      tv4.addSchema(\"schema_included.json\", JSON.parse(pm.variables.get(\"schema_included\")));",
+													"    tv4.addSchema(\"schema_metaTotalResults.json\", JSON.parse(pm.variables.get(\"schema_metaTotalResults\")));",
+													"    tv4.addSchema(\"schema_jsonapi.json\", JSON.parse(pm.variables.get(\"schema_jsonapi\")));",
+													"",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
 													"});",
 													"",
