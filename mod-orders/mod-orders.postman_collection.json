@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "a663d647-1690-4fca-b37a-63a7dd0f750d",
+		"_postman_id": "f69ebf07-31f2-4224-872e-2c636597ec6b",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -1061,7 +1061,7 @@
 									"    function (err, res) {",
 									"        let order  = res.json();",
 									"        order.workflow_status = \"Pending\";",
-									"        delete order.po_number;",
+									"        order = utils.deletePoNumber(order);",
 									"        pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
 									"    }",
 									");"
@@ -1092,6 +1092,7 @@
 									"    pm.globals.set(\"complete_order_id\", jsonData.id); ",
 									"    pm.expect(jsonData.approved).to.exist;",
 									"    pm.expect(jsonData.po_number).to.exist;",
+									"    pm.globals.set(\"complete_order_po_number\",\"\\\"\"+jsonData.po_number+\"\\\"\");",
 									"    pm.expect(jsonData.notes).to.exist;",
 									"    pm.expect(jsonData.total_items).to.exist;",
 									"    pm.expect(jsonData.vendor).to.exist;",
@@ -1155,7 +1156,7 @@
 									"    function (err, res) {",
 									"        let order  = res.json();",
 									"        order.workflow_status = \"Pending\";",
-									"        delete order.po_number;",
+									"        order = utils.deletePoNumber(order);",
 									"        pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
 									"    }",
 									");"
@@ -1246,7 +1247,7 @@
 									"    },",
 									"    function (err, res) {",
 									"        let order  = res.json();",
-									"        delete order.po_number;",
+									"        order = utils.deletePoNumber(order);",
 									"        pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
 									"    }",
 									");"
@@ -3435,6 +3436,72 @@
 						"description": "GET /orders/id requests that return 200"
 					},
 					"response": []
+				},
+				{
+					"name": "POST /orders/po-number/validate- new POnumber",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									" ",
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"po_number\" : \"NewPO111NewPO\"\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"po-number",
+								"validate"
+							]
+						},
+						"description": "Return a 204 if a valid and unique PO Number is given"
+					},
+					"response": []
 				}
 			],
 			"event": [
@@ -5124,6 +5191,136 @@
 						"description": "GET /orders/id/lines/id requests that return 200"
 					},
 					"response": []
+				},
+				{
+					"name": "POST /orders/po-number/validate- existing PO Number",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"po_number\" : {{another_complete_order_id}}\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"po-number",
+								"validate"
+							]
+						},
+						"description": "Return a 400 if an existing PO Number is supplied"
+					},
+					"response": []
+				},
+				{
+					"name": "POST /orders/po-number/validate- invalid PONumber",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 422\", function () {",
+									"    pm.response.to.have.status(422);",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"po_number\" : \"12-12-13\"\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"po-number",
+								"validate"
+							]
+						},
+						"description": "Return a 422 when an invalid PO Number is specified"
+					},
+					"response": []
 				}
 			]
 		},
@@ -5535,7 +5732,7 @@
 					"response": []
 				},
 				{
-					"name": "/orders-storage/purchse_orders - verify delete",
+					"name": "/orders-storage/purchase_orders - verify delete",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -5737,7 +5934,6 @@
 					"        pm.expect(poLine.physical, \"physical expected\").to.exist;",
 					"        pm.expect(poLine.po_line_description, \"po_line_description expected\").to.exist;",
 					"        pm.expect(poLine.po_line_number, \"po_line_number expected\").to.exist;",
-					"        pm.expect(poLine.po_line_workflow_status, \"po_line_workflow_status expected\").to.exist;",
 					"        pm.expect(poLine.publication_date, \"publication_date expected\").to.exist;",
 					"        pm.expect(poLine.publisher, \"publisher expected\").to.exist;",
 					"        pm.expect(poLine.receipt_date, \"receipt_date expected\").to.exist;",
@@ -5775,8 +5971,7 @@
 					"        pm.expect(poLine.payment_status, \"payment_status not expected\").to.not.exist;",
 					"        pm.expect(poLine.physical, \"physical not expected\").to.not.exist;",
 					"        pm.expect(poLine.po_line_description, \"po_line_description not expected\").to.not.exist;",
-					"        pm.expect(poLine.po_line_number, \"po_line_number expected\").to.exist;",
-					"        pm.expect(poLine.po_line_workflow_status, \"po_line_workflow_status not expected\").to.not.exist;",
+					"        pm.expect(poLine.po_line_number, \"po_line_number not expected\").to.not.exist;",
 					"        pm.expect(poLine.publication_date, \"publication_date not expected\").to.not.exist;",
 					"        pm.expect(poLine.publisher, \"publisher not expected\").to.not.exist;",
 					"        pm.expect(poLine.receipt_date, \"receipt_date not expected\").to.not.exist;",
@@ -5965,6 +6160,12 @@
 					"                utils._deleteSubObjectIds(data[i]);",
 					"            }",
 					"        }",
+					"    }",
+					"    ",
+					"     utils.deletePoNumber = function(order) {",
+					"        delete order.po_number;",
+					"        ",
+					"        return order;",
 					"    }",
 					"",
 					"    return utils;",
