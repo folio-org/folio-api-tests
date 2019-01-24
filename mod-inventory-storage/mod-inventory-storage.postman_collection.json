@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "b2f3fd7c-4e08-40e0-8785-88a47db10766",
+		"_postman_id": "73091f08-1d21-400b-a73c-043c0b8ecff8",
 		"name": "mod-inventory-storage",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1357,14 +1357,14 @@
 							"listen": "test",
 							"script": {
 								"id": "6eb6244f-5e56-423e-8264-8e8f5d4d515f",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Status is 204\", function () {",
 									"    pm.response.to.have.status(204);",
 									"});",
 									"",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1386,7 +1386,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"id\" : \"{{newholdingstorage}}\",\r\n  \"instanceId\" : \"{{existingInstanceId}}\",\r\n  \"holdingsStatements\" :  [ \"my first line of the holdings statement\", \"another line\" ]\r\n}"
+							"raw": "{\r\n  \"id\" : \"{{newholdingstorage}}\",\r\n  \"instanceId\" : \"{{existingInstanceId}}\",\r\n  \"holdingsStatements\" :  [ \r\n\t{\"statement\":\"my first holdings statement\", \r\n\t \"note\":\"first holding statement note line\" }]\r\n}"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/holdings-storage/holdings/{{newholdingstorage}}",
@@ -1411,7 +1411,6 @@
 							"listen": "test",
 							"script": {
 								"id": "ce4263b4-3217-41de-9b85-ade1faf38abc",
-								"type": "text/javascript",
 								"exec": [
 									"var response = JSON.parse(responseBody);",
 									"",
@@ -1426,8 +1425,8 @@
 									"});",
 									"",
 									"pm.test(\"Response must instanceId of the new holding storage\", function () {",
-									"    pm.expect(response.id).to.be.equal(pm.environment.get(\"newholdingstorage\")); ",
-									"    pm.expect(response.holdingsStatements[0]).to.be.equal(\"my first line of the holdings statement\");",
+									"      pm.expect(response.id).to.be.equal(pm.environment.get(\"newholdingstorage\")); ",
+									"    pm.expect(response.holdingsStatements[0].statement).to.be.equal(\"my first holdings statement\");",
 									"});",
 									"",
 									"pm.test(\"Validate schema\", function () {",
@@ -1447,7 +1446,8 @@
 									"});",
 									"",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1690,7 +1690,6 @@
 							"listen": "test",
 							"script": {
 								"id": "555a84ed-e66f-4717-8fa0-5a198fb9ee47",
-								"type": "text/javascript",
 								"exec": [
 									"",
 									"var response = JSON.parse(responseBody);",
@@ -1718,17 +1717,39 @@
 									"    pm.response.to.have.header(\"Location\");",
 									"});",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "prerequest",
 							"script": {
 								"id": "b93b69c5-a9b4-4495-9df0-1a5ccb4fe1b6",
-								"type": "text/javascript",
 								"exec": [
+									"let endpointInstanceTypes = pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\")+ \":\" + pm.environment.get(\"okapiport\") + \"/instance-types\";",
+									" let tenant = pm.environment.get(\"xokapitenant\");",
+									" let token = pm.environment.get(\"xokapitoken\");",
+									"",
+									"//get alternative title type",
+									"pm.sendRequest({",
+									"    url: endpointInstanceTypes,",
+									"    method: \"GET\",",
+									"    header: {",
+									"         \"x-okapi-tenant\":tenant,",
+									"         \"x-okapi-token\":token",
+									"    }",
+									" },",
+									" function (err, res) {",
+									"    if(res.json().instanceTypes.length>0){",
+									"       // console.log(res.json());",
+									"     pm.environment.set(\"instancetype\",  res.json().instanceTypes[0].id);",
+									"    }",
+									" }",
+									");",
+									"",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1750,7 +1771,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"source\": \"MARC\",\r\n  \"title\": \"Handbuch deutscher historishen Buchbestände\",\r\n  \"instanceTypeId\": \"2b94c631-fca9-a892-c730-03ee529ffe2c\"\r\n}"
+							"raw": "{\r\n  \"source\": \"MARC\",\r\n  \"title\": \"Handbuch deutscher historishen Buchbestände\",\r\n  \"instanceTypeId\": \"{{instancetype}}\"\r\n}"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-storage/instances",
@@ -1939,14 +1960,46 @@
 							"listen": "test",
 							"script": {
 								"id": "e9cd582c-c336-44ed-b54d-199394490038",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Status is 204\", function () {",
 									"    pm.response.to.have.status(204);",
 									"});",
 									"",
 									""
-								]
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "a3b9768e-10ff-4cbf-9b76-48b44cab81d9",
+								"exec": [
+									"let endpointAlternativeTitle = pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\")+ \":\" + pm.environment.get(\"okapiport\") + \"/alternative-title-types\";",
+									" let tenant = pm.environment.get(\"xokapitenant\");",
+									" let token = pm.environment.get(\"xokapitoken\");",
+									"",
+									"//get alternative title type",
+									"pm.sendRequest({",
+									"    url: endpointAlternativeTitle,",
+									"    method: \"GET\",",
+									"    header: {",
+									"         \"x-okapi-tenant\":tenant,",
+									"         \"x-okapi-token\":token",
+									"    }",
+									" },",
+									" function (err, res) {",
+									"    if(res.json().alternativeTitleTypes.length>0){",
+									"      //  console.log(res.json().alternativeTitleTypes[0].id);",
+									"     pm.environment.set(\"alternativetitletype\",  res.json().alternativeTitleTypes[0].id);",
+									"    }",
+									" }",
+									");",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1968,7 +2021,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"id\": \"{{newinstancestorage}}\",\r\n  \"source\": \"Local: MARC\",\r\n  \"title\": \"Handbuch deutscher historishen Buchbestände\",\r\n  \"instanceTypeId\": \"2b94c631-fca9-a892-c730-03ee529ffe2c\", \r\n  \"alternativeTitles\":[\"Handbuch der historishen Buchbestände\"]\r\n}"
+							"raw": "{\"id\": \"{{newinstancestorage}}\",\r\n  \"source\": \"Local: MARC\",\r\n  \"title\": \"Handbuch deutscher historishen Buchbestände\",\r\n  \"instanceTypeId\": \"2b94c631-fca9-a892-c730-03ee529ffe2c\", \r\n  \"alternativeTitles\":[{\r\n  \t\"alternativeTitleTypeId\":\"{{alternativetitletype}}\",\r\n  \t\"alternativeTitle\":\"Handbuch der historishen Buchbestände\"}]\r\n}"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-storage/instances/{{newinstancestorage}}",
@@ -1993,7 +2046,6 @@
 							"listen": "test",
 							"script": {
 								"id": "005c6723-b361-4d7b-ac3e-0a893ad007e3",
-								"type": "text/javascript",
 								"exec": [
 									"var response = JSON.parse(responseBody);",
 									"",
@@ -2010,7 +2062,7 @@
 									"pm.test(\"Response must contain the updated instance storage\", function () {",
 									"    pm.expect(response.id).to.be.equal(pm.environment.get(\"newinstancestorage\")); ",
 									"    pm.expect(response.title).to.be.equal(\"Handbuch deutscher historishen Buchbestände\"); ",
-									"    pm.expect(response.alternativeTitles[0]).to.be.equal(\"Handbuch der historishen Buchbestände\"); ",
+									"    pm.expect(response.alternativeTitles[0].alternativeTitle).to.be.equal(\"Handbuch der historishen Buchbestände\"); ",
 									"});",
 									"",
 									"",
@@ -2031,7 +2083,8 @@
 									"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
 									"",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -3558,7 +3611,6 @@
 							"listen": "test",
 							"script": {
 								"id": "e6286b3b-f9ce-4515-9202-ef3c4a3f074d",
-								"type": "text/javascript",
 								"exec": [
 									"",
 									"var response = JSON.parse(responseBody);",
@@ -3594,17 +3646,38 @@
 									"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
 									"});",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "prerequest",
 							"script": {
 								"id": "b93b69c5-a9b4-4495-9df0-1a5ccb4fe1b6",
-								"type": "text/javascript",
 								"exec": [
+									"let endpointBook = pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\")+ \":\" + pm.environment.get(\"okapiport\") + \"/material-types?query=(name=book)\";",
+									"",
+									"let tenant = pm.environment.get(\"xokapitenant\");",
+									"let token = pm.environment.get(\"xokapitoken\");",
+									"",
+									"//get material type",
+									"pm.sendRequest({",
+									"    url: endpointBook,",
+									"    method: \"GET\",",
+									"    header: {",
+									"         \"x-okapi-tenant\":tenant,",
+									"         \"x-okapi-token\":token",
+									"    }",
+									" },",
+									" function (err, res) {",
+									"    if(res.json().mtypes.length>0){",
+									"     pm.environment.set(\"materialtypeid\",  res.json().mtypes[0].id);",
+									"    }",
+									" }",
+									");",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -3729,7 +3802,6 @@
 							"listen": "test",
 							"script": {
 								"id": "88f9d1e0-1ad7-4207-a39a-86fcf3eb4081",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Status is 204\", function () {",
 									"    pm.response.to.have.status(204);",
@@ -3746,7 +3818,18 @@
 									"    pm.expect(pm.response.headers.get(\"accept-encoding\")).to.be.equal(\"gzip, deflate\");",
 									"});",
 									""
-								]
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "001f7cca-393d-4222-842c-01340bf2397a",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -3768,7 +3851,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"id\": \"{{newitemstorage}}\",\n    \"pieceIdentifiers\": [\"here is my identifier\"],\n    \"holdingsRecordId\": \"{{existingHoldingsRecordId}}\",\n    \"notes\": [\"here are my notes\"],\n    \"materialTypeId\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\",\n    \"permanentLoanTypeId\": \"{{testpermanentloantypeid}}\"\n}"
+							"raw": "{\n    \"id\": \"{{newitemstorage}}\",\n    \"holdingsRecordId\": \"{{existingHoldingsRecordId}}\",\n    \"notes\": [\n    \t{\"noteType\":\"Check in\",\n    \t \"note\":\"here are my notes\",\n    \t  \"staffOnly\":false}\n    \t  ],\n    \"materialTypeId\": \"{{materialtypeid}}\",\n    \"permanentLoanTypeId\": \"{{testpermanentloantypeid}}\"\n}"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/item-storage/items/{{newitemstorage}}",
@@ -3793,7 +3876,6 @@
 							"listen": "test",
 							"script": {
 								"id": "11f869d6-399f-47ed-853c-9745efa9a906",
-								"type": "text/javascript",
 								"exec": [
 									"var response = JSON.parse(responseBody);",
 									"",
@@ -3809,8 +3891,7 @@
 									"",
 									"pm.test(\"Response must contain the updated item storage\", function () {",
 									"    pm.expect(response.id).to.be.equal(pm.environment.get(\"newitemstorage\")); ",
-									"    pm.expect(response.pieceIdentifiers[0]).to.be.equal(\"here is my identifier\"); ",
-									"    pm.expect(response.notes[0]).to.be.equal(\"here are my notes\"); ",
+									"    pm.expect(response.notes[0].note).to.be.equal(\"here are my notes\"); ",
 									"});",
 									"",
 									"pm.test(\"validate schema\", function() {",
@@ -3830,7 +3911,8 @@
 									"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
 									"",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
