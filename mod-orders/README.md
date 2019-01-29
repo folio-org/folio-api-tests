@@ -21,6 +21,10 @@ Folder | Description
 `- PO Number` | Verifies PO Number generation/validation
 `- Get Orders` | Verifies that orders can be be retrieved by CQL query
 `Negative Tests` | Contains various requests and tests to verify expected negative cases e.g. validation of the request etc.
+`- Create Order for tests` | Create order and PO line with content required for negative tests
+`- Order` | Various requests and tests to verify expected negative cases for endpoints managing order 
+`- Lines` | Various requests and tests to verify expected negative cases for endpoints managing order lines 
+`- PO Number` | Various requests and tests to verify expected negative cases for endpoints validating PO number 
 `Cleanup` | Revert configuration settings back to initial values. Delete created inventory records. Delete created orders and verifies deletion.
 
 ### Collection variables
