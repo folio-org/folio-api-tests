@@ -1408,6 +1408,7 @@
 													"        let order  = res.json();",
 													"        order.workflow_status = \"Pending\";",
 													"        order = utils.deletePoNumber(order);",
+													"        // Set retrieved content for further requests",
 													"        pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
 													"    }",
 													");"
@@ -2636,6 +2637,148 @@
 									"listen": "test",
 									"script": {
 										"id": "85d967cc-42f8-49e6-9705-7f46ac900f1d",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": " Add expected receipt date to PO Line",
+							"item": [
+								{
+									"name": "Update last line with expected receipt date",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let moment = require('moment');",
+													"",
+													"// Using id of the last PO Line",
+													"let poLineId = utils.getLastPoLineId();",
+													"pm.variables.set(\"poline_id\", poLineId);",
+													"pm.sendRequest({",
+													"    url: utils.buildOkapiUrl(\"/orders/order-lines/\" + poLineId),",
+													"        method: \"GET\",",
+													"        header: {",
+													"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+													"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+													"        }",
+													"    },",
+													"    function (err, res) {",
+													"        // Get physical object",
+													"        let physical = JSON.parse(pm.globals.get(\"po_listed_print_monograph\")).po_lines[0].physical;",
+													"        // make sure there is no id provided",
+													"        delete physical.id;",
+													"",
+													"        // Get current date and add 1 month",
+													"        let expectedReceiptDate = moment().utc().add(1, 'month').format();",
+													"        pm.variables.set(\"expectedReceiptDate\", expectedReceiptDate);",
+													"        physical.expectedReceiptDate = expectedReceiptDate;",
+													"",
+													"        let poLine  = res.json();",
+													"        poLine.physical = physical;",
+													"        pm.variables.set(\"updated_po_line\", JSON.stringify(poLine));",
+													"    }",
+													");"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let moment = require('moment');",
+													"",
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(\"No Content\");",
+													"});   ",
+													"",
+													"// Get updated PO Line",
+													"pm.sendRequest({",
+													"    url: pm.request.url,",
+													"        method: \"GET\",",
+													"        header: {",
+													"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+													"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+													"        }",
+													"}, function (err, res) {",
+													"    pm.test(\"PO Line updated with expected receipt date\", function () {",
+													"        let poLine  = res.json();",
+													"        // Dates should be in the same format",
+													"        let expectedReceiptDate = moment(pm.variables.get(\"expectedReceiptDate\")).utc().format();",
+													"        let actualDate = moment(poLine.physical.expectedReceiptDate).utc().format();",
+													"",
+													"        pm.expect(actualDate).to.equal(expectedReceiptDate);",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updated_po_line}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poline_id}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines",
+												"{{poline_id}}"
+											]
+										},
+										"description": "Gets content of last PO Line and updates it adding expected receipt date"
+									},
+									"response": []
+								}
+							],
+							"description": "[MODORDERS-135](https://issues.folio.org/browse/MODORDERS-135)\n\nAdd an `expected_receipt_date` field to the physical sub-object.",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "12fb8535-67c4-44e3-a656-ae684fccb7a0",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5c6ff5d2-f3ba-4a69-be99-c36a49678157",
 										"type": "text/javascript",
 										"exec": [
 											""
