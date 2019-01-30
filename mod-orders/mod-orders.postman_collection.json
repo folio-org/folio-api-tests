@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "3a2356c4-69d4-433a-9a16-ad19f26977b9",
+		"_postman_id": "3697b2c4-2b91-4f44-ac08-80a203b2ee11",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -1145,46 +1145,46 @@
 							},
 							"response": []
 						},
-                      {
-                        "name": "po_number.json",
-                        "event": [
-                          {
-                            "listen": "test",
-                            "script": {
-                              "id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-                              "exec": [
-                                "pm.test(pm.variables.get(\"schema_po_number\") + \" GET OK\", function () {",
-                                "    pm.response.to.be.ok;",
-                                "    pm.response.to.be.withBody;",
-                                "});",
-                                "",
-                                "pm.globals.set(\"schema_po_number_content\", responseBody);"
-                              ],
-                              "type": "text/javascript"
-                            }
-                          }
-                        ],
-                        "request": {
-                          "method": "GET",
-                          "header": [],
-                          "body": {
-                            "mode": "raw",
-                            "raw": ""
-                          },
-                          "url": {
-                            "raw": "{{schema_loc}}/{{module}}/schemas/{{schema_po_number}}",
-                            "host": [
-                              "{{schema_loc}}"
-                            ],
-                            "path": [
-                              "{{module}}",
-                              "schemas",
-                              "{{schema_po_number}}"
-                            ]
-                          }
-                        },
-                        "response": []
-                      }
+						{
+							"name": "po_number.json",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
+										"exec": [
+											"pm.test(pm.variables.get(\"schema_po_number\") + \" GET OK\", function () {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.withBody;",
+											"});",
+											"",
+											"pm.globals.set(\"schema_po_number_content\", responseBody);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{schema_loc}}/{{module}}/schemas/{{schema_po_number}}",
+									"host": [
+										"{{schema_loc}}"
+									],
+									"path": [
+										"{{module}}",
+										"schemas",
+										"{{schema_po_number}}"
+									]
+								}
+							},
+							"response": []
+						}
 					],
 					"event": [
 						{
@@ -1226,7 +1226,8 @@
 									"script": {
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
-											""
+											"let utils = eval(globals.loadUtils);",
+											"pm.variables.set(\"order_body\", JSON.stringify(utils.buildOrderWithMinContent()));"
 										],
 										"type": "text/javascript"
 									}
@@ -1236,24 +1237,29 @@
 									"script": {
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
-											"var jsonData = pm.response.json();",
-											" ",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
-											"});",
 											"",
-											"pm.test(\"Empty list of notes exist\", function () {",
-											"    pm.expect(jsonData.notes).to.have.lengthOf(0);",
-											"});",
+											"    // The rest of the tests can be run only if the order created successfully",
+											"    var jsonData = pm.response.json();",
 											"",
-											"pm.test(\"Each order has required fields\", function(){",
-											"    pm.expect(jsonData.id).to.exist;",
-											"    pm.globals.set(\"empty_order_id\", jsonData.id); ",
-											"    pm.expect(jsonData.notes).to.exist;",
-											"    pm.expect(jsonData.po_number).to.exist;",
-											"    pm.expect(jsonData.po_lines).to.exist;",
-											"});",
-											""
+											"    pm.test(\"Empty list of notes exist\", function () {",
+											"        pm.expect(jsonData.notes).to.have.lengthOf(0);",
+											"    });",
+											"    ",
+											"    pm.test(\"Each order has required fields\", function(){",
+											"        pm.expect(jsonData.id).to.exist;",
+											"        pm.globals.set(\"empty_order_id\", jsonData.id); ",
+											"        pm.expect(jsonData.notes).to.exist;",
+											"        pm.expect(jsonData.po_number).to.exist;",
+											"        pm.expect(jsonData.po_lines).to.exist;",
+											"        pm.expect(jsonData.po_lines).to.be.empty;",
+											"    });",
+											"    ",
+											"    pm.test(\"MODORDERS-145: Verify status to be Pending\", function(){",
+											"        pm.expect(jsonData.workflow_status).to.equal(\"Pending\");",
+											"    });",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -1277,7 +1283,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\t\n}"
+									"raw": "{{order_body}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -1291,7 +1297,111 @@
 										"composite-orders"
 									]
 								},
-								"description": "Create an order with minimal required fields (update based on MODORDERS-136)."
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						},
+						{
+							"name": "Update order with new po_number",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"// Get Order and update po_number only (MODORDERS-150)",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders/composite-orders/\" + globals.empty_order_id),",
+											"        method: \"GET\",",
+											"        header: {",
+											"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"        }",
+											"    },",
+											"    function (err, res) {",
+											"        let order  = res.json();",
+											"        let number = \"UPD\" + order.po_number;",
+											"        order.po_number = number;",
+											"        pm.variables.set(\"updated_number\", number);",
+											"        pm.variables.set(\"updated_order\", JSON.stringify(order));",
+											"    }",
+											");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    pm.sendRequest({",
+											"        url: pm.request.url,",
+											"            method: \"GET\",",
+											"            header: {",
+											"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"            }",
+											"    },",
+											"    function (err, res) {",
+											"        pm.test(\"Verify order updated with new PO number\", function () {",
+											"            let order  = res.json();",
+											"            pm.expect(order.po_number).to.equal(pm.variables.get(\"updated_number\"));",
+											"        });",
+											"    });",
+											"});   ",
+											"",
+											"",
+											"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
+											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updated_order}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{empty_order_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{empty_order_id}}"
+									]
+								},
+								"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
 							},
 							"response": []
 						},
@@ -3184,9 +3294,25 @@
 											"script": {
 												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 												"exec": [
-													"pm.globals.set(\"po_number\", \"newponumber\");",
-													"    ",
-													""
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"// Get Order and update po_number only",
+													"pm.sendRequest({",
+													"    url: utils.buildOkapiUrl(\"/orders/composite-orders/\" + globals.complete_order_id),",
+													"        method: \"GET\",",
+													"        header: {",
+													"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+													"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+													"        }",
+													"    },",
+													"    function (err, res) {",
+													"        let order  = res.json();",
+													"        order.po_number = \"newponumber\";",
+													"        pm.variables.set(\"updated_order\", JSON.stringify(order));",
+													"    }",
+													");",
+													"",
+													"pm.globals.set(\"po_number\", \"newponumber\");"
 												],
 												"type": "text/javascript"
 											}
@@ -3248,7 +3374,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n    \"approved\": false,\n    \"assigned_to\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n    \"notes\": [\n        \"ABCDEFGHIJKLMNO\",\n        \"ABCDEFGHIJKLMNOPQRST\",\n        \"ABCDEFGHIJKLMNOPQRSTUV\"\n    ],\n    \"po_number\": \"{{po_number}}\",\n    \"order_type\": \"Ongoing\",\n    \"re_encumber\": false,\n    \"total_estimated_price\": 99.99,\n    \"total_items\": 2,\n    \"vendor\": \"168f8a86-d26c-406e-813f-c7527f241ac3\",\n    \"workflow_status\": \"Pending\"\n}"
+											"raw": "{{updated_order}}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{complete_order_id}}",
@@ -3851,7 +3977,7 @@
 											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
 											"});",
 											"",
-											"pm.test(\"po_lines and corresponding Inventory entities exist\", function () {",
+											"pm.test(\"Verify PO Line updated with expected receipt date\", function () {",
 											"    pm.sendRequest({",
 											"        url: pm.request.url,",
 											"            method: \"GET\",",
@@ -4081,7 +4207,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\t\"po_number\" : \"NewPO111NewPO\"\n}"
+									"raw": "{\n\t\"poNumber\" : \"NewPO111NewPO\"\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
@@ -4106,45 +4232,46 @@
 								{
 									"listen": "test",
 									"script": {
-                                      "id": "9e9d47e7-02ab-4874-9914-a9d55ae25bd9",
-                                      "exec": [
-                                        "let utils = eval(globals.loadUtils);\r",
-                                        "\r",
-                                        "var jsonData = pm.response.json();\r",
-                                        "\r",
-                                        "// 1. Verify response status\r",
-                                        "pm.test(\"First response status code is 200\", function () {\r",
-                                        "    pm.response.to.have.status(200);\r",
-                                        "});\r",
-                                        "\r",
-                                        "// 2. Validate PoNumber schema\r",
-                                        "var schema = JSON.parse(globals.schema_po_number_content);\r",
-                                        "pm.test('PoNumber schema is valid', function() {\r",
-                                        "  pm.expect(tv4.validate(jsonData, schema)).to.be.true;\r",
-                                        "});\r",
-                                        "\r",
-                                        "//3.  Verify po_number generation process\r",
-                                        "let endpoint = utils.buildOkapiUrl(\"/orders/po-number\");\r",
-                                        "\r",
-                                        "const getPoNumberRequest = {\r",
-                                        "  url: endpoint,\r",
-                                        "  method: \"GET\",\r",
-                                        "  header: [\"X-Okapi-Tenant:\" + pm.environment.get(\"xokapitenant\"),\r",
-                                        "  \"Content-Type:application/json\",\r",
-                                        "  \"X-Okapi-Token:\" + pm.environment.get(\"xokapitoken\")],\r",
-                                        "};\r",
-                                        "\r",
-                                        "pm.test(\"Second response status code is 200\", function () {\r",
-                                        "    pm.sendRequest(getPoNumberRequest, function (err, res) {\r",
-                                        "        pm.response.to.have.status(200);\r",
-                                        "        console.log(\"Second request po_number : \" + res.json().po_number);\r",
-                                        "        pm.test(\"po_numbers are not same\", function () {\r",
-                                        "            pm.expect(jsonData.po_number).to.not.eql(res.json().po_number);\r",
-                                        "        });\r",
-                                        "    });\r",
-                                        "});\r",
-                                        ""
-                                      ],
+										"id": "9e9d47e7-02ab-4874-9914-a9d55ae25bd9",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"var jsonData = pm.response.json();\r",
+											"\r",
+											"// 1. Verify response status\r",
+											"pm.test(\"First response status code is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"\r",
+											"// 2. Validate PoNumber schema\r",
+											"var schema = JSON.parse(globals.schema_po_number_content);\r",
+											"pm.test('PoNumber schema is valid', function() {\r",
+											"  pm.expect(tv4.validate(jsonData, schema)).to.be.true;\r",
+											"});\r",
+											"\r",
+											"//3.  Verify po number generation process\r",
+											"let endpoint = utils.buildOkapiUrl(\"/orders/po-number\");\r",
+											"\r",
+											"const getPoNumberRequest = {\r",
+											"  url: endpoint,\r",
+											"  method: \"GET\",\r",
+											"  header: [\"X-Okapi-Tenant:\" + pm.environment.get(\"xokapitenant\"),\r",
+											"  \"Content-Type:application/json\",\r",
+											"  \"X-Okapi-Token:\" + pm.environment.get(\"xokapitoken\")],\r",
+											"};\r",
+											"\r",
+											"pm.sendRequest(getPoNumberRequest, function (err, res) {\r",
+											"    pm.test(\"Second response status code is 200\", function () {\r",
+											"        pm.response.to.have.status(200);\r",
+											"        console.log(\"Second request po number : \" + res.json().poNumber);\r",
+											"\r",
+											"        pm.test(\"po numbers are not same\", function () {\r",
+											"            pm.expect(jsonData.poNumber).to.not.eql(res.json().poNumber);\r",
+											"        });\r",
+											"    });\r",
+											"});\r",
+											""
+										],
 										"type": "text/javascript"
 									}
 								},
@@ -4378,1641 +4505,1714 @@
 			"name": "Negative Tests",
 			"item": [
 				{
-					"name": "/orders/composite-orders/id - bad ID - 400",
-					"event": [
+					"name": "Create Order for tests",
+					"item": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
+							"name": "Create an order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.variables.set(\"order_body\", JSON.stringify(utils.buildOrderWithMinContent()));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"    pm.globals.set(\"negative_tests_order_id\", jsonData.id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_body}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
 						},
 						{
-							"listen": "test",
-							"script": {
-								"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
-								"exec": [
-									"pm.test(\"Status code is 400 - resource does not exist\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Error string in response body\", function () {",
-									"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
-									"    pm.expect(pm.response.text()).to.include(\"fb40b2\");",
-									"});"
+							"name": "Add POLine order for further tests",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    eval(globals.loadUtils).rememberPoLineId(pm.response.json());",
+											"});",
+											"",
+											"pm.test(\"Validate that response contains desired data\", function () {",
+											"    let line = pm.response.json();",
+											"    pm.expect(line.reporting_codes).to.have.lengthOf(2);",
+											"    pm.expect(line.location).to.exist;",
+											"    pm.globals.set(\"po_line_for_negative_tests\", JSON.stringify(line));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"location\" : {\n      \"quantity\" : 1,\n      \"quantity_electronic\" : 1,\n      \"quantity_physical\" : 0\n    },\n\t\"source\": { \"code\": \"FOLIO\" },\n    \"purchase_order_id\" : \"{{negative_tests_order_id}}\",\n\t\"reporting_codes\": [\n\t\t{\n\t\t  \"code\": \"CODE1\",\n\t\t  \"description\": \"ABCDEF\"\n\t\t},\n\t\t{\n\t\t  \"code\": \"CODE2\",\n\t\t  \"description\": \"ABCDE\"\n\t\t}\n\t]\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								},
+								"description": "GET /orders/order-lines/id requests that return 200"
+							},
+							"response": []
 						}
 					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/fb40b2",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"fb40b2"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that returns 404"
-					},
-					"response": []
+					"_postman_isSubFolder": true
 				},
 				{
-					"name": "/orders/composite-orders/id - bad ID - 400",
-					"event": [
+					"name": "Order",
+					"item": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
+							"name": "Get order - bad ID - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"bad-id"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that returns 404"
+							},
+							"response": []
 						},
 						{
-							"listen": "test",
-							"script": {
-								"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
-								"exec": [
-									"pm.test(\"Status code is 400 - resource does not exist\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Error string in response body\", function () {",
-									"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
-									"    pm.expect(pm.response.text()).to.include(\"fb40b2\");",
-									"});"
+							"name": "Update order - bad ID - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"bad-id"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that returns 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete order - bad ID - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"bad-id"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that returns 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Get order - valid token, invalid tenant - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "7ea0cb79-8f57-490d-b2a9-c368ac95914a",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"No such Tenant fs12345678\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "fs12345678"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 400"
+							},
+							"response": []
+						},
+						{
+							"name": "Get order - bad token format",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "63145320-5160-4511-b040-bd72005f8468",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "bad-token"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get order - invalid token - 401",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "e41e5c9e-c396-4f1e-81ff-10b79f737233",
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"Invalid token\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "eyJhbGciOiJIUzUxMiJ999999.eyJzdWIiOiJhZG1pbiIsInVzZXJfaWQiOiJlZjY3NmRiOS1kMjMxLTQ3OWEtYWE5MS1mNjVlYjRiMTc4NzIiLCJ0ZW5hbnQiOiJmczAwMDAwMDAwIn2.KC0RbgafcMmR5Mc3-I7a6SQPKeDSr0SkJlLMcqQz3nwI0lwPTlxw0wJgidxDq-qjCR0wurFRn5ugd9_SVadSxg"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id request that return 401"
+							},
+							"response": []
+						},
+						{
+							"name": "Get order - random order ID - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4c51240b-34ce-4a8b-9db1-a1150320f0fe",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Get order - empty order ID - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"No suitable module found for path /orders/\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										""
+									]
+								},
+								"description": "GET /orders/composite-orders/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Update order - empty po_number - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"pm.variables.set(\"poline_id\", eval(globals.loadUtils).getLastPoLineId());"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negative_tests_order_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negative_tests_order_id}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							},
-							{
-								"key": "Content-Type",
-								"name": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\t\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/fb40b2",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"fb40b2"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that returns 404"
-					},
-					"response": []
+					"_postman_isSubFolder": true
 				},
 				{
-					"name": "/orders/composite-orders/id - bad ID - 400",
-					"event": [
+					"name": "Lines",
+					"item": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
+							"name": "Verify PO Line required properties",
+							"item": [
+								{
+									"name": "Create line - no source - 422",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let line = utils.buildPoLineWithMinContent(globals.negative_tests_order_id);",
+													"delete line.source;",
+													"pm.variables.set(\"line_body\", JSON.stringify(line));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+												"exec": [
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(422);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{line_body}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
 						},
 						{
-							"listen": "test",
-							"script": {
-								"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
-								"exec": [
-									"pm.test(\"Status code is 400 - resource does not exist\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Error string in response body\", function () {",
-									"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
-									"    pm.expect(pm.response.text()).to.include(\"fb40b2\");",
-									"});"
+							"name": "Get PO Line - random line id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /orders/order-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete PO Line - random line id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /orders/order-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Get line - empty polineId - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"No suitable module found for path /orders/\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										""
+									]
+								},
+								"description": "GET /orders/order-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Update line - bad id format in body - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let line = utils.buildPoLineWithMinContent(globals.negative_tests_order_id);",
+											"line.id = \"bad-id\";",
+											"pm.variables.set(\"line_body\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{line_body}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update line - bad content - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let line = utils.buildPoLineWithMinContent(globals.negative_tests_order_id);",
+											"line.nonexistent_property = \"nonexistent_property_value\";",
+											"pm.variables.set(\"line_body\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{line_body}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create line - bad content - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let line = utils.buildPoLineWithMinContent(globals.negative_tests_order_id);",
+											"line.nonexistent_property = \"nonexistent_property_value\";",
+											"pm.variables.set(\"line_body\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{line_body}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get line - invalid line Id - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Incorrect parameter pattern error message\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"po1ineid-with-eror-r400-000000000000\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/po1ineid-with-eror-r400-000000000000",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"po1ineid-with-eror-r400-000000000000"
+									]
+								},
+								"description": "GET /orders/order-lines/ requests that return 422"
+							},
+							"response": []
+						},
+						{
+							"name": "Update line - invalid line Id - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let line = utils.buildPoLineWithMinContent(globals.negative_tests_order_id);",
+											"pm.variables.set(\"line_body\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Incorrect parameter pattern error message\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"po1ineid-with-eror-r400-000000000000\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{line_body}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/po1ineid-with-eror-r400-000000000000",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"po1ineid-with-eror-r400-000000000000"
+									]
+								},
+								"description": "GET /orders/order-lines/ requests that return 422"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete line - invalid line Id - 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Incorrect parameter pattern error message\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"po1ineid-with-eror-r400-000000000000\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/po1ineid-with-eror-r400-000000000000",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"po1ineid-with-eror-r400-000000000000"
+									]
+								},
+								"description": "GET /orders/order-lines requests that return 422"
+							},
+							"response": []
+						},
+						{
+							"name": "Add line - invalid order Id in body - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											"let line = JSON.parse(pm.globals.get(\"po_listed_print_monograph\")).po_lines[0];",
+											"line.purchase_order_id = \"\";",
+											"pm.variables.set(\"po_line_listed_print_monograph\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_line_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								},
+								"description": "GET /orders/order-lines/id requests that return 422"
+							},
+							"response": []
+						},
+						{
+							"name": "Update line - update removed sub-object - 500",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let line = JSON.parse(globals.po_line_for_negative_tests);",
+											"line.po_line_description =\"Description\";",
+											"pm.variables.set(\"po_line_for_negative_tests\", JSON.stringify(line));",
+											"pm.variables.set(\"poline_id\", line.id);",
+											"",
+											"// Delete one reporting code from storage",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders-storage/reporting_codes/\" + line.reporting_codes[0].id),",
+											"    method: \"DELETE\",",
+											"    header: {",
+											"        \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"    }",
+											"}, function (err, res) { });",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 500\", function () {",
+											"    pm.response.to.have.status(500);",
+											"",
+											"    // Further tests can be done only if Server Error happened",
+											"    pm.test(\"Error in body as json\", function () {",
+											"        pm.expect(pm.response.json().errors).to.have.lengthOf(2);",
+											"    });",
+											"",
+											"    pm.sendRequest({",
+											"        url: pm.request.url,",
+											"            method: \"GET\",",
+											"            header: {",
+											"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"            }",
+											"    },",
+											"    function (err, res) {",
+											"        pm.test(\"po_line has updates\", function () {",
+											"            let line = res.json();",
+											"            pm.expect(line.location).to.exist;",
+											"            pm.expect(line.po_line_description).to.exist;",
+											"            pm.expect(line.reporting_codes).to.have.lengthOf(1);",
+											"        });",
+											"    });",
+											"",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_line_for_negative_tests}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poline_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines",
+										"{{poline_id}}"
+									]
+								},
+								"description": "The test verifies that PO Line is partially updated even if errors happened on sub-object operations\n1. Remove one of reporting codes in the Pre-request script\n2. Submit PUT PO Line request\n3. Verify expected behavior in Tests"
+							},
+							"response": []
 						}
 					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/fb40b2",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"fb40b2"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that returns 404"
-					},
-					"response": []
+					"_postman_isSubFolder": true
 				},
 				{
-					"name": "/orders/composite-orders/{{complete_order_id}} - valid token, invalid tenant - 400",
-					"event": [
+					"name": "PO Number",
+					"item": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
+							"name": "Validate - existing PO Number",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders/composite-orders/\" + globals.negative_tests_order_id),",
+											"        method: \"GET\",",
+											"        header: {",
+											"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"        }",
+											"    },",
+											"    function (err, res) {",
+											"        pm.variables.set(\"existing_number\", res.json().po_number);",
+											"    }",
+											");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"poNumber\" : {{existing_number}}\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"po-number",
+										"validate"
+									]
+								},
+								"description": "Return a 400 if an existing PO Number is supplied"
+							},
+							"response": []
 						},
 						{
-							"listen": "test",
-							"script": {
-								"id": "7ea0cb79-8f57-490d-b2a9-c368ac95914a",
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"empty instance ID returns error message\", function () {",
-									"     pm.expect(pm.response.text()).to.include(\"No such Tenant fs12345678\");",
-									"});",
-									""
+							"name": "Validate - invalid PONumber",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"poNumber\" : \"12-12-13\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"po-number",
+										"validate"
+									]
+								},
+								"description": "Return a 422 when an invalid PO Number is specified"
+							},
+							"response": []
 						}
 					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "fs12345678"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{complete_order_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{complete_order_id}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 400"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/composite-orders/{{complete_order_id}} - valid token, missing tenant - 200",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "63145320-5160-4511-b040-bd72005f8468",
-								"exec": [
-									"var jsonData = pm.response.json();",
-									"",
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{complete_order_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{complete_order_id}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 200"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/composite-orders/{{complete_order_id}} - invalid token - 401",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "e41e5c9e-c396-4f1e-81ff-10b79f737233",
-								"exec": [
-									"pm.test(\"Status code is 401\", function () {",
-									"    pm.response.to.have.status(401);",
-									"});",
-									"",
-									"pm.test(\"empty instance ID returns error message\", function () {",
-									"     pm.expect(pm.response.text()).to.include(\"Invalid token\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "eyJhbGciOiJIUzUxMiJ999999.eyJzdWIiOiJhZG1pbiIsInVzZXJfaWQiOiJlZjY3NmRiOS1kMjMxLTQ3OWEtYWE5MS1mNjVlYjRiMTc4NzIiLCJ0ZW5hbnQiOiJmczAwMDAwMDAwIn2.KC0RbgafcMmR5Mc3-I7a6SQPKeDSr0SkJlLMcqQz3nwI0lwPTlxw0wJgidxDq-qjCR0wurFRn5ugd9_SVadSxg"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{complete_order_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{complete_order_id}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id request that return 401"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/composite-orders/id - invalid order ID - 404",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "4c51240b-34ce-4a8b-9db1-a1150320f0fe",
-								"exec": [
-									"pm.test(\"Status code is 404\", function () {",
-									"    pm.response.to.have.status(404);",
-									"});",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{$guid}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{$guid}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 404"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/composite-orders/ - empty order ID - 404",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 404\", function () {",
-									"    pm.response.to.have.status(404);",
-									"});",
-									"",
-									"pm.test(\"empty instance ID returns error message\", function () {",
-									"     pm.expect(pm.response.text()).to.include(\"No suitable module found for path /orders/\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								""
-							]
-						},
-						"description": "GET /orders/composite-orders/ requests that return 404"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/composite-orders/id - empty po_number - 422",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
-								"exec": [
-									"pm.variables.set(\"poline_id\", eval(globals.loadUtils).getLastPoLineId());"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
-								"exec": [
-									"pm.test(\"Status code is 422\", function () {",
-									"    pm.response.to.have.status(422);",
-									"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"type": "text",
-								"value": "{{xokapitoken}}"
-							},
-							{
-								"key": "Content-Type",
-								"name": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{complete_order_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{complete_order_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - deleted line - 404",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 404\", function () {",
-									"    pm.response.to.have.status(404);",
-									"});",
-									"",
-									"pm.test(\"empty instance ID returns error message\", function () {",
-									"     pm.expect(pm.response.text()).to.exist;",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{$guid}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"{{$guid}}"
-							]
-						},
-						"description": "GET /orders/order-lines/ requests that return 404"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - deleted line - 404",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 404\", function () {",
-									"    pm.response.to.have.status(404);",
-									"});",
-									"",
-									"pm.test(\"empty instance ID returns error message\", function () {",
-									"     pm.expect(pm.response.text()).to.exist;",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{$guid}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"{{$guid}}"
-							]
-						},
-						"description": "GET /orders/order-lines/ requests that return 404"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - empty polineId - 404",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 404\", function () {",
-									"    pm.response.to.have.status(404);",
-									"});",
-									"",
-									"pm.test(\"empty instance ID returns error message\", function () {",
-									"     pm.expect(pm.response.text()).to.include(\"No suitable module found for path /orders/\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								""
-							]
-						},
-						"description": "GET /orders/order-lines/ requests that return 404"
-					},
-					"response": []
-				},
-				{
-					"name": "Add POLine to existing order for further tests",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 201\", function () {",
-									"    pm.response.to.have.status(201);",
-									"    eval(globals.loadUtils).rememberPoLineId(pm.response.json());",
-									"});",
-									"",
-									"pm.test(\"Validate that response contains desired data\", function () {",
-									"    let line = pm.response.json();",
-									"    pm.expect(line.reporting_codes).to.have.lengthOf(2);",
-									"    pm.expect(line.location).to.exist;",
-									"    pm.globals.set(\"po_line_for_negative_tests\", JSON.stringify(line));",
-									"});",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "X-Okapi-Token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\t\"location\" : {\n      \"quantity\" : 1,\n      \"quantity_electronic\" : 1,\n      \"quantity_physical\" : 0\n    },\n    \"purchase_order_id\" : \"{{complete_order_id}}\",\n\t\"reporting_codes\": [\n\t\t{\n\t\t  \"code\": \"CODE1\",\n\t\t  \"description\": \"ABCDEF\"\n\t\t},\n\t\t{\n\t\t  \"code\": \"CODE2\",\n\t\t  \"description\": \"ABCDE\"\n\t\t}\n\t]\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines"
-							]
-						},
-						"description": "GET /orders/order-lines/id requests that return 200"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - bad id format in body - 422",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
-								"exec": [
-									"pm.variables.set(\"poline_id\", eval(globals.loadUtils).getLastPoLineId());"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
-								"exec": [
-									"pm.test(\"Status code is 422\", function () {",
-									"    pm.response.to.have.status(422);",
-									"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"type": "text",
-								"value": "{{xokapitoken}}"
-							},
-							{
-								"key": "Content-Type",
-								"name": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\t\"id\": \"bad-id\"\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poline_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"{{poline_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - bad content - 422",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
-								"exec": [
-									"pm.variables.set(\"poline_id\", eval(globals.loadUtils).getLastPoLineId());"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
-								"exec": [
-									"pm.test(\"Status code is 422\", function () {",
-									"    pm.response.to.have.status(422);",
-									"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"type": "text",
-								"value": "{{xokapitoken}}"
-							},
-							{
-								"key": "Content-Type",
-								"name": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\t\"nonexistent_property\": \"nonexistent_property_value\"\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poline_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"{{poline_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/orders-storage/reporting_codes/id - deleted reporting code for further tests",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									"pm.variables.set(\"reporting_code\", JSON.parse(globals.po_line_for_negative_tests).reporting_codes[0].id);"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 204\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/reporting_codes/{{reporting_code}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders-storage",
-								"reporting_codes",
-								"{{reporting_code}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - update removed sub-object - 500",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
-								"exec": [
-									"let line = JSON.parse(globals.po_line_for_negative_tests);",
-									"line.po_line_description =\"Description\";",
-									"pm.variables.set(\"po_line_for_negative_tests\", JSON.stringify(line));",
-									"pm.variables.set(\"poline_id\", line.id);"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
-								"exec": [
-									"pm.test(\"Status code is 500\", function () {",
-									"    pm.response.to.have.status(500);",
-									"});",
-									"",
-									"pm.test(\"Error in body as json\", function () {",
-									"    pm.expect(pm.response.json().errors).to.have.lengthOf(2);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"type": "text",
-								"value": "{{xokapitoken}}"
-							},
-							{
-								"key": "Content-Type",
-								"name": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{{po_line_for_negative_tests}}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poline_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"{{poline_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/polineId - verify that line partially updated",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									"let utils = eval(globals.loadUtils);",
-									"pm.variables.set(\"poline_id\", utils.getLastPoLineId());"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"po_line has updates\", function () {",
-									"    let line = pm.response.json();",
-									"    pm.expect(line.location).to.exist;",
-									"    pm.expect(line.po_line_description).to.exist;",
-									"    pm.expect(line.reporting_codes).to.have.lengthOf(1);",
-									"});",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poline_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"{{poline_id}}"
-							]
-						},
-						"description": "GET /orders/order-lines/id requests that return 200"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - invalid polineId - 400",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Incorrect parameter pattern error message\", function () {",
-									"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
-									"    pm.expect(pm.response.text()).to.include(\"po1ineid-with-eror-r400-000000000000\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/po1ineid-with-eror-r400-000000000000",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"po1ineid-with-eror-r400-000000000000"
-							]
-						},
-						"description": "GET /orders/order-lines/ requests that return 422"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - invalid polineId - 400",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Incorrect parameter pattern error message\", function () {",
-									"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
-									"    pm.expect(pm.response.text()).to.include(\"po1ineid-with-eror-r400-000000000000\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/po1ineid-with-eror-r400-000000000000",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"po1ineid-with-eror-r400-000000000000"
-							]
-						},
-						"description": "GET /orders/order-lines/ requests that return 422"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - invalid polineId - 400",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Incorrect parameter pattern error message\", function () {",
-									"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
-									"    pm.expect(pm.response.text()).to.include(\"po1ineid-with-eror-r400-000000000000\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/po1ineid-with-eror-r400-000000000000",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines",
-								"po1ineid-with-eror-r400-000000000000"
-							]
-						},
-						"description": "GET /orders/order-lines requests that return 422"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - invalid orderId in line - 422",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
-								"exec": [
-									"var uuid = require('uuid');",
-									"let line = JSON.parse(pm.globals.get(\"po_listed_print_monograph\")).po_lines[0];",
-									"line.purchase_order_id = \"\";",
-									"pm.variables.set(\"po_line_listed_print_monograph\", JSON.stringify(line));"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
-								"exec": [
-									"pm.test(\"Status code is 422\", function () {",
-									"    pm.response.to.have.status(422);",
-									"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
-									"});",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{{po_line_listed_print_monograph}}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines"
-							]
-						},
-						"description": "GET /orders/order-lines/id requests that return 422"
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/order-lines/lineId - invalid content - 422",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 422\", function () {",
-									"    pm.response.to.have.status(422);",
-									"});",
-									"",
-									"pm.test(\"One error expected\", function() {",
-									"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
-									"});",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "X-Okapi-Token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\"id\": \"123\"}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"order-lines"
-							]
-						},
-						"description": "GET /orders/order-lines/id requests that return 200"
-					},
-					"response": []
-				},
-				{
-					"name": "POST /orders/po-number/validate- existing PO Number",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\t\"po_number\" : {{another_complete_order_id}}\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"po-number",
-								"validate"
-							]
-						},
-						"description": "Return a 400 if an existing PO Number is supplied"
-					},
-					"response": []
-				},
-				{
-					"name": "POST /orders/po-number/validate- invalid PONumber",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 422\", function () {",
-									"    pm.response.to.have.status(422);",
-									"});",
-									"",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n\t\"po_number\" : \"12-12-13\"\n}"
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/po-number/validate",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"po-number",
-								"validate"
-							]
-						},
-						"description": "Return a 422 when an invalid PO Number is specified"
-					},
-					"response": []
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -6326,6 +6526,69 @@
 					"response": []
 				},
 				{
+					"name": "Delete order for negative tests",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negative_tests_order_id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders",
+								"{{negative_tests_order_id}}"
+							]
+						},
+						"description": "GET /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Verify no lines left in storage",
 					"event": [
 						{
@@ -6376,7 +6639,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/po_lines?query=purchase_order_id=={{complete_order_id}} or purchase_order_id=={{another_complete_order_id}} or purchase_order_id=={{complete_open_order_id}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/po_lines?query=purchase_order_id=={{complete_order_id}} or purchase_order_id=={{another_complete_order_id}} or purchase_order_id=={{complete_open_order_id}} or purchase_order_id=={{negative_tests_order_id}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -6389,7 +6652,7 @@
 							"query": [
 								{
 									"key": "query",
-									"value": "purchase_order_id=={{complete_order_id}} or purchase_order_id=={{another_complete_order_id}} or purchase_order_id=={{complete_open_order_id}}"
+									"value": "purchase_order_id=={{complete_order_id}} or purchase_order_id=={{another_complete_order_id}} or purchase_order_id=={{complete_open_order_id}} or purchase_order_id=={{negative_tests_order_id}}"
 								}
 							]
 						},
@@ -6447,7 +6710,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/purchase_orders?query=id=={{complete_order_id}} or id=={{another_complete_order_id}} or id=={{complete_open_order_id}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/purchase_orders?query=id=={{complete_order_id}} or id=={{another_complete_order_id}} or id=={{complete_open_order_id}} or id=={{negative_tests_order_id}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -6460,7 +6723,7 @@
 							"query": [
 								{
 									"key": "query",
-									"value": "id=={{complete_order_id}} or id=={{another_complete_order_id}} or id=={{complete_open_order_id}}"
+									"value": "id=={{complete_order_id}} or id=={{another_complete_order_id}} or id=={{complete_open_order_id}} or id=={{negative_tests_order_id}}"
 								}
 							]
 						},
@@ -6547,6 +6810,15 @@
 					"        }",
 					"        console.log(\"Updated PO Line:\" + JSON.stringify(poLine));",
 					"        return poLine;",
+					"    };",
+					"",
+					"    /**",
+					"     * Build Order with minimal required fields.",
+					"     */",
+					"    utils.buildOrderWithMinContent = function() {",
+					"        return {",
+					"            ",
+					"        };",
 					"    };",
 					"",
 					"    /**",
@@ -6958,6 +7230,7 @@
 					"        pm.globals.unset(\"po_listed_print_monograph\");",
 					"        pm.globals.unset(\"complete_poline_ids\");",
 					"        pm.globals.unset(\"complete_order_id\");",
+					"        pm.globals.unset(\"negative_tests_order_id\");",
 					"        pm.globals.unset(\"another_complete_order_id\");",
 					"        pm.globals.unset(\"complete_open_order_id\");",
 					"        pm.globals.unset(\"po_line_for_negative_tests\");",
