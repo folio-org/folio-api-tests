@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "73091f08-1d21-400b-a73c-043c0b8ecff8",
+		"_postman_id": "911c6faf-646d-44da-a623-c92e43255ec1",
 		"name": "mod-inventory-storage",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -3530,7 +3530,6 @@
 							"listen": "test",
 							"script": {
 								"id": "3cf4ae0a-7f7d-4743-9c47-bfc5104c6bae",
-								"type": "text/javascript",
 								"exec": [
 									"var response = JSON.parse(responseBody);",
 									"",
@@ -3552,10 +3551,15 @@
 									"});",
 									"",
 									"pm.test(\"validate schema\", function() {",
-									"    tv4.addSchema(\"raml-util/schemas/metadata.schema\", JSON.parse(pm.variables.get(\"metadata.schema\")));",
-									"    tv4.addSchema(\"item.json\", JSON.parse(pm.variables.get(\"item.schema\")));",
-									"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.variables.get(\"items.schema\")))).to.be.true;",
-									"    pm.expect(tv4.missing).to.be.empty;",
+									"    console.log(\"metadata\" + pm.environment.get(\"metadata.schema\"))",
+									"    console.log (\"item\" + pm.environment.get(\"item.schema\") )",
+									"    console.log(\"items\" + pm.environment.get(\"items.schema\"))",
+									"    ",
+									"    tv4.addSchema(\"raml-util/schemas/metadata.schema\", JSON.parse(pm.environment.get(\"metadata.schema\")));",
+									"    tv4.addSchema(\"item.json\", JSON.parse(pm.environment.get(\"item.schema\")));",
+									"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"items.schema\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"    ",
 									"});",
 									"",
 									"//verify headers",
@@ -3569,7 +3573,94 @@
 									"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
 									"",
 									"});"
-								]
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/item-storage/items",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"item-storage",
+								"items"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/item-storage/items Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "3cf4ae0a-7f7d-4743-9c47-bfc5104c6bae",
+								"exec": [
+									"var response = JSON.parse(responseBody);",
+									"",
+									"if(response.items.length>0){",
+									"    pm.environment.set(\"existingHoldingsRecordId\", response.items[0].holdingsRecordId);",
+									"}",
+									"",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if(response.items.length>0){",
+									"    pm.environment.set(\"testpermanentloantypeid\", response.items[0].permanentLoanTypeId);",
+									"}",
+									"pm.test(\"Response must be valid and have a body\", function () {",
+									"    pm.response.to.be.ok; ",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"pm.test(\"validate schema\", function() {",
+									"    console.log(\"metadata\" + pm.environment.get(\"metadata.schema\"))",
+									"    console.log (\"item\" + pm.environment.get(\"item.schema\") )",
+									"    console.log(\"items\" + pm.environment.get(\"items.schema\"))",
+									"    ",
+									"    tv4.addSchema(\"raml-util/schemas/metadata.schema\", JSON.parse(pm.environment.get(\"metadata.schema\")));",
+									"    tv4.addSchema(\"item.json\", JSON.parse(pm.environment.get(\"item.schema\")));",
+									"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"items.schema\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"    ",
+									"});",
+									"",
+									"//verify headers",
+									"pm.test(\"'Content-Type'header is present and has 'application/json' value\", function () {",
+									"    pm.response.to.have.header(\"Content-Type\");",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/json\");",
+									"",
+									"});",
+									"pm.test(\"'Transfer-Encoding' header is present and has 'chunked' value\", function () {",
+									"    pm.response.to.have.header(\"Transfer-Encoding\");",
+									"    pm.expect(pm.response.headers.get(\"Transfer-Encoding\")).to.be.equal(\"chunked\");",
+									"",
+									"});"
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -4027,59 +4118,59 @@
 						"id": "47b403a4-6b8c-41d3-afad-c8076ca5ef91",
 						"type": "text/javascript",
 						"exec": [
-							"//verify headers",
+							"// //verify headers",
 							"",
-							"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
-							"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-							"});",
+							"// pm.test(\"'X-Okapi-Trace' header is present\", function () {",
+							"//     pm.response.to.have.header(\"X-Okapi-Trace\");",
+							"// });",
 							"",
-							"pm.test(\"'accept' header is present and has correct value\", function () {",
-							"    pm.response.to.have.header(\"accept\");",
-							"    pm.expect(pm.response.headers.get(\"accept\")).to.be.equal(\"*/*\"); ",
-							"});",
+							"// pm.test(\"'accept' header is present and has correct value\", function () {",
+							"//     pm.response.to.have.header(\"accept\");",
+							"//     pm.expect(pm.response.headers.get(\"accept\")).to.be.equal(\"*/*\"); ",
+							"// });",
 							"",
-							"pm.test(\"'accept-encoding' header is present and has correct value\", function () {",
-							"    pm.response.to.have.header(\"accept-encoding\");",
-							"    pm.expect(pm.response.headers.get(\"accept-encoding\")).to.be.equal(\"gzip, deflate\");",
-							"});",
-							"",
-							"",
-							"pm.test(\"'connection' header is present and has correct value\", function () {",
-							"    pm.response.to.have.header(\"connection\");",
-							"    pm.expect(pm.response.headers.get(\"connection\")).to.be.equal(\"keep-alive\");",
-							"});",
-							"",
-							"pm.test(\"'host' header is present\", function () {",
-							"    pm.response.to.have.header(\"host\");",
-							"});",
+							"// pm.test(\"'accept-encoding' header is present and has correct value\", function () {",
+							"//     pm.response.to.have.header(\"accept-encoding\");",
+							"//     pm.expect(pm.response.headers.get(\"accept-encoding\")).to.be.equal(\"gzip, deflate\");",
+							"// });",
 							"",
 							"",
-							"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
-							"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-							"});",
+							"// pm.test(\"'connection' header is present and has correct value\", function () {",
+							"//     pm.response.to.have.header(\"connection\");",
+							"//     pm.expect(pm.response.headers.get(\"connection\")).to.be.equal(\"keep-alive\");",
+							"// });",
+							"",
+							"// pm.test(\"'host' header is present\", function () {",
+							"//     pm.response.to.have.header(\"host\");",
+							"// });",
 							"",
 							"",
-							"pm.test(\"'x-okapi-request-id' header is present\", function () {",
-							"    pm.response.to.have.header(\"x-okapi-request-id\");",
-							"});",
+							"// pm.test(\"'X-Okapi-Trace' header is present\", function () {",
+							"//     pm.response.to.have.header(\"X-Okapi-Trace\");",
+							"// });",
 							"",
-							"pm.test(\"'x-okapi-tenant' header is present and has correct value\", function () {",
-							"    pm.response.to.have.header(\"x-okapi-tenant\");",
-							"    pm.expect(pm.response.headers.get(\"x-okapi-tenant\")).to.be.equal(pm.environment.get(\"xokapitenant\"));",
-							"});",
 							"",
-							"pm.test(\"'x-okapi-token' header is present and has correct value\", function () {",
-							"    pm.response.to.have.header(\"x-okapi-token\");",
-							"    pm.expect(pm.response.headers.get(\"x-okapi-token\")).to.be.equal(pm.environment.get(\"xokapitoken\"));",
-							"});",
+							"// pm.test(\"'x-okapi-request-id' header is present\", function () {",
+							"//     pm.response.to.have.header(\"x-okapi-request-id\");",
+							"// });",
 							"",
-							"pm.test(\"'x-okapi-url' header is present\", function () {",
-							"    pm.response.to.have.header(\"x-okapi-url\");",
-							"});",
+							"// pm.test(\"'x-okapi-tenant' header is present and has correct value\", function () {",
+							"//     pm.response.to.have.header(\"x-okapi-tenant\");",
+							"//     pm.expect(pm.response.headers.get(\"x-okapi-tenant\")).to.be.equal(pm.environment.get(\"xokapitenant\"));",
+							"// });",
 							"",
-							"pm.test(\"'x-okapi-user-id' header is present\", function () {",
-							"    pm.response.to.have.header(\"x-okapi-user-id\");",
-							"});"
+							"// pm.test(\"'x-okapi-token' header is present and has correct value\", function () {",
+							"//     pm.response.to.have.header(\"x-okapi-token\");",
+							"//     pm.expect(pm.response.headers.get(\"x-okapi-token\")).to.be.equal(pm.environment.get(\"xokapitoken\"));",
+							"// });",
+							"",
+							"// pm.test(\"'x-okapi-url' header is present\", function () {",
+							"//     pm.response.to.have.header(\"x-okapi-url\");",
+							"// });",
+							"",
+							"// pm.test(\"'x-okapi-user-id' header is present\", function () {",
+							"//     pm.response.to.have.header(\"x-okapi-user-id\");",
+							"// });"
 						]
 					}
 				}
@@ -10659,157 +10750,157 @@
 	],
 	"variable": [
 		{
-			"id": "e2500384-bbd5-4ed7-910d-41721b8040c4",
+			"id": "2141cbdd-52a0-4f1d-9de6-bbf7ba088cab",
 			"key": "mod_name",
 			"value": "mod-inventory-storage",
 			"type": "string"
 		},
 		{
-			"id": "efb33c92-41fe-4caf-a840-af2de538f173",
+			"id": "433ba1b9-0075-4ba6-ad70-31c3f69406fa",
 			"key": "mod_version",
 			"value": "master",
 			"type": "string"
 		},
 		{
-			"id": "1d2cfcb4-fffa-440f-8364-dbc76196a863",
+			"id": "8a946d08-a009-40ba-9492-4212faad2dff",
 			"key": "schema_loc",
 			"value": "https://raw.githubusercontent.com/folio-org",
 			"type": "string"
 		},
 		{
-			"id": "db66c408-e515-494b-8b94-226c472c034b",
+			"id": "1c00588e-f4c1-49f4-be5e-4f862bab6d6d",
 			"key": "errors.schemafile",
 			"value": "errors.schema",
 			"type": "string"
 		},
 		{
-			"id": "f5b1259f-75d8-4215-ab28-ec5ade3005b0",
+			"id": "4e3e3606-101b-4b3d-a6e6-40af48eab988",
 			"key": "error.schemafile",
 			"value": "error.schema",
 			"type": "string"
 		},
 		{
-			"id": "5b74febd-efd1-48fc-988b-13c1766dd4f2",
+			"id": "1c5bf1fb-98e0-4d92-adcf-f4007c1122b7",
 			"key": "parameters.schemafile",
 			"value": "parameters.schema",
 			"type": "string"
 		},
 		{
-			"id": "20bdee0c-8441-4321-9900-070ab414bf9f",
+			"id": "20028e8a-6644-4b06-ab20-71c29293adf7",
 			"key": "schema_metadatafile",
 			"value": "metadata.schema",
 			"type": "string"
 		},
 		{
-			"id": "e9a4b4ad-871f-4c70-86d5-c0cd5b574c49",
+			"id": "2ffe045d-76dc-49ae-9651-834975f0228f",
 			"key": "classification-types.schemafile",
 			"value": "classificationtypes.json",
 			"type": "string"
 		},
 		{
-			"id": "e88c94d6-0644-49d0-a02c-e8a5bb7321b0",
+			"id": "81004987-5034-47db-a90e-7cb598cad59f",
 			"key": "classification-type.schemafile",
 			"value": "classificationtype.json",
 			"type": "string"
 		},
 		{
-			"id": "6d138887-481f-41ec-97d8-43124651c368",
+			"id": "aa45504f-8ec9-4a9a-87eb-88e099b28515",
 			"key": "item.schemafile",
 			"value": "item.json",
 			"type": "string"
 		},
 		{
-			"id": "079e7c99-14f3-4d85-a3c2-ef5324bc071a",
+			"id": "212cbcdd-d1ae-44bc-a078-9feadcdeece5",
 			"key": "items.schemafile",
 			"value": "items.json",
 			"type": "string"
 		},
 		{
-			"id": "60a5bf15-604a-4c54-89a7-90848648b312",
+			"id": "d31df87b-6b43-46f3-b80f-cededc612537",
 			"key": "holdingsrecord.schemafile",
 			"value": "holdingsrecord.json",
 			"type": "string"
 		},
 		{
-			"id": "82e843b5-5a9e-4f3d-85fb-53277d32a206",
+			"id": "e29faa43-0982-4511-b8a3-eeecca1c269d",
 			"key": "holdingsrecords.schemafile",
 			"value": "holdingsrecords.json",
 			"type": "string"
 		},
 		{
-			"id": "fa1a4973-39d2-4b36-bd37-dd6b57be945e",
+			"id": "023146a6-725e-48a3-a0e2-bbea7204b939",
 			"key": "instance.schemafile",
 			"value": "instance.json",
 			"type": "string"
 		},
 		{
-			"id": "1b8107d1-471f-42bb-9072-9c209bb64f71",
+			"id": "a23f51c5-8116-4e26-9941-ddca23a12991",
 			"key": "instances.schemafile",
 			"value": "instances.json",
 			"type": "string"
 		},
 		{
-			"id": "99d1d97d-5203-4868-a413-22a2e7400688",
+			"id": "94197397-f9ab-42ae-91a9-747c642465a9",
 			"key": "instanceformat.schemafile",
 			"value": "instanceformat.json",
 			"type": "string"
 		},
 		{
-			"id": "991b6eae-e806-4182-ac97-33131f5a6ddb",
+			"id": "c3e1b6dd-ecf9-4512-8cb6-42815f9e144e",
 			"key": "instanceformats.schemafile",
 			"value": "instanceformats.json",
 			"type": "string"
 		},
 		{
-			"id": "a8300701-561c-4b77-8a44-f5b2df14ef7f",
+			"id": "19fa64fb-f2f3-4397-9323-27860a1f7b2b",
 			"key": "instancetype.schemafile",
 			"value": "instancetype.json",
 			"type": "string"
 		},
 		{
-			"id": "326c9fac-afc3-437d-ac43-eddbbfc2bf26",
+			"id": "1dd283fa-d86d-4cc0-b79a-a3b73121cd2f",
 			"key": "instancetypes.schemafile",
 			"value": "instancetypes.json",
 			"type": "string"
 		},
 		{
-			"id": "266d99cb-ab8f-4430-879f-a7f255983f2d",
+			"id": "474e55ca-53cf-4435-ad38-64d1b9dec694",
 			"key": "materialtype.schemafile",
 			"value": "materialtype.json",
 			"type": "string"
 		},
 		{
-			"id": "d3f3905e-db71-41d7-b2be-6842217fb23d",
+			"id": "bf6c94ec-d019-4a5a-82b5-bafa90b01eac",
 			"key": "materialtypes.schemafile",
 			"value": "materialtypes.json",
 			"type": "string"
 		},
 		{
-			"id": "99fdfba5-1322-4502-8175-6685e874d4b6",
+			"id": "0cdbf364-f207-4474-ad30-4aa368340c8c",
 			"key": "loantype.schemafile",
 			"value": "loantype.json",
 			"type": "string"
 		},
 		{
-			"id": "51b4a9ac-c2e7-48fc-b95b-ec3fdebf3602",
+			"id": "dff2aad6-d528-46d4-96f2-7d53ea733e71",
 			"key": "loantypes.schemafile",
 			"value": "loantypes.json",
 			"type": "string"
 		},
 		{
-			"id": "994a208d-c36e-475a-8ff4-07ddef70ac7d",
+			"id": "090c17ba-7d15-41de-a178-2015a9056763",
 			"key": "servicepoints.schemafile",
 			"value": "servicepoints.json",
 			"type": "string"
 		},
 		{
-			"id": "e1f70e55-1dd5-413f-960b-9affa9ef5edf",
+			"id": "0649c01d-24eb-4181-b72a-abb03024235d",
 			"key": "servicepoint.schemafile",
 			"value": "servicepoint.json",
 			"type": "string"
 		},
 		{
-			"id": "bb80c569-a82d-453a-b9f8-23d05ab7a4e2",
+			"id": "4993c498-20e1-4e0a-9b0c-45ca84393961",
 			"key": "schema_commit",
 			"value": "bf5b23978b71776c59eca1fd6b33c7fb315b0f2a",
 			"type": "string"
