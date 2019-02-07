@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "e7f56372-ada9-4b09-82c5-b07d8673b523",
+		"_postman_id": "65cbf346-0d19-43ee-852f-03edcee2c74a",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4649,6 +4649,86 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Receiving History",
+					"item": [
+						{
+							"name": "Get receiving history for Open Order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"var jsonData = pm.response.json();",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.total_records).to.be.above(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=purchaseOrderId={{complete_open_order_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "purchaseOrderId={{complete_open_order_id}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -6562,6 +6642,7 @@
 									"    },",
 									"    function (err, res) {",
 									"        let order  = res.json();",
+									"        utils.deleteHoldingsRecord(order);",
 									"        utils.deleteInventoryInstances(order);",
 									"        utils.deleteInventoryItems(order);",
 									"    }",
@@ -6640,6 +6721,7 @@
 									"    },",
 									"    function (err, res) {",
 									"        let order  = res.json();",
+									"        utils.deleteHoldingsRecord(order);",
 									"        utils.deleteInventoryInstances(order);",
 									"        utils.deleteInventoryItems(order);",
 									"    }",
@@ -7057,7 +7139,8 @@
 					"                pm.test(\"Instance Record exist for PO Line with number=\" + poLine.po_line_number, function () {",
 					"                    pm.expect(res.json()).to.exist;",
 					"                    pm.expect(res.json().id).to.equal(poLine.instance_id);",
-					"",
+					"                    //Check if Holdings record is created",
+					"                    utils.validateHoldingsRecord(poLine);",
 					"                    // Now check items",
 					"                    utils.validateInventoryItems(poLine);",
 					"                });",
@@ -7068,6 +7151,28 @@
 					"      }",
 					"    };",
 					"",
+					"    /**",
+					"     * Validates that Holdings Record was created  in the inventory",
+					"     */",
+					"    utils.validateHoldingsRecord = function(poLine) {",
+					"        pm.expect(poLine.instance_id).to.exist;",
+					"        pm.sendRequest({",
+					"                url: utils.buildOkapiUrl(\"/holdings-storage/holdings?query=instanceId==\" + poLine.id),",
+					"                method: \"GET\",",
+					"                header: {",
+					"                    \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                    \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"                }",
+					"            },",
+					"            function (err, res) {",
+					"                pm.test(\"Holding Records exist for Created Instance=\" + poLine.instance_id, function () {",
+					"                    let body = res.json();",
+					"                    pm.expect(body.total_records).to.be.above(0);",
+					"                });",
+					"            }",
+					"        );",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Validates that expected items created  in the inventory (MODORDERS-67)",
 					"     */",
@@ -7281,6 +7386,17 @@
 					"      order.compositePoLines.forEach(function(line) {",
 					"        if (line.instance_id) {",
 					"          utils.processDeleteRequest(\"/inventory/instances/\" + line.instance_id, \"Instance should be successfully deleted\");",
+					"        }",
+					"        });  ",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Deletes Holdings linked by PO lines from Inventory",
+					"     */",
+					"    utils.deleteHoldingRecords = function(order) {",
+					"      order.compositePoLines.forEach(function(line) {",
+					"        if (line.instance_id) {",
+					"          utils.processDeleteRequest(\"/holdings-storage/holdings?query=instanceId=\" + line.instance_id, \"Holding should be successfully deleted\");",
 					"        }",
 					"        });  ",
 					"    };",
