@@ -4075,7 +4075,7 @@
 					"name": "Open order",
 					"item": [
 						{
-							"name": "Create Open order",
+							"name": "Create Open order with P/E Mix and Electronic lines",
 							"event": [
 								{
 									"listen": "prerequest",
@@ -4165,6 +4165,234 @@
 									]
 								},
 								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117))."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Open order with physical and electronic lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest({",
+											"        url: pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_one_physical_one_electronic_lines.json\",",
+											"        method: \"GET\"",
+											"    },",
+											"    function (err, res) {",
+											"        let order  = res.json();",
+											"        order.workflow_status = \"Open\";",
+											"        pm.variables.set(\"po_one_physical_one_electronic_lines\", JSON.stringify(utils.prepareOrder(order)));",
+											"    }",
+											");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var order = pm.response.json();",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.expect(order.id).to.exist;",
+											"    pm.globals.set(\"phys_el_open_order_id\", order.id); ",
+											"});",
+											"",
+											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
+											"    utils.validatePoLines(order, 2, true);",
+											"});",
+											"",
+											"pm.test(\"Each PO Line should have 'Awaiting Receipt' receipt status\", function () {",
+											"    order.compositePoLines.forEach(function(line) {",
+											"        pm.expect(line.receipt_status).to.equal(\"Awaiting Receipt\");",
+											"        pm.expect(line.receipt_date, \"Receipt date should be empty\").to.be.undefined;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_one_physical_one_electronic_lines}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Receiving",
+					"item": [
+						{
+							"name": "Receive pieces for physical and electronic lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders/receiving-history?limit=100&query=receivingStatus==Expected and purchaseOrderId=\" + globals.phys_el_open_order_id),",
+											"        method: \"GET\",",
+											"        header: {",
+											"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"        }",
+											"}, function (err, res) {",
+											"    let receivingRq = utils.prepareReceivingRequest(res.json().receiving_history);",
+											"    pm.variables.set(\"receivingRqBody\", JSON.stringify(receivingRq));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"receivingRqBody\"));",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"All items should be successfully received\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.be.above(0);",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeReceived.length);",
+											"    let processedSuccessfully = 0;",
+											"    for(let i = 0; i < jsonRs.receivingResults.length; i++) {",
+											"        let result = jsonRs.receivingResults[i];",
+											"        pm.expect(result.processedWithError).to.equal(0);",
+											"        processedSuccessfully += result.processedSuccessfully;",
+											"        for(let j = 0; j < result.receivingItemResults.length; j++) {",
+											"            pm.expect(result.receivingItemResults[j].processingStatus).to.exist;",
+											"            pm.expect(result.receivingItemResults[j].processingStatus.type).to.equal(\"success\");",
+											"        }",
+											"    }",
+											"    pm.expect(processedSuccessfully).to.equal(jsonRs.totalRecords);",
+											"});",
+											"",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders/composite-orders/\" + globals.phys_el_open_order_id),",
+											"        method: \"GET\",",
+											"        header: {",
+											"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"        }",
+											"},",
+											"function (err, res) {",
+											"    pm.test(\"PO Lines should have Fully Received receipt status\", function () {",
+											"        let order = res.json();",
+											"        order.compositePoLines.forEach(function(line) {",
+											"            pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
+											"            pm.expect(line.receipt_date).to.not.be.empty;",
+											"",
+											"            utils.validateInventoryItemsReceived(line);",
+											"        });",
+											"    });",
+											"});",
+											"",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders/receiving-history?limit=100&query=receivingStatus==Expected and purchaseOrderId=\" + globals.phys_el_open_order_id),",
+											"        method: \"GET\",",
+											"        header: {",
+											"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"        }",
+											"},",
+											"function (err, res) {",
+											"    pm.test(\"All pieces should be received\", function () {",
+											"        pm.expect(res.json().receiving_history).to.have.lengthOf(0);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{receivingRqBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receive",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receive"
+									]
+								},
+								"description": "Receives all piece records created by previous request (see [MODORDERS-103](https://issues.folio.org/browse/MODORDERS-103))."
 							},
 							"response": []
 						}
@@ -6662,6 +6890,110 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Receiving",
+					"item": [
+						{
+							"name": "Attempt to receive already received pieces for physical and electronic lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest({",
+											"    url: utils.buildOkapiUrl(\"/orders/receiving-history?limit=10&query=receivingStatus==Received and purchaseOrderId=\" + globals.phys_el_open_order_id),",
+											"        method: \"GET\",",
+											"        header: {",
+											"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+											"        }",
+											"},",
+											"function (err, res) {",
+											"    let receivingRq = utils.prepareReceivingRequest(res.json().receiving_history);",
+											"    pm.variables.set(\"receivingRqBody\", JSON.stringify(receivingRq));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"All items should be failed because already received before\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(10);",
+											"    let processedWithError = 0;",
+											"    for(let i = 0; i < jsonRs.receivingResults.length; i++) {",
+											"        let result = jsonRs.receivingResults[i];",
+											"        pm.expect(result.processedSuccessfully).to.equal(0);",
+											"        processedWithError += result.processedWithError;",
+											"        for(let j = 0; j < result.receivingItemResults.length; j++) {",
+											"            pm.expect(result.receivingItemResults[j].processingStatus).to.exist;",
+											"            pm.expect(result.receivingItemResults[j].processingStatus.type).to.equal(\"failure\");",
+											"            pm.expect(result.receivingItemResults[j].processingStatus.error).to.exist;",
+											"            pm.expect(result.receivingItemResults[j].processingStatus.error.code).to.equal(\"pieceAlreadyReceived\");",
+											"        }",
+											"    }",
+											"    pm.expect(processedWithError).to.equal(jsonRs.totalRecords);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{receivingRqBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receive",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receive"
+									]
+								},
+								"description": "Receives all piece records created by previous request (see [MODORDERS-103](https://issues.folio.org/browse/MODORDERS-103))."
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -6975,6 +7307,84 @@
 					"response": []
 				},
 				{
+					"name": "Delete Open order with physical and electronic lines",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"pm.sendRequest({",
+									"        url: utils.buildOkapiUrl(\"/orders/composite-orders/\" + globals.phys_el_open_order_id),",
+									"        method: \"GET\",",
+									"        header: {",
+									"            \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+									"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+									"        }",
+									"    },",
+									"    function (err, res) {",
+									"        let order  = res.json();",
+									"        utils.deleteInventoryInstances(order);",
+									"        utils.deleteInventoryItems(order);",
+									"    }",
+									");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{phys_el_open_order_id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders",
+								"{{phys_el_open_order_id}}"
+							]
+						},
+						"description": "GET /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Delete order for negative tests",
 					"event": [
 						{
@@ -7202,7 +7612,29 @@
 					"            \"enabled\": true,",
 					"            \"value\": \"\"",
 					"        }",
+					"    },",
+					"    receiving: {",
+					"        bodyTemplate: {",
+					"          \"toBeReceived\": [",
+					"            {",
+					"              \"poLineId\": \"\",",
+					"              \"received\": 1,",
+					"              \"receivedItems\": [",
+					"                {",
+					"                  \"barcode\": \"11111111111\",",
+					"                  \"comment\": \"Very important note\",",
+					"                  \"caption\": \"Vol. 1\",",
+					"                  \"itemStatus\": \"Received\",",
+					"                  \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",",
+					"                  \"pieceId\": \"\"",
+					"                }",
+					"              ]",
+					"            }",
+					"          ],",
+					"          \"totalRecords\": 1",
+					"        }",
 					"    }",
+					"",
 					"};",
 					"",
 					"// Global testing object - used in further tests",
@@ -7243,20 +7675,6 @@
 					"        utils._deleteSubObjectsIds(poLine.claims);",
 					"        utils._deleteSubObjectsIds(poLine.fund_distribution);",
 					"        utils._deleteSubObjectsIds(poLine.reporting_codes);",
-					"",
-					"        // Add missing data",
-					"        if (!poLine.receipt_date) {",
-					"            poLine.receipt_date = \"2020-10-10T00:00:00.000Z\";",
-					"        }",
-					"        if (!poLine.physical) {",
-					"            poLine.physical = {",
-					"                \"volumes\": [",
-					"                  \"vol.1\"",
-					"                ],",
-					"                \"material_supplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",",
-					"                \"receipt_due\": \"2020-10-10T00:00:00.000Z\"",
-					"            };",
-					"        }",
 					"        console.log(\"Updated PO Line:\" + JSON.stringify(poLine));",
 					"        return poLine;",
 					"    };",
@@ -7301,8 +7719,8 @@
 					"            let poLine = order.compositePoLines[i];",
 					"            pm.test(\"Validating PO Line with number=\" + poLine.po_line_number, function () {",
 					"                utils.rememberPoLineId(poLine);",
-					"                pm.expect(poLine.purchase_order_id).to.equal(order.id);",
-					"                utils.validatePoLineSubObjetcsPresence(poLine);",
+					"                pm.expect(poLine.purchase_order_id, \"Line has to have order id\").to.equal(order.id);",
+					"                //utils.validatePoLineSubObjetcsPresence(poLine);",
 					"                utils.validatePoLineAgainstSchema(poLine);",
 					"                ",
 					"                if (checkInventory) {",
@@ -7320,7 +7738,7 @@
 					"    utils.validatePoLinesInventoryLinks = function(poLine) {",
 					"      // Instance should created only",
 					"      if (utils.calculateExpectedItemsQuantity(poLine) > 0) {",
-					"        pm.expect(poLine.instance_id).to.exist;",
+					"        pm.expect(poLine.instance_id, \"Instance id is expected\").to.exist;",
 					"        pm.sendRequest({",
 					"                url: utils.buildOkapiUrl(\"/inventory/instances/\" + poLine.instance_id),",
 					"                method: \"GET\",",
@@ -7348,7 +7766,6 @@
 					"     * Validates that expected items created  in the inventory (MODORDERS-67)",
 					"     */",
 					"    utils.validateInventoryItems = function(poLine) {",
-					"        pm.expect(poLine.instance_id).to.exist;",
 					"        let expectedCount = utils.calculateExpectedItemsQuantity(poLine);",
 					"        pm.sendRequest({",
 					"                url: utils.buildOkapiUrl(\"/item-storage/items?limit=1&query=purchaseOrderLineIdentifier==\" + poLine.id),",
@@ -7367,6 +7784,75 @@
 					"            }",
 					"        );",
 					"    };",
+					"",
+					"    /**",
+					"     * Validates that items received in the inventory (MODORDERS-103)",
+					"     */",
+					"    utils.validateInventoryItemsReceived = function(poLine) {",
+					"        let expectedCount = utils.calculateExpectedItemsQuantity(poLine);",
+					"        pm.sendRequest({",
+					"                url: utils.buildOkapiUrl(\"/item-storage/items?limit=100&query=status.name==Received and purchaseOrderLineIdentifier==\" + poLine.id),",
+					"                method: \"GET\",",
+					"                header: {",
+					"                    \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                    \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"                }",
+					"            },",
+					"            function (err, res) {",
+					"                pm.test(expectedCount + \" Item Records marked as received for PO Line with number=\" + poLine.po_line_number, function () {",
+					"                    let body = res.json();",
+					"                    pm.expect(body, \"GET Items response is not in json format\").to.exist;",
+					"                    pm.expect(body.totalRecords, \"Quantity of items received for PO Line should be \" + expectedCount).to.equal(expectedCount);",
+					"                    body.items.forEach(function(item) {",
+					"                        pm.expect(item.barcode, \"Barcode should not be empty\").to.not.be.empty;",
+					"                    });",
+					"                });",
+					"            }",
+					"        );",
+					"    };",
+					"",
+					"    /**",
+					"     * Prepare receiving request body based on receiving history array (MODORDERS-103)",
+					"     */",
+					"    utils.prepareReceivingRequest = function(receivingHistory) {",
+					"        let totalQty = receivingHistory.length;",
+					"        let piecesGroupedByPol = new Map();",
+					"        for(let i = 0; i < totalQty; i++) {",
+					"            let record = receivingHistory[i];",
+					"            if (!piecesGroupedByPol.has(record.poLineId)) {",
+					"                piecesGroupedByPol.set(record.poLineId, []);",
+					"            }",
+					"            piecesGroupedByPol.get(record.poLineId).push(record.id);",
+					"        }",
+					"    ",
+					"        let receivingRq = globals.testData.receiving.bodyTemplate;",
+					"        let toBeReceivedTemplate = receivingRq.toBeReceived.pop();",
+					"        let receivedItemTemplate = toBeReceivedTemplate.receivedItems.pop();",
+					"        let barcode = parseInt(receivedItemTemplate.barcode);",
+					"    ",
+					"        let total = 0;",
+					"        for (var [polId, pieceIds] of piecesGroupedByPol) {",
+					"            let toBeReceived = utils.copyJsonObj(toBeReceivedTemplate);",
+					"            toBeReceived.poLineId = polId;",
+					"            toBeReceived.received = pieceIds.length;",
+					"            for(let i = 0; i < pieceIds.length; i++) {",
+					"                let receivedItem = utils.copyJsonObj(receivedItemTemplate);",
+					"                receivedItem.pieceId = pieceIds[i];",
+					"                // Inventory requires unique barcodes",
+					"                receivedItem.barcode = ++barcode;",
+					"                toBeReceived.receivedItems.push(receivedItem);",
+					"                total++;",
+					"            }",
+					"            receivingRq.toBeReceived.push(toBeReceived);",
+					"        }",
+					"        receivingRq.totalRecords = total;",
+					"",
+					"        return receivingRq;",
+					"    };",
+					"",
+					"    utils.copyJsonObj = function(obj) {",
+					"      return JSON.parse(JSON.stringify(obj));",
+					"    }",
 					"",
 					"    /**",
 					"     * Creates OKAPI URL endpoint based on provided path",
@@ -7452,7 +7938,6 @@
 					"        pm.expect(poLine.po_line_number, \"po_line_number expected\").to.exist;",
 					"        pm.expect(poLine.publication_date, \"publication_date expected\").to.exist;",
 					"        pm.expect(poLine.publisher, \"publisher expected\").to.exist;",
-					"        pm.expect(poLine.receipt_date, \"receipt_date expected\").to.exist;",
 					"        pm.expect(poLine.receipt_status, \"receipt_status expected\").to.exist;",
 					"        pm.expect(poLine.reporting_codes, \"reporting_codes expected\").to.exist;",
 					"        pm.expect(poLine.requester, \"requester expected\").to.exist;",
@@ -7608,7 +8093,7 @@
 					"                \"Accept-Encoding\": \"identity\"",
 					"            }",
 					"        }, function (err, response) {",
-					"            pm.test(message ? message : \"Record deleted\", function () {",
+					"            pm.test(message ? message + \" \" + response.text() : \"Record deleted\", function () {",
 					"                pm.expect(response.code).to.eql(204);",
 					"            });",
 					"        });",
