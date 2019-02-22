@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "e7f56372-ada9-4b09-82c5-b07d8673b523",
+		"_postman_id": "2e2cf41b-e62a-42ad-84f5-6e2cb00490b7",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -3991,7 +3991,7 @@
 											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
 											"});",
 											"",
-											"pm.test(\"Verify PO Line updated with expected receipt date\", function () {",
+											"pm.test(\"Verify PO Line updated with expected receipt date and status\", function () {",
 											"    pm.sendRequest({",
 											"        url: pm.request.url,",
 											"            method: \"GET\",",
@@ -4003,6 +4003,10 @@
 											"    function (err, res) {",
 											"        let order  = res.json();",
 											"        utils.validatePoLines(order, 4, true);",
+											"        //check statuses",
+											"        for(var i = 0; i < order.compositePoLines.length; i++) {",
+											"    \t  pm.expect(order.compositePoLines[i].receipt_status).to.equal(\"Awaiting Receipt\");",
+											"        }",
 											"    }",
 											"    );",
 											"});"
@@ -4151,6 +4155,114 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{{po_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117))."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Order With receipt not required",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest({",
+											"        url: pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\",",
+											"        method: \"GET\"",
+											"    },",
+											"    function (err, res) {",
+											"        let order  = res.json();",
+											"        order.workflow_status = \"Open\";",
+											"        order = utils.deletePoNumber(order);",
+											"        for(var i = 0; i < order.compositePoLines.length; i++) {",
+											"    \t  order.compositePoLines[i].receipt_status = \"Receipt Not Required\";",
+											"        }",
+											"        ",
+											"        pm.globals.set(\"order_with_receipt_not_required_lines\", JSON.stringify(utils.prepareOrder(order)));",
+											"    }",
+											");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = pm.response.json();",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Verify two po_lines exist\", function () {",
+											"    utils.validatePoLines(jsonData, 2, false);",
+											"    ",
+											"});",
+											"",
+											"pm.test(\"Verify Inventory records creation was  ignored\", function () {",
+											"    //check instanceId creation",
+											"    for(var i = 0; i < jsonData.compositePoLines.length; i++) {",
+											"      pm.expect(jsonData.compositePoLines[i].instance_id).to.not.exist;",
+											"    }",
+											"});",
+											"",
+											"",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"order_without_inventory_records_id\", jsonData.id); ",
+											"    pm.expect(jsonData.approved).to.exist;",
+											"    pm.expect(jsonData.po_number).to.exist;",
+											"    pm.expect(jsonData.notes).to.exist;",
+											"    pm.expect(jsonData.total_items).to.exist;",
+											"    pm.expect(jsonData.vendor).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_with_receipt_not_required_lines}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -7038,6 +7150,69 @@
 					"response": []
 				},
 				{
+					"name": "Delete order with no created instances",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{order_without_inventory_records_id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders",
+								"{{order_without_inventory_records_id}}"
+							]
+						},
+						"description": "DELETE /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Verify no lines left in storage",
 					"event": [
 						{
@@ -7492,7 +7667,7 @@
 					"        pm.expect(poLine.publication_date, \"publication_date not expected\").to.not.exist;",
 					"        pm.expect(poLine.publisher, \"publisher not expected\").to.not.exist;",
 					"        pm.expect(poLine.receipt_date, \"receipt_date not expected\").to.not.exist;",
-					"        pm.expect(poLine.receipt_status, \"receipt_status not expected\").to.not.exist;",
+					"        pm.expect(poLine.receipt_status, \"receipt_status is expected\").to.exist;",
 					"        pm.expect(poLine.reporting_codes, \"reporting_codes should be empty\").to.be.an('array').that.is.empty;",
 					"        pm.expect(poLine.requester, \"requester not expected\").to.not.exist;",
 					"        pm.expect(poLine.rush, \"rush not expected\").to.not.exist;",
@@ -7790,139 +7965,139 @@
 	],
 	"variable": [
 		{
-			"id": "661c7f79-8b3d-412f-8054-7d2a1e16fb14",
+			"id": "b3c11c20-9a82-480b-85f3-1ad018aca7df",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "f4a5d66e-d7f1-49b7-a9e1-060f077e487b",
+			"id": "3bec0e35-d4c2-416b-b75f-aa0c37b43470",
 			"key": "schema_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
 			"type": "string"
 		},
 		{
-			"id": "e31813d1-2484-41fb-9261-1b71edf77252",
+			"id": "42fe24b5-38f0-422f-b9c5-6d954b1d4678",
 			"key": "schema_composite_purchase_order",
 			"value": "composite_purchase_order.json",
 			"type": "string"
 		},
 		{
-			"id": "e6dbf054-72c3-48f4-b5fe-798ef34b0d4a",
+			"id": "20d8677d-0b10-4be0-bcf7-c5d3cd961fc6",
 			"key": "schema_adjustment",
 			"value": "adjustment.json",
 			"type": "string"
 		},
 		{
-			"id": "a0a66236-e6c8-4c3b-b767-310a4439db8d",
+			"id": "ada9c7b0-a524-4dec-8ef7-1b2a6cf25ccc",
 			"key": "schema_alert",
 			"value": "alert.json",
 			"type": "string"
 		},
 		{
-			"id": "7b7b01fa-57c3-460e-8a62-97dadc5dc70f",
+			"id": "66bacc4e-f7af-408e-8753-7e5f3cfe081a",
 			"key": "schema_claim",
 			"value": "claim.json",
 			"type": "string"
 		},
 		{
-			"id": "a4550385-6645-477e-83d1-18183d82a5bf",
+			"id": "70e02c4c-9c54-468c-8643-f04e0b5ebf0a",
 			"key": "schema_composite_po_line",
 			"value": "composite_po_line.json",
 			"type": "string"
 		},
 		{
-			"id": "bf74ccf9-3d9d-4a69-bf88-a8fb90c95d18",
+			"id": "f66d818d-3661-469f-9250-45e79e31e9e8",
 			"key": "schema_cost",
 			"value": "cost.json",
 			"type": "string"
 		},
 		{
-			"id": "b7d48c3e-1095-441a-a00d-fab212aea777",
+			"id": "8b36f2f7-69bb-4007-b1e2-a499a49c6920",
 			"key": "schema_details",
 			"value": "details.json",
 			"type": "string"
 		},
 		{
-			"id": "3640d806-8191-453b-b322-477e2273b276",
+			"id": "a06d50b4-05c7-42f5-922b-219917de030e",
 			"key": "schema_eresource",
 			"value": "eresource.json",
 			"type": "string"
 		},
 		{
-			"id": "20c12ac7-3423-404d-b7b8-84313ec2bbf0",
+			"id": "29d28338-1dd9-461e-9a4a-e6abd1ffa9cf",
 			"key": "schema_fund_distribution",
 			"value": "fund_distribution.json",
 			"type": "string"
 		},
 		{
-			"id": "a9f64ac4-e5e9-4aee-8c18-b1bea2455728",
+			"id": "bf9be33e-fb36-453a-a103-17774b90e4c9",
 			"key": "schema_location",
 			"value": "location.json",
 			"type": "string"
 		},
 		{
-			"id": "9cfaa830-e65b-448e-8978-d78f52b62117",
+			"id": "3f11ccae-fed2-4575-a582-6843783208bb",
 			"key": "schema_physical",
 			"value": "physical.json",
 			"type": "string"
 		},
 		{
-			"id": "d6d01fcd-f46a-4123-8594-aaaf6dbb5067",
+			"id": "7e788adf-530b-4414-b55d-fb7ed6df7b10",
 			"key": "schema_renewal",
 			"value": "renewal.json",
 			"type": "string"
 		},
 		{
-			"id": "2a853707-c1c6-4926-8503-351dc7e01472",
+			"id": "e1f88a07-c993-4542-a3db-13704844a186",
 			"key": "schema_reporting_code",
 			"value": "reporting_code.json",
 			"type": "string"
 		},
 		{
-			"id": "5f989c84-964c-482e-9e1a-e38708930a06",
+			"id": "f5dbabb1-b8bb-44b3-81d5-cb02763c6d09",
 			"key": "schema_source",
 			"value": "source.json",
 			"type": "string"
 		},
 		{
-			"id": "78e71a73-a921-4e25-8e8d-ba792bcd84c2",
+			"id": "85a6167f-1a3d-4f78-a972-405ebc2e2410",
 			"key": "schema_vendor_detail",
 			"value": "vendor_detail.json",
 			"type": "string"
 		},
 		{
-			"id": "1cfda99b-abcc-4ecb-ac84-1e3a38fd073f",
+			"id": "ab34d1c9-c47d-427b-94cf-1c34dd28a9a9",
 			"key": "storage_module",
 			"value": "mod-orders-storage",
 			"type": "string"
 		},
 		{
-			"id": "0995d48f-5ecb-4516-bf92-3d8efb374557",
+			"id": "24c7bc4a-44fc-48bf-b2f5-bf84d32bb878",
 			"key": "business_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "f7fba9a3-ed9b-4ed4-aa6f-9bf3b9cf43fd",
+			"id": "be4ec334-dba7-4bc2-8895-56ca9b836300",
 			"key": "schema_metadata",
 			"value": "metadata.schema",
 			"type": "string"
 		},
 		{
-			"id": "95aee99e-f9bb-40a3-8840-6fa3625bab4c",
+			"id": "b7479816-0ec5-4d2d-849c-136e3efe7d09",
 			"key": "schema_po_number",
 			"value": "po_number.json",
 			"type": "string"
 		},
 		{
-			"id": "cf1738b1-a9de-4890-b71c-5028be5ef195",
+			"id": "fbd66f93-8fde-4924-be53-3d28adf7a01b",
 			"key": "raml_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
 			"type": "string"
 		},
 		{
-			"id": "b3ddb871-be27-4c2d-86d5-63b81375c182",
+			"id": "c5086350-6667-4b91-b1af-469c2f1bdd60",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
