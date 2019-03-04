@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "f86884e1-38e9-46a8-a2bb-fd5c391a0545",
+		"_postman_id": "ebca41cc-1bf7-434e-a62f-d172c663a537",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4001,9 +4001,11 @@
 											"});   ",
 											"",
 											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.another_complete_order_id, function (err, res) {",
-											"    pm.test(\"Verify PO Line updated with expected receipt date\", function () {",
+											"    pm.test(\"Verify PO Line updated with expected receipt status\", function () {",
 											"        let order  = res.json();",
 											"        utils.validatePoLines(order, 4, true);",
+											"        //check status changed",
+											"        order.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
 											"    });",
 											"});"
 										],
@@ -4110,6 +4112,8 @@
 											"    utils.validatePoLines(jsonData, 2, true);",
 											"});",
 											"",
+											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
+											"",
 											"pm.test(\"Each order has these optional fields\", function() {",
 											"    pm.expect(jsonData.id).to.exist;",
 											"    pm.globals.set(\"complete_open_order_id\", jsonData.id); ",
@@ -4196,13 +4200,7 @@
 											"",
 											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(order, 2, true);",
-											"});",
-											"",
-											"pm.test(\"Each PO Line should have 'Awaiting Receipt' receipt status\", function () {",
-											"    order.compositePoLines.forEach(function(line) {",
-											"        pm.expect(line.receipt_status).to.equal(\"Awaiting Receipt\");",
-											"        pm.expect(line.receipt_date, \"Receipt date should be empty\").to.be.undefined;",
-											"    });",
+											"    order.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4244,6 +4242,106 @@
 									]
 								},
 								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Order With receipt not required",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest({",
+											"        url: pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\",",
+											"        method: \"GET\"",
+											"    },",
+											"    function (err, res) {",
+											"        let order  = res.json();",
+											"        order.workflow_status = \"Open\";",
+											"        order = utils.deletePoNumber(order);",
+											"        for(var i = 0; i < order.compositePoLines.length; i++) {",
+											"    \t  order.compositePoLines[i].receipt_status = \"Receipt Not Required\";",
+											"        }",
+											"        ",
+											"        pm.globals.set(\"order_with_receipt_not_required_lines\", JSON.stringify(utils.prepareOrder(order)));",
+											"    }",
+											");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = pm.response.json();",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Verify two po_lines exist\", function () {",
+											"    utils.validatePoLines(jsonData, 2, false);",
+											"});",
+											"",
+											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Receipt Not Required\"));",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"order_without_inventory_records_id\", jsonData.id); ",
+											"    pm.expect(jsonData.approved).to.exist;",
+											"    pm.expect(jsonData.po_number).to.exist;",
+											"    pm.expect(jsonData.notes).to.exist;",
+											"    pm.expect(jsonData.total_items).to.exist;",
+											"    pm.expect(jsonData.vendor).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_with_receipt_not_required_lines}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117))."
 							},
 							"response": []
 						}
@@ -4290,11 +4388,7 @@
 											"",
 											"utils.sendGetRequest(\"/orders/order-lines/\" + receivingPoLineId, (err, res) => {",
 											"    let line = res.json();",
-											"    pm.test(\"PO Line should have Fully Received receipt status\", function () {",
-											"        pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
-											"        pm.expect(line.receipt_date).to.not.be.empty;",
-											"    });",
-											"",
+											"    utils.validateReceiptStatus(line, \"Fully Received\");",
 											"    utils.validateInventoryItemsReceived(line);",
 											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
@@ -4378,11 +4472,7 @@
 											"",
 											"utils.sendGetRequest(\"/orders/order-lines/\" + receivingPoLineId, (err, res) => {",
 											"    let line = res.json();",
-											"    pm.test(\"PO Line should have Partially Received receipt status\", function () {",
-											"        pm.expect(line.receipt_status).to.equal(\"Partially Received\");",
-											"        pm.expect(line.receipt_date).to.not.exist;",
-											"    });",
-											"",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
 											"    utils.validateInventoryItemsReceived(line, 10);",
 											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 10, \"Received\");",
 											"});"
@@ -4466,11 +4556,7 @@
 											"",
 											"utils.sendGetRequest(\"/orders/order-lines/\" + receivingPoLineId, (err, res) => {",
 											"    let line = res.json();",
-											"    pm.test(\"PO Line should have Fully Received receipt status\", function () {",
-											"        pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
-											"        pm.expect(line.receipt_date).to.not.be.empty;",
-											"    });",
-											"",
+											"    utils.validateReceiptStatus(line, \"Fully Received\");",
 											"    utils.validateInventoryItemsReceived(line);",
 											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
@@ -4554,11 +4640,7 @@
 											"",
 											"utils.sendGetRequest(\"/orders/order-lines/\" + receivingPoLineId, (err, res) => {",
 											"    let line = res.json();",
-											"    pm.test(\"PO Line should have Fully Received receipt status\", function () {",
-											"        pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
-											"        pm.expect(line.receipt_date).to.not.be.empty;",
-											"    });",
-											"",
+											"    utils.validateReceiptStatus(line, \"Fully Received\");",
 											"    utils.validateInventoryItemsReceived(line, 0);",
 											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
@@ -4642,11 +4724,7 @@
 											"",
 											"utils.sendGetRequest(\"/orders/order-lines/\" + receivingPoLineId, (err, res) => {",
 											"    let line = res.json();",
-											"    pm.test(\"PO Line should have Fully Received receipt status\", function () {",
-											"        pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
-											"        pm.expect(line.receipt_date).to.not.be.empty;",
-											"    });",
-											"",
+											"    utils.validateReceiptStatus(line, \"Fully Received\");",
 											"    utils.validateInventoryItemsReceived(line);",
 											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
@@ -4730,10 +4808,7 @@
 											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.another_complete_order_id, (err, res) => {",
 											"    let order = res.json();",
 											"    order.compositePoLines.forEach(line => {",
-											"        pm.test(line.po_line_number + \" PO Line should have Fully Received receipt status\", function () {",
-											"            pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
-											"            pm.expect(line.receipt_date).to.not.be.empty;",
-											"        });",
+											"        utils.validateReceiptStatus(line, \"Fully Received\");",
 											"        utils.validateInventoryItemsReceived(line);",
 											"        utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"    });",
@@ -5347,6 +5422,80 @@
 										{
 											"key": "query",
 											"value": "purchaseOrderId={{complete_open_order_id}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get receiving history for Order With receipt not required",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"var jsonData = pm.response.json();",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"History has no pieces to receive\", function() {",
+											"    pm.expect(jsonData.total_records).to.equal(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=purchaseOrderId={{order_without_inventory_records_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "purchaseOrderId={{order_without_inventory_records_id}}"
 										}
 									]
 								},
@@ -7858,6 +8007,69 @@
 					"response": []
 				},
 				{
+					"name": "Delete order with no created instances",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{order_without_inventory_records_id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders",
+								"{{order_without_inventory_records_id}}"
+							]
+						},
+						"description": "DELETE /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Verify no lines left in storage",
 					"event": [
 						{
@@ -8073,6 +8285,7 @@
 					"    utils.preparePoLine = function (poLine) {",
 					"        delete poLine.id;",
 					"        delete poLine.purchase_order_id;",
+					"        delete poLine.receipt_date;",
 					"        utils._deleteSubObjectIds(poLine.adjustment);",
 					"        utils._deleteSubObjectIds(poLine.cost);",
 					"        utils._deleteSubObjectIds(poLine.details);",
@@ -8208,6 +8421,20 @@
 					"                    pm.expect(res.json().totalRecords).to.eql(0);",
 					"                });",
 					"            });",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Validates that PO Line's receipt status updated to expected",
+					"     */",
+					"    utils.validateReceiptStatus = function(poLine, receiptStatus) {",
+					"        pm.test(poLine.po_line_number + \" PO Line should have \" + receiptStatus + \" receipt status\", function () {",
+					"            pm.expect(poLine.receipt_status, \"Receipt status should be \" + receiptStatus).to.equal(receiptStatus);",
+					"            if (\"Fully Received\" === receiptStatus) {",
+					"                pm.expect(poLine.receipt_date, \"Receipt date should be set\").to.not.be.empty;",
+					"            } else {",
+					"                pm.expect(poLine.receipt_date, \"Receipt date should be empty\").to.not.exist;",
+					"            }",
 					"        });",
 					"    };",
 					"",
@@ -8505,7 +8732,7 @@
 					"        pm.expect(poLine.publication_date, \"publication_date not expected\").to.not.exist;",
 					"        pm.expect(poLine.publisher, \"publisher not expected\").to.not.exist;",
 					"        pm.expect(poLine.receipt_date, \"receipt_date not expected\").to.not.exist;",
-					"        pm.expect(poLine.receipt_status, \"receipt_status not expected\").to.equal(\"Pending\");",
+					"        pm.expect(poLine.receipt_status, \"receipt_status must be Pending\").to.equal(\"Pending\");",
 					"        pm.expect(poLine.reporting_codes, \"reporting_codes should be empty\").to.be.an('array').that.is.empty;",
 					"        pm.expect(poLine.requester, \"requester not expected\").to.not.exist;",
 					"        pm.expect(poLine.rush, \"rush not expected\").to.not.exist;",
