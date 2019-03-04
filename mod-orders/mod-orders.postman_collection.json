@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "f86884e1-38e9-46a8-a2bb-fd5c391a0545",
+		"_postman_id": "ebca41cc-1bf7-434e-a62f-d172c663a537",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4083,6 +4083,10 @@
 											"    function (err, res) {",
 											"        let order  = res.json();",
 											"        utils.validatePoLines(order, 4, true);",
+											"           //check status changed",
+											"           for(var i = 0; i < order.compositePoLines.length; i++) {",
+											"             pm.expect(order.compositePoLines[i].receipt_status).to.equal(\"Awaiting Receipt\");",
+											"           }",
 											"    }",
 											"    );",
 											"});"
@@ -4231,6 +4235,114 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{{po_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117))."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Order With receipt not required",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest({",
+											"        url: pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\",",
+											"        method: \"GET\"",
+											"    },",
+											"    function (err, res) {",
+											"        let order  = res.json();",
+											"        order.workflow_status = \"Open\";",
+											"        order = utils.deletePoNumber(order);",
+											"        for(var i = 0; i < order.compositePoLines.length; i++) {",
+											"    \t  order.compositePoLines[i].receipt_status = \"Receipt Not Required\";",
+											"        }",
+											"        ",
+											"        pm.globals.set(\"order_with_receipt_not_required_lines\", JSON.stringify(utils.prepareOrder(order)));",
+											"    }",
+											");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = pm.response.json();",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Verify two po_lines exist\", function () {",
+											"    utils.validatePoLines(jsonData, 2, false);",
+											"    ",
+											"});",
+											"",
+											"pm.test(\"Verify Inventory records creation was  ignored\", function () {",
+											"    //check instanceId creation",
+											"    for(var i = 0; i < jsonData.compositePoLines.length; i++) {",
+											"      pm.expect(jsonData.compositePoLines[i].instance_id).to.not.exist;",
+											"    }",
+											"});",
+											"",
+											"",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"order_without_inventory_records_id\", jsonData.id); ",
+											"    pm.expect(jsonData.approved).to.exist;",
+											"    pm.expect(jsonData.po_number).to.exist;",
+											"    pm.expect(jsonData.notes).to.exist;",
+											"    pm.expect(jsonData.total_items).to.exist;",
+											"    pm.expect(jsonData.vendor).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_with_receipt_not_required_lines}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -7203,6 +7315,69 @@
 					"response": []
 				},
 				{
+					"name": "Delete order with no created instances",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{order_without_inventory_records_id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders",
+								"{{order_without_inventory_records_id}}"
+							]
+						},
+						"description": "DELETE /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Verify no lines left in storage",
 					"event": [
 						{
@@ -7680,7 +7855,7 @@
 					"        pm.expect(poLine.publication_date, \"publication_date not expected\").to.not.exist;",
 					"        pm.expect(poLine.publisher, \"publisher not expected\").to.not.exist;",
 					"        pm.expect(poLine.receipt_date, \"receipt_date not expected\").to.not.exist;",
-					"        pm.expect(poLine.receipt_status, \"receipt_status not expected\").to.not.exist;",
+					"        pm.expect(poLine.receipt_status, \"receipt_status expected\").to.exist;",
 					"        pm.expect(poLine.reporting_codes, \"reporting_codes should be empty\").to.be.an('array').that.is.empty;",
 					"        pm.expect(poLine.requester, \"requester not expected\").to.not.exist;",
 					"        pm.expect(poLine.rush, \"rush not expected\").to.not.exist;",
