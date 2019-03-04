@@ -3863,6 +3863,8 @@
 											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
 											"    let order  = res.json();",
 											"    order.workflow_status = \"Pending\";",
+											"    // Setting create inventory to false for PO Line with P/E Mix format",
+											"    order.compositePoLines[0].eresource.create_inventory = false;",
 											"    order = utils.deletePoNumber(order);",
 											"",
 											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
@@ -3937,7 +3939,7 @@
 										"composite-orders"
 									]
 								},
-								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders.\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `false`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
 							},
 							"response": []
 						},
@@ -3956,9 +3958,6 @@
 											"    let pendingOrder = pm.globals.get(\"another_complete_order_content\");",
 											"",
 											"    let order  = utils.prepareOrder(res.json());",
-											"    // Set PO Line numbers manually for now",
-											"    order.compositePoLines[0].po_line_number = pendingOrder.compositePoLines[0].po_line_number + 1;",
-											"    order.compositePoLines[1].po_line_number = pendingOrder.compositePoLines[1].po_line_number + 1;",
 											"    // Few more cases for MODORDERS-117",
 											"    order.compositePoLines[0].order_format = \"Physical Resource\";",
 											"    setPhysicalQuantity(order.compositePoLines[0]);",
@@ -3981,7 +3980,7 @@
 											"        var location = line.locations[i];",
 											"        delete location.quantity_electronic;",
 											"        location.quantity_physical = i + 1;",
-											"        total += i + 1;",
+											"        total += location.quantity_physical;",
 											"    }",
 											"    line.cost.quantity_physical = total;",
 											"}"
@@ -3997,13 +3996,9 @@
 											"let utils = eval(globals.loadUtils);",
 											"",
 											"",
-											"pm.test(\"Status code is 204\", function () {",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
 											"    pm.response.to.have.status(\"No Content\");",
 											"});   ",
-											"",
-											"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
-											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
-											"});",
 											"",
 											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.another_complete_order_id, function (err, res) {",
 											"    pm.test(\"Verify PO Line updated with expected receipt date\", function () {",
@@ -4069,7 +4064,7 @@
 										"{{another_complete_order_id}}"
 									]
 								},
-								"description": "PUT /orders/composite-orders/id requests that return 204"
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
 							},
 							"response": []
 						}
@@ -4301,7 +4296,7 @@
 											"    });",
 											"",
 											"    utils.validateInventoryItemsReceived(line);",
-											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(receivingPoLineId, 0, \"Expected\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4389,7 +4384,7 @@
 											"    });",
 											"",
 											"    utils.validateInventoryItemsReceived(line, 10);",
-											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(receivingPoLineId, 10, \"Received\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 10, \"Received\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4477,7 +4472,7 @@
 											"    });",
 											"",
 											"    utils.validateInventoryItemsReceived(line);",
-											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(receivingPoLineId, 0, \"Expected\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4565,7 +4560,7 @@
 											"    });",
 											"",
 											"    utils.validateInventoryItemsReceived(line, 0);",
-											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(receivingPoLineId, 0, \"Expected\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4653,7 +4648,7 @@
 											"    });",
 											"",
 											"    utils.validateInventoryItemsReceived(line);",
-											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(receivingPoLineId, 0, \"Expected\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4695,6 +4690,94 @@
 									]
 								},
 								"description": "Receives all piece records without Inventory items for a PO Line with `Electronic Resource` order format from an order created by `Create Open order with physical and electronic lines` request (see [MODORDERS-162](https://issues.folio.org/browse/MODORDERS-162)). The PO Line is with 10 pieces, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Receive all pieces for an order with 4 lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"utils.prepareReceivingRequestForOrder(globals.another_complete_order_id);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"receivingRqBody\"));",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has all pieces successfully received\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeReceived.length);",
+											"    // All pieces should be successfully received",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.another_complete_order_id, (err, res) => {",
+											"    let order = res.json();",
+											"    order.compositePoLines.forEach(line => {",
+											"        pm.test(line.po_line_number + \" PO Line should have Fully Received receipt status\", function () {",
+											"            pm.expect(line.receipt_status).to.equal(\"Fully Received\");",
+											"            pm.expect(line.receipt_date).to.not.be.empty;",
+											"        });",
+											"        utils.validateInventoryItemsReceived(line);",
+											"        utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{receivingRqBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receive",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receive"
+									]
+								},
+								"description": "Receives all piece records for an order created by `Create another Pending order` and  request (see [MODORDERS-162](https://issues.folio.org/browse/MODORDERS-162)). The PO Line is with 10 pieces, create inventory is `false`."
 							},
 							"response": []
 						}
@@ -8120,7 +8203,7 @@
 					"        return new Promise((resolve) => {",
 					"            utils.getItemsByPoLineId(line.id, 0, (err, res) => {",
 					"                resolve();",
-					"                pm.test(\"No Item Records found for PO Line with id=\" + line.id, function () {",
+					"                pm.test(\"No Item Records found for PO Line with number=\" + line.po_line_number, function () {",
 					"                    pm.expect(res.code).to.eql(200);",
 					"                    pm.expect(res.json().totalRecords).to.eql(0);",
 					"                });",
@@ -8148,11 +8231,36 @@
 					"    /**",
 					"     * Validates that expected number of pieces received using receiving history endpoint (MODORDERS-103)",
 					"     */",
-					"    utils.validateReceivingHistoryNumberOfPiecesByStatus = function(poLineId, expectedQuantity, receivingStatus) {",
+					"    utils.validateReceivingHistoryNumberOfPiecesByStatus = function(poLine, expectedQuantity, receivingStatus) {",
 					"        receivingStatus = typeof receivingStatus === \"undefined\" ? \"Expected\" : receivingStatus;",
-					"        utils.sendGetRequest(\"/orders/receiving-history?limit=0&query=receivingStatus==\" + receivingStatus + \" and poLineId=\" + poLineId, (err, res) => {",
-					"            pm.test(expectedQuantity + \" \" + receivingStatus + \" pieces for PO Line\", function () {",
+					"        utils.sendGetRequest(\"/orders/receiving-history?limit=0&query=receivingStatus==\" + receivingStatus + \" and poLineId=\" + poLine.id, (err, res) => {",
+					"            pm.test(expectedQuantity + \" \" + receivingStatus + \" pieces for PO Line with number=\" + poLine.po_line_number, function () {",
 					"                pm.expect(res.json().total_records).to.equal(expectedQuantity);",
+					"            });",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Prepare receiving request body for all PO Lines of an order",
+					"     * The function sets following variable:",
+					"     * - `receivingRqBody` the body for receiving request",
+					"     * @param orderId order id to receive one PO Line of the desired order format",
+					"     * @param quantityToReceive number of pieces to receive. In case if not specified, all pieces will be received",
+					"     */",
+					"    utils.prepareReceivingRequestForOrder = function(orderId, quantityToReceive) {",
+					"        utils.sendGetRequest(\"/orders/composite-orders/\" + orderId, (err, res) => {",
+					"            let order;",
+					"            pm.test(\"Retrieving order by id=\" + orderId, function () {",
+					"                pm.expect(res).to.have.property('code', 200);",
+					"                order = res.json();",
+					"            });",
+					"",
+					"            if (typeof quantityToReceive === \"undefined\") {",
+					"                quantityToReceive = 1000;",
+					"            }",
+					"            utils.sendGetRequest(\"/orders/receiving-history?limit=\" + quantityToReceive + \"&query=receivingStatus==Expected and purchaseOrderId=\" + orderId, (err, res) => {",
+					"                let receivingRq = utils.prepareReceivingRequest(res.json().receiving_history);",
+					"                pm.variables.set(\"receivingRqBody\", JSON.stringify(receivingRq));",
 					"            });",
 					"        });",
 					"    };",
@@ -8397,7 +8505,7 @@
 					"        pm.expect(poLine.publication_date, \"publication_date not expected\").to.not.exist;",
 					"        pm.expect(poLine.publisher, \"publisher not expected\").to.not.exist;",
 					"        pm.expect(poLine.receipt_date, \"receipt_date not expected\").to.not.exist;",
-					"        pm.expect(poLine.receipt_status, \"receipt_status not expected\").to.not.exist;",
+					"        pm.expect(poLine.receipt_status, \"receipt_status not expected\").to.equal(\"Pending\");",
 					"        pm.expect(poLine.reporting_codes, \"reporting_codes should be empty\").to.be.an('array').that.is.empty;",
 					"        pm.expect(poLine.requester, \"requester not expected\").to.not.exist;",
 					"        pm.expect(poLine.rush, \"rush not expected\").to.not.exist;",
