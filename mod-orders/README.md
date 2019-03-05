@@ -18,6 +18,7 @@ Folder | Description
 `- Pending Order` | Verifies that an order in `Pending` status can be created. Verifies that existing PO Lines can be updated/deleted; new PO Lines can be added/updated/deleted.
 `- Pending To Open order` | Verifies that order transition from `Pending` to `Open` status can be successful and expected records created in the Inventory.
 `- Open order` | Verifies that an order can be successfully created in `Open` status and expected records created in the Inventory.
+`- Receiving` | Verifies that resources can be successfully received for `Open` orders and item records updated in the Inventory.
 `- PO Number` | Verifies PO Number generation/validation
 `- Get Orders` | Verifies that orders can be be retrieved by CQL query
 `Negative Tests` | Contains various requests and tests to verify expected negative cases e.g. validation of the request etc.
@@ -25,6 +26,7 @@ Folder | Description
 `- Order` | Various requests and tests to verify expected negative cases for endpoints managing order 
 `- Lines` | Various requests and tests to verify expected negative cases for endpoints managing order lines 
 `- PO Number` | Various requests and tests to verify expected negative cases for endpoints validating PO number 
+`- Receiving` | Various requests and tests to verify expected negative cases like already received resources cannot be received again.
 `Cleanup` | Revert configuration settings back to initial values. Delete created inventory records. Delete created orders and verifies deletion.
 
 ### Collection variables
