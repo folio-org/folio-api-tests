@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "0382bc01-3519-4c90-90e2-e4d59e1bf0d4",
+		"_postman_id": "3310df93-a5b9-4426-9041-f225057c7759",
 		"name": "mod-codex-mux",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -395,9 +395,9 @@
 								"id": "30b0b57f-a25a-41b2-9390-f1e72c241b4c",
 								"exec": [
 									"var jsonData = pm.response.json();",
-									"pm.environment.set(\"apiKeyFlag\", true);",
+									"pm.environment.set(\"apiKeyExists\", false);",
 									"if(jsonData!==null && jsonData.configs.length!==0) {",
-									"    pm.environment.set(\"apiKeyFlag\", false);",
+									"    pm.environment.set(\"apiKeyExists\", true);",
 									"    //\"Api key exists -- do not POST\");",
 									"    postman.setNextRequest(\"setup environment variables\");",
 									"}",
@@ -752,6 +752,115 @@
 			"item": []
 		},
 		{
+			"name": "codex packages sources",
+			"item": [
+				{
+					"name": "/codex-packages-sources",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
+								"exec": [
+									"pm.test(\"Success test on json response when source modules that implement codex-packages exist\", function() {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"Response status is 200 when  when source modules that implement codex-packages exist\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Create, add and validate schema when source modules that implement codex-packages exists\", function() {",
+									"       //Create and add schemas for validation",
+									"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_sourceCollection\")))).to.be.true;",
+									"    //make sure no schema is missing",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages-sources\");",
+									"});",
+									"",
+									"var obj = pm.response.json().sources[0];",
+									"pm.test(\"Response contains expected module\", function () {",
+									"    pm.expect(obj.name).includes(\"mod-codex-ekb\");",
+									"});",
+									"",
+									"pm.test(\"Content-Type header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "X-Okapi-Token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages-sources",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"codex-packages-sources"
+							]
+						},
+						"description": "Test /codex-packages-sources"
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "7168841f-def6-4543-b513-883bcab61a56",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "de35be5f-2c55-4146-bb41-2aa93bf07e46",
+						"type": "text/javascript",
+						"exec": [
+							"tv4.addSchema(\"schema_sourceCollection.json\", JSON.parse(pm.environment.get(\"schema_sourceCollection\")));",
+							"tv4.addSchema(\"schema_source.json\", JSON.parse(pm.environment.get(\"schema_source\")));"
+						]
+					}
+				}
+			]
+		},
+		{
 			"name": "tear-down configuration",
 			"item": [
 				{
@@ -1042,6 +1151,12 @@
 									"    pm.response.to.be.json; ",
 									"});",
 									"",
+									"let jsonData = pm.response.json();",
+									"let apiKeyExists = pm.environment.get(\"apiKeyExists\");",
+									"if((jsonData !==null && jsonData.configs.length >0) && apiKeyExists) {",
+									"    //Api key previously existed -- DO NOT DELETE (end execution)",
+									"    postman.setNextRequest(\"Configuration tear-down placeholder\");",
+									"}",
 									""
 								],
 								"type": "text/javascript"
@@ -1150,6 +1265,53 @@
 							]
 						},
 						"description": "Clean-up RM-API Key configuration"
+					},
+					"response": []
+				},
+				{
+					"name": "Configuration tear-down placeholder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f930ca9d-df31-4572-90c8-63f5243ae30e",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Module-Id",
+								"type": "text",
+								"value": "{{codex-mux-module-id}}"
+							},
+							{
+								"key": "X-Okapi-Tenant",
+								"type": "text",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"jsonSchemas"
+							]
+						}
 					},
 					"response": []
 				}
