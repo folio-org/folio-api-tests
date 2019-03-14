@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "3817151b-3eb6-4465-a552-6754a32aeeb4",
+		"_postman_id": "2f5100db-d5f7-4344-9f70-e77c511a29bc",
 		"name": "mod-codex-ekb",
 		"description": "Variables defined for mod-codex-ekb module api testing.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -681,12 +681,48 @@
 									"                    pm.environment.set(\"EkbInstanceSource\", storeInstance.source);",
 									"                    pm.environment.set(\"EkbInstanceFormat\", storeInstance.format);",
 									"                    pm.environment.set(\"id\", jsonData.instances[randomIndex].id);",
-									"                    pm.environment.set(\"packagesId\", \"583-4345\");",
 									"                }",
 									"            });",
 									"        }",
 									"        else{",
 									"            console.log(\"Error getting Codex Instances\");",
+									"        }",
+									"        ",
+									"        if(pm.environment.get(\"modCodexEkb\")!== null) {",
+									"            //Using the mod codex ekb id captured above, use that to retrieve list of mod codex ekb instances",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/codex-packages?query=(name=Collection)\",",
+									"                method: 'GET',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': pm.environment.get(\"xokapitoken-codex-ekb\"),",
+									"                    'X-Okapi-Module-Id': pm.environment.get(\"modCodexEkb\"),",
+									"                    'Content-Type': 'application/json'",
+									"                },",
+									"            }, function(err, res) {",
+									"                 if (err !== null) {",
+									"                    console.log(\"codex packages error: \" + err);",
+									"                } else {",
+									"                    //Grab few fields from randomly generated mod codex ekb package and save them in environment variables for testing purpose",
+									"                    var jsonData = res.json();",
+									"                    var randomIndex = Math.floor(Math.random()*jsonData.packages.length);",
+									"                    var storePackages= {};",
+									"                    storePackages.name = jsonData.packages[randomIndex].name;",
+									"                    storePackages.type = jsonData.packages[randomIndex].type;",
+									"                    storePackages.provider = jsonData.packages[randomIndex].provider;",
+									"                    storePackages.source = jsonData.packages[randomIndex].source;",
+									"                    storePackages.isSelected = jsonData.packages[randomIndex].isSelected;",
+									"                    pm.environment.set(\"EkbPackageName\", storePackages.name);",
+									"                    pm.environment.set(\"EkbPackageType\", storePackages.type);",
+									"                    pm.environment.set(\"EkbPackageProvider\", storePackages.provider);",
+									"                    pm.environment.set(\"EkbPackageSource\", storePackages.source);",
+									"                    pm.environment.set(\"EkbPackageIsSelected\", storePackages.isSelected);",
+									"                    pm.environment.set(\"packagesId\", jsonData.packages[randomIndex].id);",
+									"                }",
+									"            });",
+									"        }",
+									"        else{",
+									"            console.log(\"Error getting Codex Packages\");",
 									"        }",
 									"    }",
 									"});",
@@ -1898,7 +1934,7 @@
 							"name": "Positive",
 							"item": [
 								{
-									"name": "/codex-packages?query=(name=ABC-CLIO-eBook-Collection)",
+									"name": "/codex-packages?query=(name=Collection)",
 									"event": [
 										{
 											"listen": "prerequest",
@@ -1924,10 +1960,17 @@
 													"});",
 													"",
 													"pm.test(\"Create, add and validate schema when name exists\", function() {",
-													"       //Create and add schemas for validation",
+													"    //Create and add schemas for validation",
 													"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.be.true;",
 													"    //make sure no schema is missing",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"var jsonData = pm.response.json();",
+													"let firstRecord = jsonData.packages[0];",
+													"// Test that first record contains search term",
+													"pm.test('Name in a record includes query term', function() {",
+													"    pm.expect(firstRecord.name).to.include('Collection');",
 													"});",
 													"",
 													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
@@ -1967,7 +2010,7 @@
 											"raw": ""
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(name=ABC-CLIO-eBook-Collection)",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(name=Collection)",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -1979,7 +2022,7 @@
 											"query": [
 												{
 													"key": "query",
-													"value": "(name=ABC-CLIO-eBook-Collection)"
+													"value": "(name=Collection)"
 												}
 											]
 										},
@@ -2184,100 +2227,6 @@
 									"response": []
 								},
 								{
-									"name": "/codex-packages?query=(source=kb)&limit=maxLimit",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
-												"exec": [
-													"pm.test(\"Success test on json response when record exists\", function() {",
-													"    pm.response.to.be.json;",
-													"});",
-													"",
-													"pm.test(\"Response status is 200 when record exists\", function () {",
-													"    pm.response.to.have.status(200);",
-													"});",
-													"",
-													"pm.test(\"Create, add and validate schema when title exists\", function() {",
-													"       //Create and add schemas for validation",
-													"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.be.true;",
-													"    //make sure no schema is missing",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
-													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages\");",
-													"});",
-													"",
-													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
-													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
-													"});",
-													"",
-													"pm.test(\"Content-Type header has expected value\", function () {",
-													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "X-Okapi-Module-Id",
-												"value": "{{modCodexEkb}}"
-											},
-											{
-												"key": "X-Okapi-Token",
-												"value": "{{xokapitoken-codex-ekb}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(source=kb)&limit=2147483647",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"codex-packages"
-											],
-											"query": [
-												{
-													"key": "query",
-													"value": "(source=kb)"
-												},
-												{
-													"key": "limit",
-													"value": "2147483647"
-												}
-											]
-										},
-										"description": "Test Ekb codex-instances listing"
-									},
-									"response": []
-								},
-								{
 									"name": "/codex-packages?query=(id=%packagesId)",
 									"event": [
 										{
@@ -2306,8 +2255,30 @@
 													"    pm.expect(obj.resultInfo.totalRecords).to.equal(recordLength);",
 													"});",
 													"",
-													"pm.test(\"Verify packages key is present\", function () {",
+													"pm.test(\"Verify package is present\", function () {",
 													"    pm.expect(obj.length).to.not.equal(0);",
+													"});",
+													"",
+													"let objData = obj.packages[0];",
+													"",
+													"pm.test(\"Validate provider of response body fields\", function() {",
+													"   pm.expect(objData.provider).to.equal(pm.environment.get(\"EkbPackageProvider\"));",
+													"});",
+													"",
+													"pm.test(\"Validate title of response body fields\", function() {",
+													"   pm.expect(objData.name).to.equal(pm.environment.get(\"EkbPackageName\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate type of response body fields\", function() {",
+													"   pm.expect(objData.type).to.equal(pm.environment.get(\"EkbPackageType\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate source of response body fields\", function() {",
+													"   pm.expect(objData.source).to.equal(pm.environment.get(\"EkbPackageSource\"));",
+													"});",
+													"",
+													"pm.test(\"Validate format of response body fields\", function() {",
+													"   pm.expect(objData.isSelected).to.equal(pm.environment.get(\"EkbPackageIsSelected\"));",
 													"});",
 													"",
 													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
