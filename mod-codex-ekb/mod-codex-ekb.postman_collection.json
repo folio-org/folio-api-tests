@@ -681,11 +681,49 @@
 									"                    pm.environment.set(\"EkbInstanceSource\", storeInstance.source);",
 									"                    pm.environment.set(\"EkbInstanceFormat\", storeInstance.format);",
 									"                    pm.environment.set(\"id\", jsonData.instances[randomIndex].id);",
+									"                    pm.environment.set(\"packagesId\", \"583-4345\");",
 									"                }",
 									"            });",
 									"        }",
 									"        else{",
 									"            console.log(\"Error getting Codex Instances\");",
+									"        }",
+									"        ",
+									"        if(pm.environment.get(\"modCodexEkb\")!== null) {",
+									"            //Using the mod codex ekb id captured above, use that to retrieve list of mod codex ekb instances",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/codex-packages?query=(name=Collection)\",",
+									"                method: 'GET',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': pm.environment.get(\"xokapitoken-codex-ekb\"),",
+									"                    'X-Okapi-Module-Id': pm.environment.get(\"modCodexEkb\"),",
+									"                    'Content-Type': 'application/json'",
+									"                },",
+									"            }, function(err, res) {",
+									"                 if (err !== null) {",
+									"                    console.log(\"codex packages error: \" + err);",
+									"                } else {",
+									"                    //Grab few fields from randomly generated mod codex ekb package and save them in environment variables for testing purpose",
+									"                    var jsonData = res.json();",
+									"                    var randomIndex = Math.floor(Math.random()*jsonData.packages.length);",
+									"                    var storePackages= {};",
+									"                    storePackages.name = jsonData.packages[randomIndex].name;",
+									"                    storePackages.type = jsonData.packages[randomIndex].type;",
+									"                    storePackages.provider = jsonData.packages[randomIndex].provider;",
+									"                    storePackages.source = jsonData.packages[randomIndex].source;",
+									"                    storePackages.isSelected = jsonData.packages[randomIndex].isSelected;",
+									"                    pm.environment.set(\"EkbPackageName\", storePackages.name);",
+									"                    pm.environment.set(\"EkbPackageType\", storePackages.type);",
+									"                    pm.environment.set(\"EkbPackageProvider\", storePackages.provider);",
+									"                    pm.environment.set(\"EkbPackageSource\", storePackages.source);",
+									"                    pm.environment.set(\"EkbPackageIsSelected\", storePackages.isSelected);",
+									"                    pm.environment.set(\"packagesId\", jsonData.packages[randomIndex].id);",
+									"                }",
+									"            });",
+									"        }",
+									"        else{",
+									"            console.log(\"Error getting Codex Packages\");",
 									"        }",
 									"    }",
 									"});",
@@ -1891,6 +1929,936 @@
 			"name": "codex packages",
 			"item": [
 				{
+					"name": "GET codex packages collection",
+					"item": [
+						{
+							"name": "Positive",
+							"item": [
+								{
+									"name": "/codex-packages?query=(name=Collection)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
+												"exec": [
+													"pm.test(\"Success test on json response when record exists\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"pm.test(\"Response status is 200 when record exists\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Create, add and validate schema when name exists\", function() {",
+													"    //Create and add schemas for validation",
+													"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.be.true;",
+													"    //make sure no schema is missing",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"var jsonData = pm.response.json();",
+													"let firstRecord = jsonData.packages[0];",
+													"// Test that first record contains search term",
+													"pm.test('Name in a record includes query term', function() {",
+													"    pm.expect(firstRecord.name).to.include('Collection');",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages\");",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});",
+													"",
+													"pm.test(\"Content-Type header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(name=Collection)",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(name=Collection)"
+												}
+											]
+										},
+										"description": "Test Ekb codex-instances listing"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?query=(name=include numbers)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
+												"exec": [
+													"pm.test(\"Success test on json response when record exists\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"pm.test(\"Response status is 200 when record exists\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"let obj = pm.response.json();",
+													"pm.test(\"Response body is empty\", function () {",
+													"    pm.expect(obj.packages.length).to.eq(0);",
+													"});",
+													"",
+													"pm.test(\"Create, add and validate schema when title exists\", function() {",
+													"       //Create and add schemas for validation",
+													"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.be.true;",
+													"    //make sure no schema is missing",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages\");",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});",
+													"",
+													"pm.test(\"Content-Type header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(name=123412123)",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(name=123412123)"
+												}
+											]
+										},
+										"description": "Test Ekb codex-instances listing"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?query=(type=ebook)&limit=defaultLimit",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
+												"exec": [
+													"pm.test(\"Success test on json response when record exists\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"pm.test(\"Response status is 200 when record exists\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Validate default limit",
+													"let obj = pm.response.json();",
+													"let defaultLength = 10;",
+													"pm.test(\"Verify default limit for codex ekb packages\", function () {",
+													"    pm.expect(obj.packages.length).to.equal(defaultLength);",
+													"});",
+													"",
+													"pm.test(\"Create, add and validate schema when title exists\", function() {",
+													"       //Create and add schemas for validation",
+													"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.be.true;",
+													"    //make sure no schema is missing",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages\");",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});",
+													"",
+													"pm.test(\"Content-Type header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(type=ebook)&limit=10",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(type=ebook)"
+												},
+												{
+													"key": "limit",
+													"value": "10"
+												}
+											]
+										},
+										"description": "Test Ekb codex-instances listing"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?query=(id=%packagesId)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "1a966824-e750-4153-aa60-26d99cbf0a04",
+												"exec": [
+													"pm.test(\"Verify codex ekb search by passing id as a query parameter\", function() {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Verify only 1 codex ekb instance is returned",
+													"let obj = pm.response.json();",
+													"let recordLength = 1;",
+													"pm.test(\"Verify default length codex packages\", function () {",
+													"    pm.expect(obj.resultInfo.totalRecords).to.equal(recordLength);",
+													"});",
+													"",
+													"pm.test(\"Verify package is present\", function () {",
+													"    pm.expect(obj.length).to.not.equal(0);",
+													"});",
+													"",
+													"let objData = obj.packages[0];",
+													"",
+													"pm.test(\"Validate provider of response body fields\", function() {",
+													"   pm.expect(objData.provider).to.equal(pm.environment.get(\"EkbPackageProvider\"));",
+													"});",
+													"",
+													"pm.test(\"Validate title of response body fields\", function() {",
+													"   pm.expect(objData.name).to.equal(pm.environment.get(\"EkbPackageName\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate type of response body fields\", function() {",
+													"   pm.expect(objData.type).to.equal(pm.environment.get(\"EkbPackageType\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate source of response body fields\", function() {",
+													"   pm.expect(objData.source).to.equal(pm.environment.get(\"EkbPackageSource\"));",
+													"});",
+													"",
+													"pm.test(\"Validate format of response body fields\", function() {",
+													"   pm.expect(objData.isSelected).to.equal(pm.environment.get(\"EkbPackageIsSelected\"));",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});",
+													"",
+													"pm.test(\"Content-Type header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(id={{packagesId}})",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(id={{packagesId}})"
+												}
+											]
+										},
+										"description": "Return single codex ekb instance by passing id as query parameter"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?query=(package=returns empty list)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "24a825cb-e978-457e-b522-08975c1f3c95",
+												"exec": [
+													"let obj = pm.response.json();",
+													"let emptyInstanceList = 0;",
+													"pm.test(\"Verify query search results in 0 total records when current record with given search params does not exist\", function () {",
+													"    pm.expect(obj.resultInfo.totalRecords).to.equal(0);",
+													"});",
+													"pm.test(\"Verify query search results in empty packages list when record with given search params does not exist\", function () {",
+													"    pm.expect(obj.packages.length).to.equal(emptyInstanceList);",
+													"});",
+													"",
+													"pm.test(\"Success test on json response when record with given search params does not exist\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"pm.test(\"Response status is 200 when record with given search params does not exist\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});",
+													"",
+													"pm.test(\"Content-Type header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(id=123-1234)",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(id=123-1234)"
+												}
+											]
+										},
+										"description": "Test codex-instances listing when title does not exist and search query returns empty list"
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Negative",
+							"item": [
+								{
+									"name": "/codex-packages?query=(type=book)limit=-1",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fa34df14-3204-4c30-8543-652fae051a27",
+												"exec": [
+													"pm.test(\"400 malformed request body or query parameter test - negative limit\", function() {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Response having negative limit parameter error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body('\\n \\'limit\\' parameter is incorrect. parameter value {-1} is not valid: must be greater than or equal to 0');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(type=ebook)&limit=-1",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(type=ebook)"
+												},
+												{
+													"key": "limit",
+													"value": "-1"
+												}
+											]
+										},
+										"description": "Test codex-instances listing - negative limit"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages- malformed query parameter returns 400",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "c9605b2d-e93b-4fd8-a9d5-f438f093970a",
+												"exec": [
+													"pm.test(\"400 Bad Request - malformed query parameter\", function () {",
+													"    pm.response.to.have.status(400);    //Should return 400",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages\");",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											]
+										},
+										"description": "Test malformed query parameter returns 400"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?query=(type=incorrect syntax)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "eff3593d-7906-4d98-8368-4a9bc24de85c",
+												"exec": [
+													"pm.test(\"Response status is 400 due to incorrect query parameter syntax\", function () {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Response should have unsupported query format error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body(\"Unsupported Query Format : Boolean operators OR, NOT and PROX are unsupported.\");",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Module-Id is present\", function () {",
+													"    pm.request.to.have.header(\"X-Okapi-Module-Id\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?query=(type=zaz* or name=xyz)",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "(type=zaz* or name=xyz)"
+												}
+											]
+										},
+										"description": "Test codex ekb returns 400 on bad query parameter syntax"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?limit=2147483648",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "a6406117-33f5-4603-9946-8dfd54d6ff1a",
+												"exec": [
+													"pm.test(\"400 malformed request body or query parameter test - more than max limit\", function() {",
+													"    pm.response.to.have.status(400);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?limit=2147483648",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "limit",
+													"value": "2147483648"
+												}
+											]
+										},
+										"description": "Test codex-instances listing - more than max limit"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?offset=2147483648",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "855b3b2d-a932-4f3c-b64c-2d4a22b6b062",
+												"exec": [
+													"pm.test(\"400 malformed request body or query parameter test - more than max offset\", function() {",
+													"    pm.response.to.have.status(400);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?offset=2147483648",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "offset",
+													"value": "2147483648"
+												}
+											]
+										},
+										"description": "Test codex-instances listing - more than max offset"
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages?offset=-1",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "6b66d1f6-22c7-43e7-8116-54e718068007",
+												"exec": [
+													"pm.test(\"400 malformed request body or query parameter test - less than min offset\", function() {",
+													"    pm.response.to.have.status(400);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Module-Id",
+												"value": "{{modCodexEkb}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken-codex-ekb}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages?offset=-1",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages"
+											],
+											"query": [
+												{
+													"key": "offset",
+													"value": "-1"
+												}
+											]
+										},
+										"description": "Test codex-instances listing - less than min offset"
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "GET codex package by id",
 					"item": [
 						{
@@ -1904,7 +2872,7 @@
 											"script": {
 												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
 												"exec": [
-													"pm.environment.set(\"id\", \"583-4345\");"
+													""
 												],
 												"type": "text/javascript"
 											}
@@ -1937,7 +2905,7 @@
 													"",
 													"//Test that id matches what was provided in query",
 													"pm.test('id matches as provided in query', function(){",
-													"    pm.expect(response.id).eq(pm.variables.get('id'));",
+													"    pm.expect(response.id).eq(pm.variables.get('packagesId'));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -1965,7 +2933,7 @@
 											"raw": ""
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages/{{id}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages/{{packagesId}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -1973,7 +2941,7 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"codex-packages",
-												"{{id}}"
+												"{{packagesId}}"
 											]
 										},
 										"description": "Test Ekb codex-instances listing"
@@ -2085,7 +3053,10 @@
 						"exec": [
 							"tv4.addSchema(\"schema_packageType.json\", JSON.parse(pm.environment.get(\"schema_packageType\")));",
 							"tv4.addSchema(\"schema_coverage.json\", JSON.parse(pm.environment.get(\"schema_coverage\")));",
-							"tv4.addSchema(\"schema_selectionStatus.json\", JSON.parse(pm.environment.get(\"schema_selectionStatus\")));"
+							"tv4.addSchema(\"schema_selectionStatus.json\", JSON.parse(pm.environment.get(\"schema_selectionStatus\")));",
+							"tv4.addSchema(\"schema_resultInfo.schema\", JSON.parse(pm.environment.get(\"schema_resultInfo\")));",
+							"tv4.addSchema(\"schema_package.json\", JSON.parse(pm.environment.get(\"schema_package\")));",
+							"tv4.addSchema(\"schema_packageCollection.json\", JSON.parse(pm.environment.get(\"schema_packageCollection\")));"
 						]
 					}
 				}
