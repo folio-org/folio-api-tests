@@ -395,9 +395,9 @@
 								"id": "30b0b57f-a25a-41b2-9390-f1e72c241b4c",
 								"exec": [
 									"var jsonData = pm.response.json();",
-									"pm.environment.set(\"apiKeyFlag\", true);",
+									"pm.environment.set(\"apiKeyExists\", false);",
 									"if(jsonData!==null && jsonData.configs.length!==0) {",
-									"    pm.environment.set(\"apiKeyFlag\", false);",
+									"    pm.environment.set(\"apiKeyExists\", true);",
 									"    //\"Api key exists -- do not POST\");",
 									"    postman.setNextRequest(\"setup environment variables\");",
 									"}",
@@ -939,6 +939,13 @@
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
 													"});",
 													"",
+													"let response = pm.response.json();",
+													"let firstRecord = response.instances[0];",
+													"    // Test that first title contains search term",
+													"    pm.test('title name in a record includes query term', function() {",
+													"    pm.expect(firstRecord.publisher).to.include('BMJ');",
+													"});",
+													"",
 													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
 													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-instances\");",
 													"});",
@@ -1014,8 +1021,14 @@
 													"//Validate default limit",
 													"let obj = pm.response.json();",
 													"let defaultLength = 10;",
-													"pm.test(\"Verify default limit for codex ekb instances\", function () {",
+													"pm.test(\"Verify default limit for codex instances\", function () {",
 													"    pm.expect(obj.instances.length).to.equal(defaultLength);",
+													"});",
+													"",
+													"let firstRecord = obj.instances[0];",
+													"    // Test that first title contains search term",
+													"    pm.test('publisher in a record includes query term', function() {",
+													"    pm.expect(firstRecord.publisher.toLowerCase()).to.include('abc');",
 													"});",
 													"",
 													"pm.test(\"Content-Type header has expected value\", function () {",
@@ -1089,12 +1102,18 @@
 													"let response = pm.response.json();",
 													"",
 													"pm.test(\"Positive test for language parameter - English language\", function() {",
-													"    pm.response.to.have.status(200);",
+													"pm.response.to.have.status(200);",
+													"});",
+													"",
+													"let firstRecord = response.instances[0];",
+													"    // Test that first title contains search term",
+													"pm.test('title name in a record includes query term', function() {",
+													"pm.expect(firstRecord.publisher.toLowerCase()).to.include('abc');",
 													"});",
 													"",
 													"pm.test(\"Validate schema\", function () {",
-													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_instanceCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_instanceCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -1143,7 +1162,7 @@
 									"response": []
 								},
 								{
-									"name": "/codex-instances?query=(id=%d)",
+									"name": "/codex-instances?query=(id=%id)",
 									"event": [
 										{
 											"listen": "prerequest",
@@ -1164,7 +1183,7 @@
 													"    pm.response.to.have.status(200);",
 													"});",
 													"",
-													"//Verify only 1 codex ekb instance is returned",
+													"//Verify only 1 codex instance is returned",
 													"let obj = pm.response.json();",
 													"let recordLength = 1;",
 													"pm.test(\"Verify default length codex instances\", function () {",
@@ -1178,6 +1197,28 @@
 													"",
 													"pm.test(\"Verify instances key is present\", function () {",
 													"    pm.expect(obj.instances.length).to.not.equal(0);",
+													"});",
+													"",
+													"let instance = obj.instances[0];",
+													"",
+													"pm.test(\"Validate publisher of response body fields\", function() {",
+													"   pm.expect(instance.publisher).to.equal(pm.environment.get(\"muxInstancePublisher\"));",
+													"});",
+													"",
+													"pm.test(\"Validate title of response body fields\", function() {",
+													"   pm.expect(instance.title).to.equal(pm.environment.get(\"muxInstanceTitle\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate type of response body fields\", function() {",
+													"   pm.expect(instance.type).to.equal(pm.environment.get(\"muxInstanceType\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate source of response body fields\", function() {",
+													"   pm.expect(instance.source).to.equal(pm.environment.get(\"muxInstanceSource\"));",
+													"});",
+													"",
+													"pm.test(\"Validate format of response body fields\", function() {",
+													"   pm.expect(instance.format).to.equal(pm.environment.get(\"muxInstanceFormat\"));",
 													"});",
 													"",
 													"pm.test(\"Content-Type header has expected value\", function () {",
@@ -1336,15 +1377,21 @@
 													"});",
 													"",
 													"let response = pm.response.json();",
-													"",
 													"//Check that status is 200",
 													"pm.test(\"Status is 200\", function () {",
 													"    pm.response.to.have.status(200);",
 													"});",
-													"let len = response.instances.length;",
-													"//Check that list is empty",
-													"  pm.test('Check list lentgh', function(){",
-													"            pm.expect(len).eq(0);",
+													"",
+													"response.instances.forEach(function(element) {",
+													"    if(element.title.includes('American')){",
+													"        pm.test('title name in a record includes query term', function() {",
+													"        pm.expect(element.title).to.include('American');",
+													"            });",
+													"    } else {",
+													"        pm.test('publisher name in a record includes query term', function() {",
+													"        pm.expect(element.publisher).to.include('University');",
+													"        });",
+													"}",
 													"});"
 												],
 												"type": "text/javascript"
@@ -1373,7 +1420,7 @@
 											"raw": ""
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-instances?query=(title=zz* or publisher=xyz)",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-instances?query=(title=American or publisher=University)",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -1385,7 +1432,7 @@
 											"query": [
 												{
 													"key": "query",
-													"value": "(title=zz* or publisher=xyz)"
+													"value": "(title=American or publisher=University)"
 												}
 											]
 										},
@@ -2241,6 +2288,115 @@
 			"item": []
 		},
 		{
+			"name": "codex packages sources",
+			"item": [
+				{
+					"name": "/codex-packages-sources",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
+								"exec": [
+									"pm.test(\"Success test on json response when source modules that implement codex-packages exist\", function() {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"Response status is 200 when  when source modules that implement codex-packages exist\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Create, add and validate schema when source modules that implement codex-packages exists\", function() {",
+									"       //Create and add schemas for validation",
+									"    pm.expect(tv4.validate(pm.response.json(), JSON.parse(pm.environment.get(\"schema_sourceCollection\")))).to.be.true;",
+									"    //make sure no schema is missing",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages-sources\");",
+									"});",
+									"",
+									"var obj = pm.response.json().sources[0];",
+									"pm.test(\"Response contains expected module\", function () {",
+									"    pm.expect(obj.name).includes(\"mod-codex-ekb\");",
+									"});",
+									"",
+									"pm.test(\"Content-Type header has expected value\", function () {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.contain(\"application/json\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "X-Okapi-Token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages-sources",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"codex-packages-sources"
+							]
+						},
+						"description": "Test /codex-packages-sources"
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "7168841f-def6-4543-b513-883bcab61a56",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "de35be5f-2c55-4146-bb41-2aa93bf07e46",
+						"type": "text/javascript",
+						"exec": [
+							"tv4.addSchema(\"schema_sourceCollection.json\", JSON.parse(pm.environment.get(\"schema_sourceCollection\")));",
+							"tv4.addSchema(\"schema_source.json\", JSON.parse(pm.environment.get(\"schema_source\")));"
+						]
+					}
+				}
+			]
+		},
+		{
 			"name": "tear-down configuration",
 			"item": [
 				{
@@ -2538,6 +2694,12 @@
 									"    pm.response.to.be.json; ",
 									"});",
 									"",
+									"let jsonData = pm.response.json();",
+									"let apiKeyExists = pm.environment.get(\"apiKeyExists\");",
+									"if((jsonData !==null && jsonData.configs.length >0) && apiKeyExists) {",
+									"    //Api key previously existed -- DO NOT DELETE (end execution)",
+									"    postman.setNextRequest(\"Configuration tear-down placeholder\");",
+									"}",
 									""
 								],
 								"type": "text/javascript"
@@ -2646,6 +2808,53 @@
 							]
 						},
 						"description": "Clean-up RM-API Key configuration"
+					},
+					"response": []
+				},
+				{
+					"name": "Configuration tear-down placeholder",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f930ca9d-df31-4572-90c8-63f5243ae30e",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Module-Id",
+								"type": "text",
+								"value": "{{codex-mux-module-id}}"
+							},
+							{
+								"key": "X-Okapi-Tenant",
+								"type": "text",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"jsonSchemas"
+							]
+						}
 					},
 					"response": []
 				}
