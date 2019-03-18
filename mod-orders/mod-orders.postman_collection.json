@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "d590b88f-be2b-4528-a8e3-8e733b1e90bc",
+		"_postman_id": "1e1d3598-885e-4f4e-8994-33fbb78112b0",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4549,6 +4549,88 @@
 								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117))."
 							},
 							"response": []
+						},
+						{
+							"name": "Create Open order for receiving history test",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Open\";",
+											"    order.compositePoLines[0].checkinItems = false;",
+											"    order.compositePoLines[1].checkinItems = false;",
+											"    order = utils.deletePoNumber(order);",
+											"    pm.globals.set(\"po_listed_print_monograph_receiving_history\", JSON.stringify(utils.prepareOrder(order)));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var order = pm.response.json();",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.expect(order.id).to.exist;",
+											"    pm.globals.set(\"receivingHistoryPoId\", order.id); ",
+											"});",
+											"",
+											"pm.test(\"Verify two PO Lines exist\", function () {",
+											"    utils.validatePoLines(order, 2, true);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_monograph_receiving_history}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders.\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `false`) items in total, checkinItems is `true`.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `false`."
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -5916,6 +5998,7 @@
 									"script": {
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
+											"let utils = eval(globals.loadUtils);",
 											"var jsonData = pm.response.json();",
 											"",
 											"pm.test(\"Status code is 200\", function () {",
@@ -5923,7 +6006,11 @@
 											"});",
 											"",
 											"pm.test(\"History has pieces to receive\", function() {",
-											"    pm.expect(jsonData.totalRecords).to.be.above(0);",
+											"    pm.expect(jsonData.totalRecords).to.equal(7);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history))",
 											"});"
 										],
 										"type": "text/javascript"
@@ -5951,7 +6038,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=purchaseOrderId={{completeOpenOrderId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=purchaseOrderId={{receivingHistoryPoId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -5964,7 +6051,7 @@
 									"query": [
 										{
 											"key": "query",
-											"value": "purchaseOrderId={{completeOpenOrderId}}"
+											"value": "purchaseOrderId={{receivingHistoryPoId}}"
 										}
 									]
 								},
@@ -8266,6 +8353,73 @@
 					"response": []
 				},
 				{
+					"name": "Delete Open order for receiving history test",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.receivingHistoryPoId, (err, res) => {",
+									"    utils.deleteInventoryRecords(res.json(), false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Order has been successfully deleted\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{receivingHistoryPoId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders",
+								"{{receivingHistoryPoId}}"
+							]
+						},
+						"description": "GET /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Delete Open order with P/E Mix and Electronic lines",
 					"event": [
 						{
@@ -8694,22 +8848,18 @@
 					"    },",
 					"    receiving: {",
 					"        bodyTemplate: {",
-					"            \"toBeReceived\": [",
-					"                {",
-					"                    \"poLineId\": \"\",",
-					"                    \"received\": 1,",
-					"                    \"receivedItems\": [",
-					"                        {",
-					"                            \"barcode\": \"11111111111\",",
-					"                            \"comment\": \"Very important note\",",
-					"                            \"caption\": \"Vol. 1\",",
-					"                            \"itemStatus\": \"Received\",",
-					"                            \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",",
-					"                            \"pieceId\": \"\"",
-					"                        }",
-					"                    ]",
-					"                }",
-					"            ],",
+					"            \"toBeReceived\": [{",
+					"                \"poLineId\": \"\",",
+					"                \"received\": 1,",
+					"                \"receivedItems\": [{",
+					"                    \"barcode\": \"11111111111\",",
+					"                    \"comment\": \"Very important note\",",
+					"                    \"caption\": \"Vol. 1\",",
+					"                    \"itemStatus\": \"Received\",",
+					"                    \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",",
+					"                    \"pieceId\": \"\"",
+					"                }]",
+					"            }],",
 					"            \"totalRecords\": 1",
 					"        }",
 					"    }",
@@ -8722,10 +8872,22 @@
 					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
 					"    let utils = {};",
 					"",
+					"    utils.validateReceivingHistory = function(history) {",
+					"        pm.expect(history.id, \"Piece id expected\").to.exist;",
+					"        pm.expect(history.dateOrdered, \"Order date expected\").to.exist;",
+					"        pm.expect(history.checkin, \"Checkin expected\").to.exist;",
+					"        pm.expect(history.instanceId, \"Instance id expected\").to.exist;",
+					"        pm.expect(history.poLineId, \"PO Line id expected\").to.exist;",
+					"        pm.expect(history.poLineNumber, \"PO Line number expected\").to.exist;",
+					"        pm.expect(history.poLineOrderFormat, \"Order format expected\").to.exist;",
+					"        pm.expect(history.poLineReceiptStatus, \"Receipt status expected\").to.exist;",
+					"        pm.expect(history.purchaseOrderId, \"Purchase order id expected\").to.exist;",
+					"    };",
+					"",
 					"    /**",
 					"     * Updates PO json removing ids and updating PO lines.",
 					"     */",
-					"    utils.prepareOrder = function (order) {",
+					"    utils.prepareOrder = function(order) {",
 					"        delete order.id;",
 					"        order.vendor = pm.environment.get(\"activeVendorId\");",
 					"        console.log(\"Preparing order. Number of PO lines: %d\", order.compositePoLines.length);",
@@ -8740,7 +8902,7 @@
 					"    /**",
 					"     * Updates sub-objects of the PO Line removing ids and adding missing data.",
 					"     */",
-					"    utils.preparePoLine = function (poLine) {",
+					"    utils.preparePoLine = function(poLine) {",
 					"        if (poLine.eresource) {",
 					"            poLine.eresource.accessProvider = pm.environment.get(\"activeVendorId\");",
 					"        }",
@@ -8755,14 +8917,14 @@
 					"    /**",
 					"     * Build Order with minimal required fields.",
 					"     */",
-					"    utils.buildOrderWithMinContent = function () {",
+					"    utils.buildOrderWithMinContent = function() {",
 					"        return {};",
 					"    };",
 					"",
 					"    /**",
 					"     * Build PO line with minimal required fields.",
 					"     */",
-					"    utils.buildPoLineWithMinContent = function (orderId) {",
+					"    utils.buildPoLineWithMinContent = function(orderId) {",
 					"        return {",
 					"            \"poLineNumber\": \"tempnumber-123\",",
 					"            \"purchaseOrderId\": orderId,",
@@ -8775,7 +8937,7 @@
 					"    /**",
 					"     * Validates presence of the PO lines of expected quantity and its sub-object elements",
 					"     */",
-					"    utils.validatePoLines = function (order, expectedCount) {",
+					"    utils.validatePoLines = function(order, expectedCount) {",
 					"        utils.validatePoLines(order, expectedCount, false);",
 					"    };",
 					"",
@@ -8783,11 +8945,11 @@
 					"    /**",
 					"     * Validates presence of the PO lines of expected quantity and its sub-object elements",
 					"     */",
-					"    utils.validatePoLines = function (order, expectedCount, checkInventory) {",
+					"    utils.validatePoLines = function(order, expectedCount, checkInventory) {",
 					"        console.log(\"Validating PO Lines for order with PO number=%s. Expected lines count=%d. Inventory check required: %s\", order.poNumber, expectedCount, checkInventory);",
 					"        pm.expect(order.compositePoLines).to.have.lengthOf(expectedCount);",
 					"        order.compositePoLines.forEach(poLine => {",
-					"            pm.test(\"Validating PO Line with number=\" + poLine.poLineNumber, function () {",
+					"            pm.test(\"Validating PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                utils.rememberPoLineId(poLine);",
 					"                pm.expect(poLine.purchaseOrderId, \"Line has to have order id\").to.equal(order.id);",
 					"                utils.validatePoLineAgainstSchema(poLine);",
@@ -8805,12 +8967,12 @@
 					"    /**",
 					"     * Validates presence of links to Inventory entities (e.g. Instance) and that these links are correct",
 					"     */",
-					"    utils.validatePoLinesInventoryLinks = function (poLine) {",
+					"    utils.validatePoLinesInventoryLinks = function(poLine) {",
 					"        // Instance should created only",
 					"        if (utils.calculateExpectedItemsQuantity(poLine) > 0) {",
 					"            pm.expect(poLine.instanceId, \"Instance id is expected\").to.exist;",
 					"            utils.sendGetRequest(\"/instance-storage/instances/\" + poLine.instanceId, (err, res) => {",
-					"                pm.test(\"Instance Record exist for PO Line with number=\" + poLine.poLineNumber, function () {",
+					"                pm.test(\"Instance Record exist for PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                    pm.expect(res.json()).to.exist;",
 					"                    pm.expect(res.json().id).to.equal(poLine.instanceId);",
 					"                    //Check if holdings record is created",
@@ -8828,10 +8990,10 @@
 					"    /**",
 					"     * Validates that expected items created  in the inventory (MODORDERS-67)",
 					"     */",
-					"    utils.validateInventoryItems = function (line) {",
+					"    utils.validateInventoryItems = function(line) {",
 					"        let expectedCount = utils.calculateExpectedItemsQuantity(line);",
 					"        utils.getItemsByPoLineId(line.id, 0, (err, res) => {",
-					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function () {",
+					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
 					"                pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
@@ -8842,18 +9004,18 @@
 					"    /**",
 					"     * Validates that expected items created  in the inventory (MODORDERS-67)",
 					"     */",
-					"    utils.getItemsByPoLineId = function (id, limit, handler) {",
+					"    utils.getItemsByPoLineId = function(id, limit, handler) {",
 					"        utils.sendGetRequest(\"/item-storage/items?limit=\" + limit + \"&query=purchaseOrderLineIdentifier==\" + id, handler);",
 					"    };",
 					"",
 					"    /**",
 					"     * Validates that Holdings Record was created  in the inventory",
 					"     */",
-					"    utils.validateHoldingsRecord = function (poLine) {",
+					"    utils.validateHoldingsRecord = function(poLine) {",
 					"        let instanceId = poLine.instanceId;",
 					"        pm.expect(instanceId).to.exist;",
 					"        utils.sendGetRequest(\"/holdings-storage/holdings?limit=0&query=instanceId==\" + instanceId, (err, res) => {",
-					"            pm.test(\"Holding Records exist for Created Instance=\" + instanceId, function () {",
+					"            pm.test(\"Holding Records exist for Created Instance=\" + instanceId, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body.totalRecords).to.be.above(0);",
 					"            });",
@@ -8863,11 +9025,11 @@
 					"    /**",
 					"     * Verifies that there is no any item associated with the PO Line",
 					"     */",
-					"    utils.verifyNoInventoryItemsExist = function (line) {",
+					"    utils.verifyNoInventoryItemsExist = function(line) {",
 					"        return new Promise((resolve) => {",
 					"            utils.getItemsByPoLineId(line.id, 0, (err, res) => {",
 					"                resolve();",
-					"                pm.test(\"No Item Records found for PO Line with number=\" + line.poLineNumber, function () {",
+					"                pm.test(\"No Item Records found for PO Line with number=\" + line.poLineNumber, function() {",
 					"                    pm.expect(res.code).to.eql(200);",
 					"                    pm.expect(res.json().totalRecords).to.eql(0);",
 					"                });",
@@ -8879,7 +9041,7 @@
 					"     * Validates that PO Line's receipt status updated to expected",
 					"     */",
 					"    utils.validateReceiptStatus = function(poLine, receiptStatus) {",
-					"        pm.test(poLine.poLineNumber + \" PO Line should have \" + receiptStatus + \" receipt status\", function () {",
+					"        pm.test(poLine.poLineNumber + \" PO Line should have \" + receiptStatus + \" receipt status\", function() {",
 					"            pm.expect(poLine.receiptStatus, \"Receipt status should be \" + receiptStatus).to.equal(receiptStatus);",
 					"            if (\"Fully Received\" === receiptStatus) {",
 					"                pm.expect(poLine.receiptDate, \"Receipt date should be set\").to.not.be.empty;",
@@ -8895,11 +9057,11 @@
 					"    utils.validateInventoryItemsReceived = function(poLine, expectedQuantity) {",
 					"        let expectedCount = typeof expectedQuantity === \"undefined\" ? utils.calculateExpectedItemsQuantity(poLine) : expectedQuantity;",
 					"        utils.sendGetRequest(\"/item-storage/items?limit=100&query=status.name==Received and purchaseOrderLineIdentifier==\" + poLine.id, (err, res) => {",
-					"            pm.test(expectedCount + \" Item Records marked as received for PO Line with number=\" + poLine.poLineNumber, function () {",
+					"            pm.test(expectedCount + \" Item Records marked as received for PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
 					"                pm.expect(body.totalRecords, \"Quantity of items received for PO Line should be \" + expectedCount).to.equal(expectedCount);",
-					"                body.items.forEach(function (item) {",
+					"                body.items.forEach(function(item) {",
 					"                    pm.expect(item.barcode, \"Barcode should not be empty\").to.not.be.empty;",
 					"                });",
 					"            });",
@@ -8912,7 +9074,7 @@
 					"    utils.validateReceivingHistoryNumberOfPiecesByStatus = function(poLine, expectedQuantity, receivingStatus) {",
 					"        receivingStatus = typeof receivingStatus === \"undefined\" ? \"Expected\" : receivingStatus;",
 					"        utils.sendGetRequest(\"/orders/receiving-history?limit=0&query=receivingStatus==\" + receivingStatus + \" and poLineId=\" + poLine.id, (err, res) => {",
-					"            pm.test(expectedQuantity + \" \" + receivingStatus + \" pieces for PO Line with number=\" + poLine.poLineNumber, function () {",
+					"            pm.test(expectedQuantity + \" \" + receivingStatus + \" pieces for PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                pm.expect(res.json().totalRecords).to.equal(expectedQuantity);",
 					"            });",
 					"        });",
@@ -8933,7 +9095,7 @@
 					"        }",
 					"        let pieceStatus = (itemStatus === \"On order\") ? \"Received\" : \"Expected\";",
 					"        utils.sendGetRequest(\"/orders/composite-orders/\" + orderId, (err, res) => {",
-					"            pm.test(\"Preparing receiving request for entire order with id=\" + orderId, function () {",
+					"            pm.test(\"Preparing receiving request for entire order with id=\" + orderId, function() {",
 					"                pm.expect(res).to.have.property('code', 200);",
 					"            });",
 					"",
@@ -8974,7 +9136,7 @@
 					"        let pieceStatus = (itemStatus === \"On order\") ? \"Received\" : \"Expected\";",
 					"        utils.sendGetRequest(\"/orders/composite-orders/\" + orderId, (err, res) => {",
 					"            let poLine;",
-					"            pm.test(\"One PO Line with \" + orderFormat + \" order format expected\", function () {",
+					"            pm.test(\"One PO Line with \" + orderFormat + \" order format expected\", function() {",
 					"                pm.expect(res).to.have.property('code', 200);",
 					"                let lines = res.json().compositePoLines.filter(line => line.orderFormat === orderFormat);",
 					"                pm.expect(lines.length).to.equal(1);",
@@ -9005,7 +9167,7 @@
 					"",
 					"        let totalQty = receivingHistory.length;",
 					"        let piecesGroupedByPol = new Map();",
-					"        for(let i = 0; i < totalQty; i++) {",
+					"        for (let i = 0; i < totalQty; i++) {",
 					"            let record = receivingHistory[i];",
 					"            if (!piecesGroupedByPol.has(record.poLineId)) {",
 					"                piecesGroupedByPol.set(record.poLineId, []);",
@@ -9033,7 +9195,7 @@
 					"            let toBeReceived = utils.copyJsonObj(toBeReceivedTemplate);",
 					"            toBeReceived.poLineId = polId;",
 					"            toBeReceived.received = pieceIds.length;",
-					"            for(let i = 0; i < pieceIds.length; i++) {",
+					"            for (let i = 0; i < pieceIds.length; i++) {",
 					"                let receivedItem = utils.copyJsonObj(receivedItemTemplate);",
 					"                receivedItem.pieceId = pieceIds[i];",
 					"                if (!isRevertCase) {",
@@ -9131,7 +9293,7 @@
 					"        let total = 0;",
 					"        let locations = poLine.locations;",
 					"        if (locations) {",
-					"            for(let i = 0; i < locations.length; i++) {",
+					"            for (let i = 0; i < locations.length; i++) {",
 					"                var qty = locations[i].quantityPhysical;",
 					"                if (qty > 0) {",
 					"                    total += qty;",
@@ -9148,7 +9310,7 @@
 					"        let total = 0;",
 					"        if (poLine.eresource && poLine.eresource.createInventory && poLine.locations) {",
 					"            let locations = poLine.locations;",
-					"            for(let i = 0; i < locations.length; i++) {",
+					"            for (let i = 0; i < locations.length; i++) {",
 					"                var qty = locations[i].quantityElectronic;",
 					"                if (qty > 0) {",
 					"                    total += qty;",
@@ -9282,7 +9444,7 @@
 					"    utils.validatePoLinesNumber = function(order) {",
 					"        let poLineSuffix = \"(-[0-9]{1,3})\";",
 					"        let regex = new RegExp(order.poNumber + poLineSuffix);",
-					"        for(let i = 0; i < order.compositePoLines.length; i++) {",
+					"        for (let i = 0; i < order.compositePoLines.length; i++) {",
 					"            let poLineNumber = order.compositePoLines[i].poLineNumber;",
 					"            let match = regex.exec(poLineNumber);",
 					"            pm.expect(match).not.equal(null);",
@@ -9310,15 +9472,15 @@
 					"        holdingsIds.forEach(holdingId => {",
 					"            promises.push(",
 					"                utils.searchForItemsByHoldingId(holdingId)",
-					"                    .then(itemsQty => {",
-					"                        if (itemsQty === 0) {",
-					"                            return utils.processDeleteRequest(\"/holdings-storage/holdings/\" + holdingId);",
-					"                        } else {",
-					"                            console.log(\"Holding with id=%s for line with id=%s has %d items linked. Delete request is skipped.\", holdingId, lineId, itemsQty);",
-					"                            pm.test(itemsQty + \" item record(s) referenced by holding with id=\" + holdingId + \". The holding deletion is skipped!\", function () {});",
-					"                            return -1;",
-					"                        }",
-					"                    })",
+					"                .then(itemsQty => {",
+					"                    if (itemsQty === 0) {",
+					"                        return utils.processDeleteRequest(\"/holdings-storage/holdings/\" + holdingId);",
+					"                    } else {",
+					"                        console.log(\"Holding with id=%s for line with id=%s has %d items linked. Delete request is skipped.\", holdingId, lineId, itemsQty);",
+					"                        pm.test(itemsQty + \" item record(s) referenced by holding with id=\" + holdingId + \". The holding deletion is skipped!\", function() {});",
+					"                        return -1;",
+					"                    }",
+					"                })",
 					"            );",
 					"        });",
 					"        console.log(\"Attempting to delete %d holdings for line with id=%s\", holdingsIds.length, lineId);",
@@ -9361,7 +9523,7 @@
 					"        return new Promise((resolve) => {",
 					"            let expectedCount = utils.calculateExpectedItemsQuantity(line);",
 					"            utils.getItemsByPoLineId(line.id, expectedCount, (err, response) => {",
-					"                pm.test(\"Search for item records by PO Line id=\" + line.id, function () {",
+					"                pm.test(\"Search for item records by PO Line id=\" + line.id, function() {",
 					"                    if (response.code !== 200) {",
 					"                        resolve([]);",
 					"                    }",
@@ -9397,7 +9559,7 @@
 					"                    console.log(\"Deleting %d items for line with id=%s\", items.length, line.id);",
 					"                    // Wait for items to be deleted and then return holdings ids as a result of the promise defined in the top",
 					"                    Promise.all(promises)",
-					"                    // The promisses will be always resolved so not handling reject case",
+					"                        // The promisses will be always resolved so not handling reject case",
 					"                        .then(itemDelResults => {",
 					"                            // Returning the holding ids regardless of the result of the item deletion jut to try to delete holdings in any case",
 					"                            resolve(holdingsIds);",
@@ -9430,23 +9592,23 @@
 					"            // The function returns Promise",
 					"            promises.push(",
 					"                utils.deleteInventoryItemRecords(line)",
-					"                    .then(holdingsIds => {",
-					"                        console.log(\"%d holdings ids collected for line %s\", holdingsIds.length, line.id);",
-					"                        return holdingsIds.length > 0 ? utils.deleteHoldingsRecords(line.id, holdingsIds) : [];",
-					"                    })",
-					"                    .then(holdingsDelResult => {",
-					"                        // delete instance if there is an instance id and there is no holdings linked to any item",
-					"                        if (line.instanceId) {",
-					"                            // see utils.deleteHoldingsRecords()",
-					"                            let holdingsQty = holdingsDelResult.filter(code => code === -1).length;",
-					"                            if (holdingsQty === 0) {",
-					"                                return utils.deleteInventoryInstance(line.instanceId);",
-					"                            } else {",
-					"                                pm.test(holdingsQty + \" holdings record(s) referenced by instance id=\" + line.instanceId + \". The instance deletion is skipped!\", () => {});",
-					"                            }",
+					"                .then(holdingsIds => {",
+					"                    console.log(\"%d holdings ids collected for line %s\", holdingsIds.length, line.id);",
+					"                    return holdingsIds.length > 0 ? utils.deleteHoldingsRecords(line.id, holdingsIds) : [];",
+					"                })",
+					"                .then(holdingsDelResult => {",
+					"                    // delete instance if there is an instance id and there is no holdings linked to any item",
+					"                    if (line.instanceId) {",
+					"                        // see utils.deleteHoldingsRecords()",
+					"                        let holdingsQty = holdingsDelResult.filter(code => code === -1).length;",
+					"                        if (holdingsQty === 0) {",
+					"                            return utils.deleteInventoryInstance(line.instanceId);",
+					"                        } else {",
+					"                            pm.test(holdingsQty + \" holdings record(s) referenced by instance id=\" + line.instanceId + \". The instance deletion is skipped!\", () => {});",
 					"                        }",
-					"                        return -1;",
-					"                    })",
+					"                    }",
+					"                    return -1;",
+					"                })",
 					"            );",
 					"        });",
 					"        return Promise.all(promises)",
@@ -9482,7 +9644,7 @@
 					"            if (line.instanceId) {",
 					"                utils.sendGetRequest(\"/instance-storage/instances/\" + line.instanceId, (err, res) => {",
 					"                    resolve();",
-					"                    pm.test(\"No Instance Record found for PO Line with id=\" + line.id, function () {",
+					"                    pm.test(\"No Instance Record found for PO Line with id=\" + line.id, function() {",
 					"                        pm.expect(res.code).to.eql(404);",
 					"                    });",
 					"                });",
@@ -9500,7 +9662,7 @@
 					"            if (line.instanceId) {",
 					"                utils.sendGetRequest(\"/holdings-storage/holdings?limit=0&query=instanceId==\" + line.instanceId, (err, res) => {",
 					"                    resolve();",
-					"                    pm.test(\"No Holding Records found for PO Line with id=\" + line.id, function () {",
+					"                    pm.test(\"No Holding Records found for PO Line with id=\" + line.id, function() {",
 					"                        pm.expect(res.code).to.eql(200);",
 					"                        pm.expect(res.json().totalRecords).to.eql(0);",
 					"                    });",
@@ -9524,7 +9686,7 @@
 					"                    \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
 					"                    \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\")",
 					"                }",
-					"            }, function (err, response) {",
+					"            }, function(err, response) {",
 					"                resolve(response.code);",
 					"            });",
 					"        });",
@@ -9534,7 +9696,7 @@
 					"     * Verifies if the delete operation succeeded",
 					"     */",
 					"    utils.validateResultOfDeleteRequest = function(code, message) {",
-					"        pm.test(message ? message : \"Record should be successfully deleted\", function () {",
+					"        pm.test(message ? message : \"Record should be successfully deleted\", function() {",
 					"            pm.expect(code, \"The delete operation has to be completed with 204 code\").to.eql(204);",
 					"        });",
 					"    };",
@@ -9555,8 +9717,8 @@
 					"                \"Accept-Encoding\": \"identity\"",
 					"            },",
 					"            body: JSON.stringify(body)",
-					"        }, function (err, response) {",
-					"            pm.test(\"Config created\", function () {",
+					"        }, function(err, response) {",
+					"            pm.test(\"Config created\", function() {",
 					"                pm.expect(response.code).to.eql(201);",
 					"            });",
 					"        });",
@@ -9575,8 +9737,8 @@
 					"                \"Accept-Encoding\": \"identity\"",
 					"            },",
 					"            body: JSON.stringify(body)",
-					"        }, function (err, response) {",
-					"            pm.test(\"Config updated. Config name = \" + body.configName, function () {",
+					"        }, function(err, response) {",
+					"            pm.test(\"Config updated. Config name = \" + body.configName, function() {",
 					"                pm.expect(response.code).to.eql(204);",
 					"            });",
 					"        });",
@@ -9598,8 +9760,7 @@
 					"     * Sends GET request and uses passed handler to handle result",
 					"     */",
 					"    utils.sendGetRequest = function(path, handler) {",
-					"        pm.sendRequest(",
-					"            {",
+					"        pm.sendRequest({",
 					"                url: utils.buildOkapiUrl(path),",
 					"                method: \"GET\",",
 					"                header: {",
