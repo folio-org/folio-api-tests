@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "d3f72c8f-0425-4222-a7a1-24018c414bf2",
+		"_postman_id": "d4d17169-e7e1-4b1a-80a3-97b47c4472aa",
 		"name": "mod-gobi",
 		"description": "Tests for mod-gobi",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -16,7 +16,6 @@
 							"listen": "test",
 							"script": {
 								"id": "7ae86997-5a37-4acf-9c37-1a431c0c75da",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
@@ -24,18 +23,19 @@
 									"",
 									"let tenant = pm.environment.get(\"xokapitenant\");",
 									"let token = postman.getResponseHeader(\"x-okapi-token\");",
-									"pm.globals.set(\"xokapitoken\", token);"
-								]
+									"pm.environment.set(\"xokapitoken\", token);"
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "prerequest",
 							"script": {
 								"id": "d75a59b9-367d-4055-86c6-0b6c1cf9b86c",
-								"type": "text/javascript",
 								"exec": [
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -71,20 +71,20 @@
 					"response": []
 				},
 				{
-					"name": "/vendor",
+					"name": "/vendor-storage/vendors  - POST GOBI Vendor",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"id": "bf46482a-5904-4297-a271-fa22d682771c",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Vendor was created. Status is 201\", function () {",
 									"    pm.response.to.have.status(201);",
 									"});",
 									"",
-									"pm.globals.set(\"vendor\", pm.response.json());"
-								]
+									"pm.environment.set(\"vendorId\", pm.response.json().id);"
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -109,16 +109,18 @@
 							"raw": "{\n  \"name\": \"GOBI Library Systems\",\n  \"code\": \"GOBI\"\n}"
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor-storage/vendors",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
 							],
 							"port": "{{okapiport}}",
 							"path": [
-								"vendor"
+								"vendor-storage",
+								"vendors"
 							]
-						}
+						},
+						"description": "Create a new Vendor with name GOBI"
 					},
 					"response": []
 				},
@@ -180,15 +182,15 @@
 							"listen": "test",
 							"script": {
 								"id": "e9ba7aa8-154a-4a65-b9f9-798b979d3649",
-								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"credentials record was created. Status is 201\", function () {",
 									"    pm.response.to.have.status(201);",
 									"});",
 									"",
 									"",
-									"pm.globals.set(\"noPrivCredId\", pm.response.json().id);"
-								]
+									"pm.environment.set(\"noPrivCredId\", pm.response.json().id);"
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -398,6 +400,57 @@
 					"response": []
 				},
 				{
+					"name": "/validate POST",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "c6566d89-e8ea-4fca-a388-d40938eb27f0",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "content-type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/gobi/validate",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"gobi",
+								"validate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "/gobi/orders (listed print monograph)",
 					"event": [
 						{
@@ -423,6 +476,8 @@
 							"script": {
 								"id": "85d36fe8-71fe-4b6b-9f1e-32cef766ef90",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
 									"let jsonData = xml2Json(responseBody);",
 									"let polNumber;",
 									"let poNumber;",
@@ -444,42 +499,12 @@
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
 									"});",
 									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
-									"        method: \"GET\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"    pm.test(\"get PONumber\", function(){",
-									"       pm.expect(res).to.have.property('code', 200);",
-									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
-									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
-									"       ",
-									"    });",
+									"pm.test(\"cleanup Created Order\", function() {",
+									"    utils.getAndDeleteOrder(polNumber);",
 									"});",
 									"",
 									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
-									"        method: \"DELETE\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"      pm.test(\"delete created PO\", function(){",
-									"        pm.expect(err).to.equal(null);",
-									"        pm.expect(res).to.have.property('code', 204);",
-									"        pm.expect(res).to.have.property('status', 'No Content');",
-									"    });",
-									"});"
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -490,15 +515,18 @@
 						"header": [
 							{
 								"key": "x-okapi-tenant",
-								"value": "{{xokapitenant}}"
+								"value": "{{xokapitenant}}",
+								"type": "text"
 							},
 							{
 								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
+								"value": "{{xokapitoken}}",
+								"type": "text"
 							},
 							{
 								"key": "Content-Type",
-								"value": "application/xml"
+								"value": "application/xml",
+								"type": "text"
 							}
 						],
 						"body": {
@@ -546,6 +574,8 @@
 							"script": {
 								"id": "fdb8eea7-15e1-4b4e-921b-b645972bffe5",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
 									"let polNumber;",
@@ -569,41 +599,8 @@
 									"});",
 									"",
 									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
-									"        method: \"GET\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"    pm.test(\"get PONumber\", function(){",
-									"       pm.expect(res).to.have.property('code', 200);",
-									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
-									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
-									"       ",
-									"    });",
-									"});",
-									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
-									"        method: \"DELETE\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"      pm.test(\"delete created PO\", function(){",
-									"        pm.expect(err).to.equal(null);",
-									"        pm.expect(res).to.have.property('code', 204);",
-									"        pm.expect(res).to.have.property('status', 'No Content');",
-									"    });",
+									"pm.test(\"cleanup Created Order\", function() {",
+									"    utils.getAndDeleteOrder(polNumber);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -671,6 +668,7 @@
 							"script": {
 								"id": "2ce0cff0-60aa-4941-b876-854cc9456c97",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
 									"let polNumber;",
@@ -693,41 +691,10 @@
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
 									"});",
 									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
-									"        method: \"GET\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"    pm.test(\"get PONumber\", function(){",
-									"       pm.expect(res).to.have.property('code', 200);",
-									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
-									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
-									"       ",
-									"    });",
+									"pm.test(\"cleanup Created Order\", function() {",
+									"    utils.getAndDeleteOrder(polNumber);",
 									"});",
-									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
-									"        method: \"DELETE\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"      pm.test(\"delete created PO\", function(){",
-									"        pm.expect(err).to.equal(null);",
-									"        pm.expect(res).to.have.property('code', 204);",
-									"        pm.expect(res).to.have.property('status', 'No Content');",
-									"    });",
-									"});"
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -794,6 +761,8 @@
 							"script": {
 								"id": "eb8d424d-e53e-46a0-bc72-75d5aabcdd65",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
 									"let polNumber;",
@@ -816,40 +785,9 @@
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
 									"});",
 									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
-									"        method: \"GET\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"    pm.test(\"get PONumber\", function(){",
-									"       pm.expect(res).to.have.property('code', 200);",
-									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
-									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
-									"       ",
-									"    });",
-									"});",
 									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
-									"        method: \"DELETE\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"      pm.test(\"delete created PO\", function(){",
-									"        pm.expect(err).to.equal(null);",
-									"        pm.expect(res).to.have.property('code', 204);",
-									"        pm.expect(res).to.have.property('status', 'No Content');",
-									"    });",
+									"pm.test(\"cleanup Created Order\", function() {",
+									"    utils.getAndDeleteOrder(polNumber);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -917,6 +855,8 @@
 							"script": {
 								"id": "3a5cc5c1-f90f-4a64-90d7-b6e9b7e6dd98",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
 									"let polNumber;",
@@ -939,40 +879,9 @@
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
 									"});",
 									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
-									"        method: \"GET\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"    pm.test(\"get PONumber\", function(){",
-									"       pm.expect(res).to.have.property('code', 200);",
-									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
-									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
-									"       ",
-									"    });",
-									"});",
 									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
-									"        method: \"DELETE\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"      pm.test(\"delete created PO\", function(){",
-									"        pm.expect(err).to.equal(null);",
-									"        pm.expect(res).to.have.property('code', 204);",
-									"        pm.expect(res).to.have.property('status', 'No Content');",
-									"    });",
+									"pm.test(\"cleanup Created Order\", function() {",
+									"    utils.getAndDeleteOrder(polNumber);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1040,6 +949,8 @@
 							"script": {
 								"id": "ad69215a-c9b8-49b5-8f40-bdbcff98c8ea",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
 									"let jsonData = xml2Json(responseBody);",
 									"console.log(jsonData);",
 									"let polNumber;",
@@ -1062,40 +973,9 @@
 									"    pm.expect(new RegExp('^[a-zA-Z0-9]{5,16}-[0-9]{1,3}$').test(polNumber)).to.be.true;",
 									"});",
 									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/po_line?limit=999&query=po_line_number=\"+polNumber,",
-									"        method: \"GET\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"    pm.test(\"get PONumber\", function(){",
-									"       pm.expect(res).to.have.property('code', 200);",
-									"       pm.expect(res.json().po_lines[0].purchase_order_id).to.exist;",
-									"       pm.environment.set(\"poNumber\",res.json().po_lines[0].purchase_order_id);",
-									"       ",
-									"    });",
-									"});",
 									"",
-									"",
-									"pm.sendRequest({",
-									"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")  + \"/orders/\"+pm.environment.get(\"poNumber\"),",
-									"        method: \"DELETE\",",
-									"        header: {",
-									"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
-									"            'x-okapi-token': pm.environment.get('xokapitoken'),",
-									"            'Content-Type': 'application/json'",
-									"        }",
-									"    },",
-									"    function (err, res) {",
-									"      pm.test(\"delete created PO\", function(){",
-									"        pm.expect(err).to.equal(null);",
-									"        pm.expect(res).to.have.property('code', 204);",
-									"        pm.expect(res).to.have.property('status', 'No Content');",
-									"    });",
+									"pm.test(\"cleanup Created Order\", function() {",
+									"    utils.getAndDeleteOrder(polNumber);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1479,27 +1359,59 @@
 			"name": "Tenant Configuration Tests",
 			"item": [
 				{
-					"name": "/configuration",
+					"name": "/configurations/entries - Set Override Configs",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"id": "5a666e96-205a-4f75-ad7b-3a7a17add0b9",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
 									"var jsonData = pm.response.json();",
+									"let configBody = globals.configBody;",
 									"",
-									"pm.environment.set(\"configuration_id\", jsonData.id);",
+									"let configs = [];",
+									"pm.test(\"Storing current configs\", function () {",
+									"    pm.response.to.be.ok;",
 									"",
-									"pm.test(\"Configuration Entry was created. Status is 201\", function () {",
-									"    pm.response.to.have.status(201);",
-									"});"
+									"    configs = pm.response.json().configs;",
+									"    console.log(\"Original configs: \" + configs);",
+									"    pm.environment.set(\"mod-gobi-override-configs\", JSON.stringify(configs));",
+									"});",
+									"",
+									"configBody.code = \"gobi.order.ListedElectronicSerial\";",
+									"",
+									"pm.sendRequest({",
+									"        url: pm.variables.get(\"tenantOverrideConfigURL\"),",
+									"        method: \"GET\"",
+									"    },",
+									"    function (err, res) {",
+									"     pm.test(\"Check if custom mapping is found\", function(){",
+									"        pm.expect(res).to.have.property('code', 200);",
+									"         });",
+									"    if(res.code == 200){",
+									"        if(configs.length>0){",
+									"            configs[0].value = res.text();",
+									"            utils.updateConfig(configs[0]);",
+									"        } else{",
+									"            configBody.value = res.text();",
+									"            utils.createConfig(configBody);",
+									"        }",
+									"        }",
+									"    }",
+									");",
+									"",
+									""
 								],
 								"type": "text/javascript"
 							}
 						}
 					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [
 							{
 								"key": "x-okapi-tenant",
@@ -1519,10 +1431,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"module\": \"GOBI\",\r\n  \"configName\": \"orderMappings\",\r\n  \"code\": \"gobi.order.ListedPrintMonograph\",\r\n  \"description\": \"Order Mappings for types\",\r\n  \"default\": true,\r\n  \"enabled\": true,\r\n  \"value\": \"{      \\\"orderType\\\": \\\"ListedPrintMonograph\\\",      \\\"mappings\\\": [        {          \\\"field\\\": \\\"NOTES\\\",          \\\"dataSource\\\": {\\\"default\\\": \\\"Notes from tenant configuration\\\"}},{ \\\"field\\\": \\\"TITLE\\\",  \\\"dataSource\\\": { \\\"from\\\": \\\"//datafield[@tag='245']/* | //datafield[@tag='100']\\\", \\\"combinator\\\": \\\"concat\\\"}},{\\\"field\\\": \\\"COLLECTION\\\",\\\"dataSource\\\": {\\\"default\\\": \\\"true\\\",\\\"translation\\\": \\\"toBoolean\\\",\\\"translateDefault\\\": true} }]}\"\r\n}\r\n"
+							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==GOBI AND configName==orderMappings AND code=gobi.order.ListedElectronicSerial",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -1531,14 +1443,20 @@
 							"path": [
 								"configurations",
 								"entries"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "module==GOBI AND configName==orderMappings AND code=gobi.order.ListedElectronicSerial"
+								}
 							]
 						},
-						"description": "Create a user with insufficient privs to negative testing"
+						"description": "Create a new configuration for ListedElectronic serial. If a configuration already exists, store it to be reverted to later."
 					},
 					"response": []
 				},
 				{
-					"name": "/gobi/orders (listed print monograph) with overrides",
+					"name": "/gobi/orders (listed Electronic serial) with overrides",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -1546,11 +1464,11 @@
 								"id": "f07624dc-c22d-4952-8d93-b85401f7458c",
 								"exec": [
 									"pm.sendRequest({",
-									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_print_monograph.xml\",",
+									"        url: pm.variables.get(\"testdataBaseURL\") + \"/po_listed_electronic_serial.xml\",",
 									"        method: \"GET\"",
 									"    },",
 									"    function (err, res) {",
-									"        pm.globals.set(\"po_listed_print_monograph\", res.text());     ",
+									"        pm.globals.set(\"po_listed_electronic_serial\", res.text());     ",
 									"    }",
 									");",
 									"        "
@@ -1606,7 +1524,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{{po_listed_print_monograph}}"
+							"raw": "{{po_listed_electronic_serial}}"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/gobi/orders",
@@ -1624,7 +1542,7 @@
 					"response": []
 				},
 				{
-					"name": "/po_line get Purchase order Id",
+					"name": "/order-lines- validate Override Configs",
 					"event": [
 						{
 							"listen": "test",
@@ -1638,14 +1556,22 @@
 									"});",
 									"",
 									"pm.test(\"po_lines exist\", function () {",
-									"    pm.expect(jsonData.po_lines).to.have.lengthOf(1);",
+									"    pm.expect(jsonData.poLines).to.have.lengthOf(1);",
 									"});",
 									"",
 									"pm.test(\"purchase_order_id exist\", function () {",
-									"    pm.expect(jsonData.po_lines[0].purchase_order_id).to.exist;",
-									"      pm.globals.set(\"po_listed_print_monograph_purchaseid\", jsonData.po_lines[0].purchase_order_id);",
+									"    pm.expect(jsonData.poLines[0].purchaseOrderId).to.exist;",
+									"      pm.globals.set(\"po_listed_print_monograph_purchaseid\", jsonData.poLines[0].purchaseOrderId);",
 									"});",
 									"",
+									"pm.test(\"Override Values are set in Order\", function (){",
+									"    pm.expect(jsonData.poLines[0].cancellationRestrictionNote).to.equal(\"Test Data\");",
+									"    pm.expect(jsonData.poLines[0].donor).to.equal(\"Test Data\");",
+									"    pm.expect(jsonData.poLines[0].owner).to.equal(\"Test Data\");",
+									"     pm.expect(jsonData.poLines[0].poLineDescription).to.equal(\"Description from Custom Mapping\");",
+									"    ",
+									"    ",
+									"})",
 									"",
 									"",
 									"",
@@ -1676,14 +1602,15 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/po_line?limit=999&query=po_line_number={{po_listed_print_monograph_poLineNumber}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines?limit=999&query=poLineNumber={{po_listed_print_monograph_poLineNumber}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
 							],
 							"port": "{{okapiport}}",
 							"path": [
-								"po_line"
+								"orders",
+								"order-lines"
 							],
 							"query": [
 								{
@@ -1692,83 +1619,11 @@
 								},
 								{
 									"key": "query",
-									"value": "po_line_number={{po_listed_print_monograph_poLineNumber}}"
+									"value": "poLineNumber={{po_listed_print_monograph_poLineNumber}}"
 								}
 							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "/orders/{{id}} validate Override Configs",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "c6566d89-e8ea-4fca-a388-d40938eb27f0",
-								"exec": [
-									"var jsonData = pm.response.json();",
-									"",
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"notes exist\", function () {",
-									"    pm.expect(jsonData.notes).to.have.lengthOf(1);",
-									"});",
-									"",
-									"pm.test(\"notes text is fetched from tenant configuration\", function () {",
-									"    pm.expect(jsonData.notes[0]).to.eql(\"Notes from tenant configuration\");",
-									"});",
-									"",
-									"pm.test(\"Testing Combinator: Title is a combination of two fields\", function () {",
-									"    pm.expect(jsonData.po_lines[0].title).to.eql(\"\\n            DICK, PHILIP K\\n          MAN IN THE HIGH CASTLE.\");",
-									"});",
-									"",
-									"pm.test(\"Testing Translator: collection returns a boolean\", function () {",
-									"    pm.expect(jsonData.po_lines[0].collection).to.eql(true);",
-									"});",
-									"",
-									"",
-									"",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-okapi-tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							},
-							{
-								"key": "content-type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
 						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/{{po_listed_print_monograph_purchaseid}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"{{po_listed_print_monograph_purchaseid}}"
-							]
-						}
+						"description": "Query for the created Order and validate that the values from the Custom Tenant Overrides are used in the Order"
 					},
 					"response": []
 				}
@@ -1778,28 +1633,28 @@
 			"name": "Cleanup",
 			"item": [
 				{
-					"name": "/vendor/id",
+					"name": "/vendor-storage/vendors - Delete created Vendor",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
 								"id": "ffb3bd27-ba00-40e0-90ac-7a1558cf2552",
-								"type": "text/javascript",
 								"exec": [
 									"pm.globals.set(\"vendorId\", pm.globals.get(\"vendor\").id);"
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"id": "3d4319f2-d27b-4c84-b26e-d6480ed7e508",
-								"type": "text/javascript",
 								"exec": [
-									"pm.test(\"DELETE /vendor/<vendorId> returns 204 status\", function () {",
+									"pm.test(\"DELETE returns 204 status\", function () {",
 									"    pm.response.to.have.status(204);",
 									"});"
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -1820,14 +1675,15 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor/{{vendorId}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor-storage/vendors/{{vendorId}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
 							],
 							"port": "{{okapiport}}",
 							"path": [
-								"vendor",
+								"vendor-storage",
+								"vendors",
 								"{{vendorId}}"
 							]
 						}
@@ -2006,14 +1862,14 @@
 					"response": []
 				},
 				{
-					"name": "/configurations/entries",
+					"name": "Order with overrides",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"id": "ffb3bd27-ba00-40e0-90ac-7a1558cf2552",
 								"exec": [
-									""
+									"pm.globals.set(\"vendorId\", pm.globals.get(\"vendor\").id);"
 								],
 								"type": "text/javascript"
 							}
@@ -2021,9 +1877,9 @@
 						{
 							"listen": "test",
 							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"id": "3d4319f2-d27b-4c84-b26e-d6480ed7e508",
 								"exec": [
-									"pm.test(\"Status code is 204\", function () {",
+									"pm.test(\"DELETE orders returns 204 status\", function () {",
 									"    pm.response.to.have.status(204);",
 									"});"
 								],
@@ -2035,12 +1891,8 @@
 						"method": "DELETE",
 						"header": [
 							{
-								"key": "X-Okapi-Tenant",
+								"key": "x-okapi-tenant",
 								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
 							},
 							{
 								"key": "x-okapi-token",
@@ -2052,70 +1904,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{configuration_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"configurations",
-								"entries",
-								"{{configuration_id}}"
-							]
-						},
-						"description": "GET /orders/id requests that return 200"
-					},
-					"response": []
-				},
-				{
-					"name": "DELETE /orders/id - delete order",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 204\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/{{poNumber}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{po_listed_print_monograph_purchaseid}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -2123,10 +1912,92 @@
 							"port": "{{okapiport}}",
 							"path": [
 								"orders",
-								"{{poNumber}}"
+								"composite-orders",
+								"{{po_listed_print_monograph_purchaseid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "/configuration- Revert to Original Configs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "5a666e96-205a-4f75-ad7b-3a7a17add0b9",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"var jsonData = pm.response.json();",
+									"",
+									"let CurrentConfigs = [];",
+									"pm.test(\"Storing current configs\", function () {",
+									"    pm.response.to.be.ok;",
+									"",
+									"    CurrentConfigs = pm.response.json().configs;",
+									"    console.log(\"Current configs: \" + CurrentConfigs);",
+									"});",
+									"",
+									"let originalConfigs = pm.environment.get(\"mod-gobi-override-configs\") ? JSON.parse(pm.environment.get(\"mod-gobi-override-configs\")) : [];",
+									"console.log(\"Original Configs: \"+originalConfigs[0]);",
+									"",
+									"if(originalConfigs.length>0){",
+									"    utils.updateConfig(originalConfigs[0]);",
+									"} else if(CurrentConfigs.length > 0 ){",
+									"    utils.deleteConfig(CurrentConfigs[0].id);",
+									"}",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"type": "text",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"type": "text",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==GOBI AND configName==orderMappings AND code=gobi.order.ListedElectronicSerial",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"configurations",
+								"entries"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "module==GOBI AND configName==orderMappings AND code=gobi.order.ListedElectronicSerial"
+								}
 							]
 						},
-						"description": "GET /orders/id requests that return 200"
+						"description": "This request will revert to the original Configs that were present on the environment"
 					},
 					"response": []
 				}
@@ -2140,7 +2011,108 @@
 				"id": "29271af0-d608-4fd0-a6d0-7f47697b19ba",
 				"type": "text/javascript",
 				"exec": [
-					""
+					"let configBody = {",
+					"         \"module\": \"GOBI\",",
+					"         \"configName\": \"orderMappings\",",
+					"         \"code\": \"\",",
+					"         \"description\": \"Order Mappings for types\",",
+					"         \"default\": true,",
+					"         \"enabled\": true,",
+					"         \"value\": \"\"",
+					"};",
+					"",
+					"pm.globals.set(\"configBody\", configBody);",
+					"",
+					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
+					"     let utils = {};",
+					"     ",
+					"     utils.getAndDeleteOrder = function(polNumber) {",
+					"        pm.sendRequest({",
+					"          url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\") + \"/orders/order-lines?limit=999&query=poLineNumber=\"+polNumber,",
+					"          method: \"GET\",",
+					"          header: {",
+					"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+					"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+					"            'Content-Type': 'application/json'",
+					"        }",
+					"    },",
+					"    function (err, res) {",
+					"      pm.test(\"Test Purchase Order is created\", function(){",
+					"        pm.expect(res).to.have.property('code', 200);",
+					"        pm.expect(res.json().poLines[0].purchaseOrderId).to.exist;",
+					"      });",
+					"       utils.deleteOrder(res.json().poLines[0].purchaseOrderId);",
+					"     });",
+					"    };",
+					"     ",
+					"    utils.deleteOrder = function(id){",
+					"        utils.deleteByID(\"/orders/composite-orders/\"+id);",
+					"    } ",
+					"    ",
+					"    utils.deleteByID = function(URL) {",
+					"         pm.sendRequest({",
+					"        url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")+URL,",
+					"        method: \"DELETE\",",
+					"        header: {",
+					"            'x-okapi-tenant': pm.environment.get('xokapitenant'),",
+					"            'x-okapi-token': pm.environment.get('xokapitoken'),",
+					"            'Content-Type': 'application/json'",
+					"        }",
+					"    },",
+					"    function (err, res) {",
+					"      pm.test(\"Delete \"+ URL, function(){",
+					"        pm.expect(err).to.equal(null);",
+					"        pm.expect(res).to.have.property('code', 204);",
+					"        pm.expect(res).to.have.property('status', 'No Content');",
+					"       });",
+					"     });",
+					"    }",
+					"    ",
+					"    ",
+					"    utils.createConfig = function(body) {",
+					"        pm.sendRequest({",
+					"            url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")+\"/configurations/entries\",",
+					"            method: \"POST\",",
+					"            header: {",
+					"                \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
+					"                \"Content-type\": \"application/json\",",
+					"                \"Accept-Encoding\": \"identity\"",
+					"            },",
+					"            body: JSON.stringify(body)",
+					"        }, function (err, response) {",
+					"            pm.test(\"Tenant Override Config created\", function () {",
+					"                pm.expect(response.code).to.eql(201);",
+					"            });",
+					"        });",
+					"    };",
+					"    ",
+					"    ",
+					"    /**",
+					"     * @param body with updated data",
+					"     */",
+					"    utils.updateConfig = function(body) {",
+					"        console.log(body);",
+					"        pm.sendRequest({",
+					"            url: pm.variables.get(\"url\")+\":\"+pm.variables.get(\"okapiport\")+\"/configurations/entries/\" + body.id,",
+					"            method: \"PUT\",",
+					"            header: {",
+					"                \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
+					"                \"Content-type\": \"application/json\",",
+					"                \"Accept-Encoding\": \"identity\"",
+					"            },",
+					"            body: JSON.stringify(body)",
+					"        }, function (err, response) {",
+					"            pm.test(\"Config updated. Config name = \" + body.configName, function () {",
+					"                pm.expect(response.code).to.eql(204);",
+					"            });",
+					"        });",
+					"    };",
+					"    ",
+					"    utils.deleteConfig = function(id){",
+					"        utils.deleteByID(\"/configurations/entries/\"+id);",
+					"    }",
+					"     return utils;",
+					"} + '; loadUtils();');"
 				]
 			}
 		},
@@ -2157,27 +2129,33 @@
 	],
 	"variable": [
 		{
-			"id": "9745ccee-c50b-415f-a1f6-946d624e246b",
+			"id": "e4df183b-7fde-45a3-a27f-69635ad89ca4",
 			"key": "testdataBaseURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-gobi/master/src/test/resources/GOBIIntegrationServiceResourceImpl/",
 			"type": "string"
 		},
 		{
-			"id": "06eca5e6-bf96-40e0-8def-b4e39308b24b",
+			"id": "2407240c-fcb5-4097-aca7-f28e46f57db4",
 			"key": "noPrivUserId",
 			"value": "a4539309-1cb2-47c2-bfc4-4a2a0ed7a303",
 			"type": "string"
 		},
 		{
-			"id": "f7b759be-631d-431a-8c09-6e5babe0723b",
+			"id": "c775bcec-be5b-4b9d-9cbc-4903c547f6da",
 			"key": "noPrivPassword",
 			"value": "Manfred",
 			"type": "string"
 		},
 		{
-			"id": "ae585a98-ee97-4ea4-b0d5-dab65a809be8",
+			"id": "26445ae6-4d26-4d7c-b62b-52d14b03b403",
 			"key": "noPrivPermId",
 			"value": "95501006-82a3-4368-ad72-bd7f2d7ec417",
+			"type": "string"
+		},
+		{
+			"id": "2160e7b2-5fa7-4f17-a0db-ea46299a92e7",
+			"key": "tenantOverrideConfigURL",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-gobi/master/src/test/resources/MappingHelper/Custom_ListedElectronicSerial.json",
 			"type": "string"
 		}
 	]

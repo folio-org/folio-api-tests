@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "09a3e6ff-e047-405a-bd8a-dc13375f88b9",
+		"_postman_id": "a4264020-f94a-4587-801d-9665bfc2121c",
 		"name": "mod-codex-mux",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -635,6 +635,35 @@
 									"                    pm.environment.set(\"muxInstanceSource\", storeInstance.source);",
 									"                    pm.environment.set(\"muxInstanceFormat\", storeInstance.format);",
 									"                    pm.environment.set(\"id\", jsonData.instances[randomIndex].id);",
+									"                }",
+									"            });",
+									"            pm.sendRequest({",
+									"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/codex-packages?query=(name=Collection)\",",
+									"                method: 'GET',",
+									"                header: {",
+									"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"                    'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+									"                    'Content-Type': 'application/json'",
+									"                },",
+									"            }, function(err, res) {",
+									"                 if (err !== null) {",
+									"                    console.log(\"codex packages error: \" + err);",
+									"                } else {",
+									"                    //Grab few fields from randomly generated mod codex ekb package and save them in environment variables for testing purpose",
+									"                    var jsonData = res.json();",
+									"                    var randomIndex = Math.floor(Math.random()*jsonData.packages.length);",
+									"                    var storePackages= {};",
+									"                    storePackages.name = jsonData.packages[randomIndex].name;",
+									"                    storePackages.type = jsonData.packages[randomIndex].type;",
+									"                    storePackages.provider = jsonData.packages[randomIndex].provider;",
+									"                    storePackages.source = jsonData.packages[randomIndex].source;",
+									"                    storePackages.isSelected = jsonData.packages[randomIndex].isSelected;",
+									"                    pm.environment.set(\"PackageName\", storePackages.name);",
+									"                    pm.environment.set(\"PackageType\", storePackages.type);",
+									"                    pm.environment.set(\"PackageProvider\", storePackages.provider);",
+									"                    pm.environment.set(\"PackageSource\", storePackages.source);",
+									"                    pm.environment.set(\"PackageIsSelected\", storePackages.isSelected);",
+									"                    pm.environment.set(\"packagesId\", jsonData.packages[randomIndex].id);",
 									"                }",
 									"            });"
 								],
@@ -1977,7 +2006,282 @@
 		},
 		{
 			"name": "codex packages",
-			"item": []
+			"item": [
+				{
+					"name": "GET codex package by id",
+					"item": [
+						{
+							"name": "Positive",
+							"item": [
+								{
+									"name": "/codex-packages/id",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "4e9417a7-609d-42de-bb41-87a93d38ba65",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "f0106b17-8a52-4c11-841a-ac4c1c701414",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_package\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"console.log(response);",
+													"//Test that object has the expected keys",
+													"pm.test('expected keys are present in response object', function() {",
+													"    pm.expect(response).to.include.all.keys(\"id\", \"name\", \"type\",\"providerId\",\"provider\",\"itemCount\",\"coverage\",\"isSelected\",\"source\");",
+													"});",
+													"",
+													"pm.test(\"Validate provider of response body fields\", function() {",
+													"   pm.expect(response.provider).to.equal(pm.environment.get(\"PackageProvider\"));",
+													"});",
+													"",
+													"pm.test(\"Validate title of response body fields\", function() {",
+													"   pm.expect(response.name).to.equal(pm.environment.get(\"PackageName\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate type of response body fields\", function() {",
+													"   pm.expect(response.type).to.equal(pm.environment.get(\"PackageType\"));",
+													"}); ",
+													"",
+													"pm.test(\"Validate source of response body fields\", function() {",
+													"   pm.expect(response.source).to.equal(pm.environment.get(\"PackageSource\"));",
+													"});",
+													"",
+													"pm.test(\"Validate format of response body fields\", function() {",
+													"   pm.expect(response.isSelected).to.equal(pm.environment.get(\"PackageIsSelected\"));",
+													"});",
+													"",
+													"//Test that id matches what was provided in query",
+													"pm.test('id matches as provided in query', function(){",
+													"    pm.expect(response.id).eq(pm.variables.get('packagesId'));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages/{{packagesId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages",
+												"{{packagesId}}"
+											]
+										},
+										"description": "Test Ekb codex-instances listing"
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Negative",
+							"item": [
+								{
+									"name": "/codex-packages/wrongId - 404 not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "a5342e1b-56a4-4f64-bccc-c3260a895243",
+												"exec": [
+													"pm.environment.set(\"wrongId\", \"0000\");"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fac4fcc9-1bf8-45c3-939d-f0728fb24e30",
+												"exec": [
+													"pm.test(\"Response status is 404 when title not found\", function () {",
+													"    pm.response.to.have.status(404);",
+													"    pm.response.to.have.body();",
+													"});",
+													"",
+													"pm.test(\"X-Okapi-Trace header has expected value\", function () {",
+													"    pm.expect(pm.response.headers.get(\"X-Okapi-Trace\")).to.contain(\"/codex-packages\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages/{{wrongId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages",
+												"{{wrongId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "/codex-packages/",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "a5342e1b-56a4-4f64-bccc-c3260a895243",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fac4fcc9-1bf8-45c3-939d-f0728fb24e30",
+												"exec": [
+													"pm.test(\"Response status is 404 when title not found\", function () {",
+													"    pm.response.to.have.status(404);",
+													"    pm.response.to.have.body();",
+													"});",
+													"",
+													"pm.test(\"Response having error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body('No suitable module found for path /codex-packages/');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/codex-packages/",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"codex-packages",
+												""
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "07251056-cfb6-4cca-a366-860e893169ba",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "4df6f50e-0eec-4f53-9251-deeea9a0d579",
+						"type": "text/javascript",
+						"exec": [
+							"tv4.addSchema(\"schema_packageType.json\", JSON.parse(pm.environment.get(\"schema_packageType\")));",
+							"tv4.addSchema(\"schema_coverage.json\", JSON.parse(pm.environment.get(\"schema_coverage\")));",
+							"tv4.addSchema(\"schema_selectionStatus.json\", JSON.parse(pm.environment.get(\"schema_selectionStatus\")));",
+							"tv4.addSchema(\"schema_resultInfo.schema\", JSON.parse(pm.environment.get(\"schema_resultInfo\")));",
+							"tv4.addSchema(\"schema_package.json\", JSON.parse(pm.environment.get(\"schema_package\")));",
+							"tv4.addSchema(\"schema_packageCollection.json\", JSON.parse(pm.environment.get(\"schema_packageCollection\")));"
+						]
+					}
+				}
+			]
 		},
 		{
 			"name": "codex packages resources",
