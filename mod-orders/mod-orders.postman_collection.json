@@ -85,10 +85,11 @@
 									"script": {
 										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
 										"exec": [
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											"",
 											"pm.test(\"Status code is 200\", function () {",
 											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"modules exist\", function () {",
@@ -163,10 +164,11 @@
 									"script": {
 										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
 										"exec": [
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											"",
 											"pm.test(\"Status code is 200\", function () {",
 											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"modules exist\", function () {",
@@ -1618,16 +1620,8 @@
 											"",
 											"    // The test can be run only if update succeded",
 											"    utils.sendGetRequest(\"/orders/composite-orders/\" + globals.emptyOrderId, (err, res) => {",
-											"        pm.test(\"Verify order updated with new PO number\", function () {",
-											"            let order  = res.json();",
-											"            pm.expect(order.poNumber).to.equal(pm.variables.get(\"updatedNumber\"));",
-											"        });",
+											"        pm.test(\"Verify order updated with new PO number\", () => pm.expect(res.json().poNumber).to.equal(pm.variables.get(\"updatedNumber\")));",
 											"    });",
-											"});   ",
-											"",
-											"",
-											"pm.test(\"'X-Okapi-Trace' header is present\", function () {",
-											"    pm.response.to.have.header(\"X-Okapi-Trace\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1670,6 +1664,73 @@
 									]
 								},
 								"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+							},
+							"response": []
+						},
+						{
+							"name": "Get empty order by order id and validate totalItems",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											" ",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Validate PO totalItems\", function () {",
+											"    var order = pm.response.json();",
+											"    pm.expect(order.totalItems).to.equal(0);",
+											"    pm.expect(utils.getTotalResourcesQuantity(order)).to.equal(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{emptyOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{emptyOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 200"
 							},
 							"response": []
 						},
@@ -1795,10 +1856,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													"",
 													"pm.test(\"Status code is 201\", function () {",
 													"    pm.response.to.have.status(201);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"PO Lines exist\", function () {",
@@ -1812,7 +1874,6 @@
 													"    pm.expect(jsonData.poNumber).to.exist;",
 													"    pm.globals.set(\"completeOrderPoNumber\",\"\\\"\"+jsonData.poNumber+\"\\\"\");",
 													"    pm.expect(jsonData.notes).to.exist;",
-													"    pm.expect(jsonData.totalItems).to.exist;",
 													"    pm.expect(jsonData.vendor).to.exist;",
 													"});",
 													""
@@ -1878,10 +1939,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Multiple notes exist\", function () {",
@@ -1895,6 +1957,10 @@
 													"",
 													"pm.test(\"PO Lines exist\", function () {",
 													"    utils.validatePoLines(jsonData, 2);",
+													"});",
+													"",
+													"pm.test(\"Validate PO totalItems\", function () {",
+													"    pm.expect(jsonData.totalItems).to.equal(utils.getTotalResourcesQuantity(jsonData));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -2033,10 +2099,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"PO Line has content\", function () {",
@@ -2174,14 +2241,19 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"1 PO Line exist\", function () {",
 													"    utils.validatePoLines(jsonData, 1);",
+													"});",
+													"",
+													"pm.test(\"Validate PO totalItems\", function () {",
+													"    pm.expect(jsonData.totalItems).to.equal(utils.getTotalResourcesQuantity(jsonData));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -2255,12 +2327,13 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
-													"",
-													"utils.rememberPoLineId(jsonData);",
+													"var jsonData = {};",
 													"",
 													"pm.test(\"Status code is 201\", function () {",
 													"    pm.response.to.have.status(201);",
+													"    jsonData = pm.response.json();",
+													"    ",
+													"    utils.rememberPoLineId(jsonData);",
 													"});",
 													"",
 													"pm.test(\"Order line has required and optional fields\", function(){",
@@ -2330,10 +2403,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"PO Line has minimal content\", function () {",
@@ -2475,10 +2549,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Multiple notes exist\", function () {",
@@ -2491,6 +2566,10 @@
 													"",
 													"pm.test(\"2 PO Lines exist\", function () {",
 													"    utils.validatePoLines(jsonData, 2, false);",
+													"});",
+													"",
+													"pm.test(\"Validate PO totalItems\", function () {",
+													"    pm.expect(jsonData.totalItems).to.equal(utils.getTotalResourcesQuantity(jsonData));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -2630,12 +2709,13 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
-													"",
-													"utils.rememberPoLineId(jsonData);",
+													"var jsonData = {};",
 													"",
 													"pm.test(\"Status code is 201\", function () {",
 													"    pm.response.to.have.status(201);",
+													"    jsonData = pm.response.json();",
+													"    ",
+													"    utils.rememberPoLineId(jsonData);",
 													"});",
 													"",
 													"pm.test(\"Order line has required and optional fields\", function(){",
@@ -2705,10 +2785,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"PO Line has content\", function () {",
@@ -2781,10 +2862,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Multiple notes exist\", function () {",
@@ -2797,6 +2879,10 @@
 													"",
 													"pm.test(\"2 PO Lines exist\", function () {",
 													"    utils.validatePoLines(jsonData, 2);",
+													"});",
+													"",
+													"pm.test(\"Validate PO totalItems\", function () {",
+													"    pm.expect(jsonData.totalItems).to.equal(utils.getTotalResourcesQuantity(jsonData));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -2927,10 +3013,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"PO Line has minimal content\", function () {",
@@ -3211,7 +3298,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"poNumber\": \"268758test2\",\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 100.99,\n  \"totalItems\": 2,\n  \"vendor\": \"168f8a86-d26c-406e-813f-c7527f241ac3\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"id\": \"{{poLineId}}\",\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"adjustment\": {\n            \"credit\": 0,\n            \"discount\": 0,\n            \"insurance\": 0,\n            \"invoiceId\": \"2d6d495c-c237-476f-aa48-57f7cbf74ca4\",\n            \"overhead\": 0,\n            \"shipment\": 0,\n            \"tax1\": 0,\n            \"tax2\": 0,\n            \"useProRate\": false\n        },\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listPrice\": 24.99,\n        \"currency\": \"USD\",\n        \"quantityPhysical\": 2,\n        \"poLineEstimatedPrice\": 49.98\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"ISBN\"\n          }\n        ],\n        \"materialTypes\": [\n          \"1a54b431-2e4f-452d-9cae-9cee66c9a892\"\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityElectronic\": 0,\n        \"quantityPhysical\": 2\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"owner\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
+											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"poNumber\": \"268758test2\",\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 100.99,\n  \"totalItems\": 20,\n  \"vendor\": \"168f8a86-d26c-406e-813f-c7527f241ac3\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"id\": \"{{poLineId}}\",\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"adjustment\": {\n            \"credit\": 0,\n            \"discount\": 0,\n            \"insurance\": 0,\n            \"invoiceId\": \"2d6d495c-c237-476f-aa48-57f7cbf74ca4\",\n            \"overhead\": 0,\n            \"shipment\": 0,\n            \"tax1\": 0,\n            \"tax2\": 0,\n            \"useProRate\": false\n        },\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listPrice\": 24.99,\n        \"currency\": \"USD\",\n        \"quantityPhysical\": 2,\n        \"poLineEstimatedPrice\": 49.98\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"ISBN\"\n          }\n        ],\n        \"materialTypes\": [\n          \"1a54b431-2e4f-452d-9cae-9cee66c9a892\"\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityElectronic\": 0,\n        \"quantityPhysical\": 2\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"owner\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
@@ -3249,10 +3336,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"1 PO Line exist\", function () {",
@@ -3261,6 +3349,10 @@
 													"",
 													"pm.test(\"Validate poLineNumber\", function() {",
 													"    utils.validatePoLinesNumber(jsonData);",
+													"});",
+													"",
+													"pm.test(\"Validate PO totalItems\", function () {",
+													"    pm.expect(jsonData.totalItems).to.equal(utils.getTotalResourcesQuantity(jsonData));",
 													"});"
 												],
 												"type": "text/javascript"
@@ -3389,7 +3481,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"poNumber\": {{completeOrderPoNumber}},\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 100.99,\n  \"totalItems\": 1,\n  \"vendor\": \"168f8a86-d26c-406e-813f-c7527f241ac3\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"adjustment\": {\n        \"credit\": {{adjustment_credit_update}},\n        \"discount\": {{adjustment_discount_update}},\n        \"insurance\": {{adjustment_insurance_update}},\n        \"invoiceId\": \"2d6d495c-c237-476f-aa48-57f7cbf74ca4\",\n        \"overhead\": {{adjustment_overhead_update}},\n        \"shipment\": {{adjustment_shipment_update}},\n        \"tax1\": {{adjustment_tax1_update}},\n        \"tax2\": {{adjustment_tax2_update}},\n        \"useProRate\": {{adjustment_update_pro_rate}}\n      },\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listPrice\": 24.99,\n        \"currency\": \"USD\",\n        \"quantityPhysical\": 1,\n        \"poLineEstimatedPrice\": 24.99\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"ISBN\"\n          }\n        ],\n        \"materialTypes\": [\n          \"1a54b431-2e4f-452d-9cae-9cee66c9a892\"\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityPhysical\": 1\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"owner\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
+											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"poNumber\": {{completeOrderPoNumber}},\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 100.99,\n  \"vendor\": \"168f8a86-d26c-406e-813f-c7527f241ac3\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"adjustment\": {\n        \"credit\": {{adjustment_credit_update}},\n        \"discount\": {{adjustment_discount_update}},\n        \"insurance\": {{adjustment_insurance_update}},\n        \"invoiceId\": \"2d6d495c-c237-476f-aa48-57f7cbf74ca4\",\n        \"overhead\": {{adjustment_overhead_update}},\n        \"shipment\": {{adjustment_shipment_update}},\n        \"tax1\": {{adjustment_tax1_update}},\n        \"tax2\": {{adjustment_tax2_update}},\n        \"useProRate\": {{adjustment_update_pro_rate}}\n      },\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listPrice\": 24.99,\n        \"currency\": \"USD\",\n        \"quantityPhysical\": 1,\n        \"poLineEstimatedPrice\": 24.99\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"ISBN\"\n          }\n        ],\n        \"materialTypes\": [\n          \"1a54b431-2e4f-452d-9cae-9cee66c9a892\"\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityPhysical\": 1\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"owner\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
@@ -3427,10 +3519,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Validate that response contains updated adjustment\", function () {    ",
@@ -3537,6 +3630,7 @@
 													"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.completeOrderId, (err, res) => {",
 													"    let order  = res.json();",
 													"    order.poNumber = \"newponumber\";",
+													"    delete order.totalItems;",
 													"    pm.variables.set(\"updatedOrder\", JSON.stringify(order));",
 													"});",
 													"",
@@ -3640,10 +3734,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Validate schema for composite_purchase_order.json\", function () {",
@@ -3804,10 +3899,11 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Validate schema for composite_purchase_order.json\", function () {",
@@ -3970,10 +4066,11 @@
 											"script": {
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
-													"var jsonData = pm.response.json();",
+													"var jsonData = {};",
 													" ",
 													"pm.test(\"Status code is 200\", function () {",
 													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
 													"});",
 													"",
 													"pm.test(\"Validate that response contains default fields on creating an empty order\", function () {",
@@ -4083,10 +4180,11 @@
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											" ",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"PO Lines exist\", function () {",
@@ -4100,7 +4198,7 @@
 											"    pm.expect(jsonData.approved).to.exist;",
 											"    pm.expect(jsonData.poNumber).to.exist;",
 											"    pm.expect(jsonData.notes).to.exist;",
-											"    pm.expect(jsonData.totalItems).to.exist;",
+											"    pm.expect(jsonData.totalItems).to.not.exist;",
 											"    pm.expect(jsonData.vendor).to.exist;",
 											"});",
 											""
@@ -4310,10 +4408,11 @@
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											" ",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"PO Lines and corresponding Inventory entities exist\", function () {",
@@ -4328,7 +4427,7 @@
 											"    pm.expect(jsonData.approved).to.exist;",
 											"    pm.expect(jsonData.poNumber).to.exist;",
 											"    pm.expect(jsonData.notes).to.exist;",
-											"    pm.expect(jsonData.totalItems).to.exist;",
+											"    pm.expect(jsonData.totalItems).to.not.exist;",
 											"    pm.expect(jsonData.vendor).to.exist;",
 											"});",
 											""
@@ -4398,10 +4497,11 @@
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"var order = pm.response.json();",
+											"var order = {};",
 											"",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
+											"    order = pm.response.json();",
 											"    pm.expect(order.id).to.exist;",
 											"    pm.globals.set(\"physElecOpenOrderId\", order.id); ",
 											"});",
@@ -4488,10 +4588,11 @@
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											" ",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"Verify two PO Lines exist\", function () {",
@@ -4506,7 +4607,7 @@
 											"    pm.expect(jsonData.approved).to.exist;",
 											"    pm.expect(jsonData.poNumber).to.exist;",
 											"    pm.expect(jsonData.notes).to.exist;",
-											"    pm.expect(jsonData.totalItems).to.exist;",
+											"    pm.expect(jsonData.totalItems).to.not.exist;",
 											"    pm.expect(jsonData.vendor).to.exist;",
 											"});",
 											""
@@ -4581,10 +4682,11 @@
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"var order = pm.response.json();",
+											"var order = {};",
 											"",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
+											"    order = pm.response.json();",
 											"    pm.expect(order.id).to.exist;",
 											"    pm.globals.set(\"receivingHistoryPoId\", order.id); ",
 											"});",
@@ -5844,10 +5946,11 @@
 									"script": {
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											" ",
 											"pm.test(\"Status code is 200\", function () {",
 											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"Validate that response contains orders with proper workflow status\", function () {",
@@ -6104,10 +6207,11 @@
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"var jsonData = pm.response.json();",
+											"var jsonData = {};",
 											"",
 											"pm.test(\"Status code is 200\", function () {",
 											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
 											"});",
 											"",
 											"pm.test(\"History has pieces to receive\", function() {",
@@ -6182,14 +6286,12 @@
 									"script": {
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
-											"var jsonData = pm.response.json();",
-											"",
 											"pm.test(\"Status code is 200\", function () {",
 											"    pm.response.to.have.status(200);",
 											"});",
 											"",
 											"pm.test(\"History has no pieces to receive\", function() {",
-											"    pm.expect(jsonData.totalRecords).to.equal(0);",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -9153,6 +9255,7 @@
 					"     */",
 					"    utils.prepareOrder = function(order) {",
 					"        delete order.id;",
+					"        delete order.totalItems;",
 					"        order.vendor = pm.environment.get(\"activeVendorId\");",
 					"        console.log(\"Preparing order. Number of PO lines: %d\", order.compositePoLines.length);",
 					"",
@@ -9528,11 +9631,11 @@
 					"    utils.calculateExpectedItemsQuantity = function(poLine) {",
 					"        switch (poLine.orderFormat) {",
 					"            case \"P/E Mix\":",
-					"                return utils.getPhysicalQuantity(poLine) + utils.getElectronicQuantity(poLine);",
+					"                return utils.getPhysicalItemsQuantity(poLine) + utils.getElectronicItemsQuantity(poLine);",
 					"            case \"Physical Resource\":",
-					"                return utils.getPhysicalQuantity(poLine);",
+					"                return utils.getPhysicalItemsQuantity(poLine);",
 					"            case \"Electronic Resource\":",
-					"                return utils.getElectronicQuantity(poLine);",
+					"                return utils.getElectronicItemsQuantity(poLine);",
 					"            case \"Other\":",
 					"                return 0;",
 					"            default:",
@@ -9560,7 +9663,7 @@
 					"    /**",
 					"     * Gets quantity of physical resources. The logic is based on MODORDERS-117",
 					"     */",
-					"    utils.getPhysicalQuantity = function(poLine) {",
+					"    utils.getPhysicalItemsQuantity = function(poLine) {",
 					"        let total = 0;",
 					"        let locations = poLine.locations;",
 					"        if (locations) {",
@@ -9577,7 +9680,7 @@
 					"    /**",
 					"     * Gets quantity of electronic resources. The logic is based on MODORDERS-117",
 					"     */",
-					"    utils.getElectronicQuantity = function(poLine) {",
+					"    utils.getElectronicItemsQuantity = function(poLine) {",
 					"        let total = 0;",
 					"        if (poLine.eresource && poLine.eresource.createInventory && poLine.locations) {",
 					"            let locations = poLine.locations;",
@@ -9588,6 +9691,21 @@
 					"                }",
 					"            }",
 					"        }",
+					"        return total;",
+					"    };",
+					"",
+					"    /**",
+					"     * Gets quantity of all PO resources.",
+					"     */",
+					"    utils.getTotalResourcesQuantity = function(order) {",
+					"        let total = 0;",
+					"        order.compositePoLines.forEach(poLine => {",
+					"            let cost = poLine.cost;",
+					"            if (cost) {",
+					"                total += (cost.quantityElectronic ? cost.quantityElectronic : 0);",
+					"                total += (cost.quantityPhysical ? cost.quantityPhysical : 0)",
+					"            }",
+					"        });",
 					"        return total;",
 					"    };",
 					"",
