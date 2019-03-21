@@ -4410,7 +4410,7 @@
 											"",
 											"pm.test(\"Each order has these optional fields\", function() {",
 											"    pm.expect(jsonData.id).to.exist;",
-											"    pm.globals.set(\"order_without_inventory_records_id\", jsonData.id); ",
+											"    pm.globals.set(\"orderWithoutInventoryRecordsId\", jsonData.id); ",
 											"    pm.expect(jsonData.approved).to.exist;",
 											"    pm.expect(jsonData.poNumber).to.exist;",
 											"    pm.expect(jsonData.notes).to.exist;",
@@ -6024,7 +6024,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=purchaseOrderId={{order_without_inventory_records_id}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=purchaseOrderId={{orderWithoutInventoryRecordsId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -6037,7 +6037,7 @@
 									"query": [
 										{
 											"key": "query",
-											"value": "purchaseOrderId={{order_without_inventory_records_id}}"
+											"value": "purchaseOrderId={{orderWithoutInventoryRecordsId}}"
 										}
 									]
 								},
@@ -6071,11 +6071,10 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"var jsonData = pm.response.json();",
-											"var pieceId = pm.response.json().id;",
-											"",
+											"let pieceId = null;",
 											"pm.test(\"Status code is 201\", function () {",
 											"    pm.response.to.have.status(201);",
+											"    pieceId = pm.response.json().id;",
 											"});",
 											"",
 											"pm.test(\"Piece id isn't null\", function () {",
@@ -6083,23 +6082,24 @@
 											"});",
 											"",
 											"//Delete created piece",
-											"utils.sendDeleteRequest(\"/orders-storage/pieces/\" + pieceId, function (err, res) {",
-											"  if (err) { console.log(err); }",
-											"  pm.test('Piece successfully deleted from storage', function () {",
-											"    pm.expect(err).to.equal(null);",
-											"    pm.expect(res).to.have.property('code', 204);",
-											"  });",
-											"});",
+											"if (pieceId) {",
+											"  utils.sendDeleteRequest(\"/orders-storage/pieces/\" + pieceId, function (err, res) {",
+											"    if (err) { console.log(err); }",
+											"    pm.test('Piece successfully deleted from storage', function () {",
+											"      pm.expect(err).to.equal(null);",
+											"      pm.expect(res).to.have.property('code', 204);",
+											"    });",
 											"",
-											"// Verify is piece deleted",
-											"utils.sendGetRequest(\"/orders-storage/pieces/\" + pieceId, function (err, res) {",
-											"  if (err) { console.log(err); }",
-											"  pm.test('Piece does not located in storage' , function () {",
-											"    pm.expect(err).to.equal(null);",
-											"    pm.expect(res).to.have.property('code', 404);",
+											"    // Verify is piece deleted",
+											"    utils.sendGetRequest(\"/orders-storage/pieces/\" + pieceId, function (err, res) {",
+											"      if (err) { console.log(err); }",
+											"      pm.test('Piece does not located in storage' , function () {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 404);",
+											"      });",
+											"    });",
 											"  });",
-											"});",
-											""
+											"}"
 										],
 										"type": "text/javascript"
 									}
@@ -6175,7 +6175,7 @@
 					"name": "Create Order for tests",
 					"item": [
 						{
-							"name": "Create an order",
+							"name": "Create Open order with one line",
 							"event": [
 								{
 									"listen": "prerequest",
@@ -6183,7 +6183,14 @@
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"orderBody\", JSON.stringify(utils.buildOrderWithMinContent()));"
+											"let order = utils.buildOrderWithMinContent();",
+											"order.workflowStatus = \"Open\";",
+											"order.notes = [\"Open Order for Negative API Tests\"];",
+											"",
+											"let line = utils.buildPoLineWithMinContent(null);",
+											"line.receiptStatus = \"Receipt Not Required\";",
+											"order.compositePoLines = [line];",
+											"pm.variables.set(\"orderBody\", JSON.stringify(order));"
 										],
 										"type": "text/javascript"
 									}
@@ -6193,11 +6200,14 @@
 									"script": {
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
-											"pm.test(\"Status code is 201\", function () {",
+											"pm.test(\"Open order created\", function () {",
 											"    pm.response.to.have.status(201);",
 											"",
-											"    var jsonData = pm.response.json();",
-											"    pm.globals.set(\"negativeTestsOrderId\", jsonData.id); ",
+											"    var order = pm.response.json();",
+											"    pm.globals.set(\"negativeTestsOpenOrderId\", order.id);",
+											"",
+											"    pm.expect(order.workflowStatus).to.equal(\"Open\");",
+											"    pm.expect(order.compositePoLines).to.have.lengthOf(1);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -6207,10 +6217,6 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
 									{
 										"key": "Content-Type",
 										"value": "application/json"
@@ -6241,14 +6247,22 @@
 							"response": []
 						},
 						{
-							"name": "Add POLine order for further tests",
+							"name": "Create Closed order with one line",
 							"event": [
 								{
 									"listen": "prerequest",
 									"script": {
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
-											""
+											"let utils = eval(globals.loadUtils);",
+											"let order = utils.buildOrderWithMinContent();",
+											"order.workflowStatus = \"Closed\";",
+											"order.notes = [\"Closed Order for Negative API Tests\"];",
+											"",
+											"let line = utils.buildPoLineWithMinContent(null);",
+											"line.receiptStatus = \"Receipt Not Required\";",
+											"order.compositePoLines = [line];",
+											"pm.variables.set(\"orderBody\", JSON.stringify(order));"
 										],
 										"type": "text/javascript"
 									}
@@ -6258,18 +6272,15 @@
 									"script": {
 										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 										"exec": [
-											"pm.test(\"Status code is 201\", function () {",
+											"pm.test(\"Closed order created\", function () {",
 											"    pm.response.to.have.status(201);",
-											"    eval(globals.loadUtils).rememberPoLineId(pm.response.json());",
-											"});",
 											"",
-											"pm.test(\"Validate that response contains desired data\", function () {",
-											"    let line = pm.response.json();",
-											"    pm.expect(line.reportingCodes).to.have.lengthOf(2);",
-											"    pm.expect(line.locations).to.have.lengthOf(1);",
-											"    pm.globals.set(\"poLineForNegativeTests\", JSON.stringify(line));",
-											"});",
-											""
+											"    var order = pm.response.json();",
+											"    pm.globals.set(\"negativeTestsClosedOrderId\", order.id);",
+											"",
+											"    pm.expect(order.workflowStatus).to.equal(\"Closed\");",
+											"    pm.expect(order.compositePoLines).to.have.lengthOf(1);",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -6279,24 +6290,20 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
 									},
 									{
-										"key": "X-Okapi-Token",
+										"key": "x-okapi-token",
 										"value": "{{xokapitoken}}"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n\t\"locations\" : [{\n      \"quantity\" : 1,\n      \"quantityElectronic\" : 1,\n      \"quantityPhysical\" : 0\n    }],\n\t\"source\": { \"code\": \"FOLIO\" },\n    \"purchaseOrderId\" : \"{{negativeTestsOrderId}}\",\n\t\"reportingCodes\": [\n\t\t{\n\t\t  \"code\": \"CODE1\",\n\t\t  \"description\": \"ABCDEF\"\n\t\t},\n\t\t{\n\t\t  \"code\": \"CODE2\",\n\t\t  \"description\": \"ABCDE\"\n\t\t}\n\t]\n}"
+									"raw": "{{orderBody}}"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -6304,10 +6311,85 @@
 									"port": "{{okapiport}}",
 									"path": [
 										"orders",
-										"order-lines"
+										"composite-orders"
 									]
 								},
-								"description": "GET /orders/order-lines/id requests that return 200"
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Pending order with one line",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let order = utils.buildOrderWithMinContent();",
+											"order.notes = [\"Pending Order for Negative API Tests\"];",
+											"order.compositePoLines = [utils.buildPoLineWithMinContent(null)];",
+											"pm.variables.set(\"orderBody\", JSON.stringify(order));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Pending order created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    var order = pm.response.json();",
+											"    pm.globals.set(\"negativeTestsPendingOrderId\", order.id);",
+											"",
+											"    pm.expect(order.workflowStatus).to.equal(\"Pending\");",
+											"",
+											"    pm.test(\"Validate that PO Line contains desired data\", function () {",
+											"        pm.expect(order.compositePoLines).to.have.lengthOf(1);",
+											"",
+											"        let line = order.compositePoLines[0];",
+											"        eval(globals.loadUtils).rememberPoLineId(line);",
+											"        pm.globals.set(\"poLineForNegativeTests\", JSON.stringify(line));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
 							},
 							"response": []
 						}
@@ -6883,7 +6965,7 @@
 									"raw": "{\n\n}"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOrderId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -6892,7 +6974,151 @@
 									"path": [
 										"orders",
 										"composite-orders",
-										"{{negativeTestsOrderId}}"
+										"{{negativeTestsPendingOrderId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Open order - add new line - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.negativeTestsOpenOrderId, (err, res) => {",
+											"    pm.test(\"Prepare request body\", function() {",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        let order = res.json();",
+											"        order.compositePoLines.push(utils.buildPoLineWithMinContent(order.id));",
+											"        pm.variables.set(\"orderBody\", JSON.stringify(order));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422 and one error\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].code).to.equal(\"orderOpen\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negativeTestsOpenOrderId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Closed order - add new line - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.negativeTestsClosedOrderId, (err, res) => {",
+											"    pm.test(\"Prepare request body\", function() {",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        let order = res.json();",
+											"        order.compositePoLines.push(utils.buildPoLineWithMinContent(order.id));",
+											"        pm.variables.set(\"orderBody\", JSON.stringify(order));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422 and one error\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].code).to.equal(\"orderClosed\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsClosedOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negativeTestsClosedOrderId}}"
 									]
 								}
 							},
@@ -6916,7 +7142,7 @@
 												"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"let line = utils.buildPoLineWithMinContent(globals.negativeTestsOrderId);",
+													"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
 													"delete line.source;",
 													"pm.variables.set(\"line_body\", JSON.stringify(line));"
 												],
@@ -6993,7 +7219,7 @@
 													"    },",
 													"    function (err, res) {",
 													"        let line = res.json().compositePoLines[0];",
-													"        line.purchaseOrderId = globals.negativeTestsOrderId;",
+													"        line.purchaseOrderId = globals.negativeTestsPendingOrderId;",
 													"",
 													"        line.orderFormat = \"Physical Resource\";",
 													"        line.cost.quantityElectronic = 5;",
@@ -7079,7 +7305,7 @@
 													"    },",
 													"    function (err, res) {",
 													"        let line = res.json().compositePoLines[0];",
-													"        line.purchaseOrderId = globals.negativeTestsOrderId;",
+													"        line.purchaseOrderId = globals.negativeTestsPendingOrderId;",
 													"",
 													"        line.orderFormat = \"Electronic Resource\";",
 													"        line.cost.quantityElectronic = 0;",
@@ -7166,7 +7392,7 @@
 													"    function (err, res) {",
 													"        let line = res.json().compositePoLines[0];",
 													"        line.id = JSON.parse(globals.poLineForNegativeTests).id;",
-													"        line.purchaseOrderId = globals.negativeTestsOrderId;",
+													"        line.purchaseOrderId = globals.negativeTestsPendingOrderId;",
 													"",
 													"        line.orderFormat = \"P/E Mix\";",
 													"        line.cost.quantityElectronic = 0;",
@@ -7705,7 +7931,7 @@
 										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsOrderId);",
+											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
 											"line.id = \"bad-id\";",
 											"pm.variables.set(\"line_body\", JSON.stringify(line));"
 										],
@@ -7770,7 +7996,7 @@
 										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsOrderId);",
+											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
 											"line.nonexistentProperty = \"nonexistent_property_value\";",
 											"pm.variables.set(\"line_body\", JSON.stringify(line));"
 										],
@@ -7835,7 +8061,7 @@
 										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsOrderId);",
+											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
 											"line.nonexistentProperty = \"nonexistent_property_value\";",
 											"pm.variables.set(\"line_body\", JSON.stringify(line));"
 										],
@@ -7967,7 +8193,7 @@
 										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsOrderId);",
+											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
 											"pm.variables.set(\"line_body\", JSON.stringify(line));"
 										],
 										"type": "text/javascript"
@@ -8149,6 +8375,134 @@
 								"description": "GET /orders/order-lines/id requests that return 422"
 							},
 							"response": []
+						},
+						{
+							"name": "Add line to Open order - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"lineBody\", JSON.stringify(utils.buildPoLineWithMinContent(globals.negativeTestsOpenOrderId)));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422 and one error\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].code).to.equal(\"orderOpen\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{lineBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add line to Closed order - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "570809ac-8aba-4c7c-b384-8ee934d027c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"lineBody\", JSON.stringify(utils.buildPoLineWithMinContent(globals.negativeTestsClosedOrderId)));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
+										"exec": [
+											"pm.test(\"Status code is 422 and one error\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].code).to.equal(\"orderClosed\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{lineBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -8165,7 +8519,7 @@
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.negativeTestsOrderId, function (err, res) {",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.negativeTestsPendingOrderId, function (err, res) {",
 											"    pm.variables.set(\"existing_number\", res.json().poNumber);",
 											"});"
 										],
@@ -8489,463 +8843,601 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Delete Pending order",
-					"event": [
+					"name": "Delete orders for positive tests",
+					"item": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
+							"name": "Delete Pending order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{completeOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						},
 						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Order has been successfully deleted\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
+							"name": "Delete Pending to Open order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.anotherCompleteOrderId, (err, res) => {",
+											"    // The po_listed_print_monograph.json was used to create this order and one more Open order. Some instances will not be deleted now but with deletion of the next order",
+											"    utils.deleteInventoryRecords(res.json(), false);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{anotherCompleteOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{anotherCompleteOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Open order for receiving history test",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.receivingHistoryPoId, (err, res) => {",
+											"    utils.deleteInventoryRecords(res.json(), false);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{receivingHistoryPoId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{receivingHistoryPoId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Open order with P/E Mix and Electronic lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.completeOpenOrderId, (err, res) => {",
+											"    // The instances should be deleted at this point for all orders created based on po_listed_print_monograph.json",
+											"    utils.deleteInventoryRecords(res.json(), true);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOpenOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{completeOpenOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Open order with physical and electronic lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.physElecOpenOrderId, (err, res) => {",
+											"    utils.deleteInventoryRecords(res.json(), true);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{physElecOpenOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{physElecOpenOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete order with no created instances",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderWithoutInventoryRecordsId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{orderWithoutInventoryRecordsId}}"
+									]
+								},
+								"description": "DELETE /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						}
 					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{completeOrderId}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
+					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Delete Pending to Open order",
-					"event": [
+					"name": "Delete orders for negative tests",
+					"item": [
 						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									"let utils = eval(globals.loadUtils);",
-									"",
-									"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.anotherCompleteOrderId, (err, res) => {",
-									"    // The po_listed_print_monograph.json was used to create this order and one more Open order. Some instances will not be deleted now but with deletion of the next order",
-									"    utils.deleteInventoryRecords(res.json(), false);",
-									"});"
+							"name": "Delete Pending order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negativeTestsPendingOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						},
 						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Order has been successfully deleted\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
+							"name": "Delete Open order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
 								],
-								"type": "text/javascript"
-							}
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negativeTestsOpenOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Closed order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsClosedOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negativeTestsClosedOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						}
 					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{anotherCompleteOrderId}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{anotherCompleteOrderId}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Open order for receiving history test",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									"let utils = eval(globals.loadUtils);",
-									"",
-									"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.receivingHistoryPoId, (err, res) => {",
-									"    utils.deleteInventoryRecords(res.json(), false);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Order has been successfully deleted\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{receivingHistoryPoId}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{receivingHistoryPoId}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Open order with P/E Mix and Electronic lines",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									"let utils = eval(globals.loadUtils);",
-									"",
-									"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.completeOpenOrderId, (err, res) => {",
-									"    // The instances should be deleted at this point for all orders created based on po_listed_print_monograph.json",
-									"    utils.deleteInventoryRecords(res.json(), true);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Order has been successfully deleted\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOpenOrderId}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{completeOpenOrderId}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
-				},
-				{
-					"name": "Delete Open order with physical and electronic lines",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									"let utils = eval(globals.loadUtils);",
-									"",
-									"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.physElecOpenOrderId, (err, res) => {",
-									"    utils.deleteInventoryRecords(res.json(), true);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Order has been successfully deleted\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{physElecOpenOrderId}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{physElecOpenOrderId}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
-				},
-				{
-					"name": "Delete order for negative tests",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Order has been successfully deleted\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOrderId}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{negativeTestsOrderId}}"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
-				},
-				{
-					"name": "Delete order with no created instances",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"Status code is 204\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Okapi-Tenant",
-								"value": "{{xokapitenant}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{order_without_inventory_records_id}}",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders",
-								"{{order_without_inventory_records_id}}"
-							]
-						},
-						"description": "DELETE /orders/composite-orders/id requests that return 204"
-					},
-					"response": []
+					"_postman_isSubFolder": true
 				},
 				{
 					"name": "Verify no lines left in storage",
@@ -8998,7 +9490,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/po-lines?query=purchaseOrderId=={{completeOrderId}} or purchaseOrderId=={{anotherCompleteOrderId}} or purchaseOrderId=={{completeOpenOrderId}} or purchaseOrderId=={{physElecOpenOrderId}} or purchaseOrderId=={{negativeTestsOrderId}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/po-lines?query=purchaseOrderId=={{completeOrderId}} or purchaseOrderId=={{anotherCompleteOrderId}} or purchaseOrderId=={{completeOpenOrderId}} or purchaseOrderId=={{physElecOpenOrderId}} or purchaseOrderId=={{orderWithoutInventoryRecordsId}} or purchaseOrderId=={{receivingHistoryPoId}} or purchaseOrderId=={{negativeTestsPendingOrderId}} or purchaseOrderId=={{negativeTestsOpenOrderId}} or purchaseOrderId=={{negativeTestsClosedOrderId}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -9011,7 +9503,7 @@
 							"query": [
 								{
 									"key": "query",
-									"value": "purchaseOrderId=={{completeOrderId}} or purchaseOrderId=={{anotherCompleteOrderId}} or purchaseOrderId=={{completeOpenOrderId}} or purchaseOrderId=={{physElecOpenOrderId}} or purchaseOrderId=={{negativeTestsOrderId}}"
+									"value": "purchaseOrderId=={{completeOrderId}} or purchaseOrderId=={{anotherCompleteOrderId}} or purchaseOrderId=={{completeOpenOrderId}} or purchaseOrderId=={{physElecOpenOrderId}} or purchaseOrderId=={{orderWithoutInventoryRecordsId}} or purchaseOrderId=={{receivingHistoryPoId}} or purchaseOrderId=={{negativeTestsPendingOrderId}} or purchaseOrderId=={{negativeTestsOpenOrderId}} or purchaseOrderId=={{negativeTestsClosedOrderId}}"
 								}
 							]
 						},
@@ -9069,7 +9561,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/purchase-orders?query=id=={{completeOrderId}} or id=={{anotherCompleteOrderId}} or id=={{completeOpenOrderId}} or purchaseOrderId=={{physElecOpenOrderId}} or id=={{negativeTestsOrderId}}",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/purchase-orders?query=id=={{completeOrderId}} or id=={{anotherCompleteOrderId}} or id=={{completeOpenOrderId}} or id=={{physElecOpenOrderId}} or id=={{orderWithoutInventoryRecordsId}} or id=={{receivingHistoryPoId}} or id=={{negativeTestsPendingOrderId}} or id=={{negativeTestsOpenOrderId}} or id=={{negativeTestsClosedOrderId}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -9082,7 +9574,7 @@
 							"query": [
 								{
 									"key": "query",
-									"value": "id=={{completeOrderId}} or id=={{anotherCompleteOrderId}} or id=={{completeOpenOrderId}} or purchaseOrderId=={{physElecOpenOrderId}} or id=={{negativeTestsOrderId}}"
+									"value": "id=={{completeOrderId}} or id=={{anotherCompleteOrderId}} or id=={{completeOpenOrderId}} or id=={{physElecOpenOrderId}} or id=={{orderWithoutInventoryRecordsId}} or id=={{receivingHistoryPoId}} or id=={{negativeTestsPendingOrderId}} or id=={{negativeTestsOpenOrderId}} or id=={{negativeTestsClosedOrderId}}"
 								}
 							]
 						},
@@ -10124,11 +10616,15 @@
 					"        pm.globals.unset(\"completePolineIds\");",
 					"        pm.globals.unset(\"completeOrderId\");",
 					"        pm.globals.unset(\"physElecOpenOrderId\");",
-					"        pm.globals.unset(\"negativeTestsOrderId\");",
+					"        pm.globals.unset(\"negativeTestsPendingOrderId\");",
+					"        pm.globals.unset(\"negativeTestsOpenOrderId\");",
+					"        pm.globals.unset(\"negativeTestsClosedOrderId\");",
 					"        pm.globals.unset(\"anotherCompleteOrderId\");",
 					"        pm.globals.unset(\"completeOpenOrderId\");",
 					"        pm.globals.unset(\"poLineForNegativeTests\");",
 					"        pm.globals.unset(\"completeOrderPoNumber\");",
+					"        pm.globals.unset(\"orderWithoutInventoryRecordsId\");",
+					"        pm.globals.unset(\"receivingHistoryPoId\");",
 					"        pm.globals.unset(\"newEmptyPoLine\");",
 					"        pm.globals.unset(\"poNumber\");",
 					"",
