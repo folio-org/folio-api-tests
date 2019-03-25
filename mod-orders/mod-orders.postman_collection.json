@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "4cb1741e-9498-4b11-8e89-61412395b0a7",
+		"_postman_id": "a0ba18fd-7b8b-4eac-8d76-ae82b7de218d",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -1369,7 +1369,7 @@
 					"name": "Prepare vendors",
 					"item": [
 						{
-							"name": "Get active vendor",
+							"name": "Post active vendor",
 							"event": [
 								{
 									"listen": "test",
@@ -1378,17 +1378,12 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"let configs = [];",
 											"pm.test(\"Storing active vendor\", function () {",
-											"    pm.response.to.be.ok;",
+											"    pm.response.to.have.status(201);",
 											"    pm.response.to.be.withBody;",
-											"",
-											"    let vendors = pm.response.json().vendors;",
-											"    pm.expect(vendors).to.have.lengthOf(1);",
-											"",
-											"    pm.environment.set(\"activeVendorId\", vendors[0].id);",
 											"});",
-											""
+											"",
+											"pm.environment.set(\"activeVendorId\", pm.response.json().id);"
 										],
 										"type": "text/javascript"
 									}
@@ -1405,20 +1400,26 @@
 								}
 							],
 							"request": {
-								"method": "GET",
+								"method": "POST",
 								"header": [
 									{
 										"key": "x-okapi-token",
 										"type": "text",
 										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": ""
+									"raw": "{\n\t\"name\": \"Test active vendor\",\n\t\"code\": \"TAV\",\n\t\"vendor_status\" : \"Active\"\n}"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor-storage/vendors?query=vendor_status==Active&limit=1",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor-storage/vendors",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -1427,16 +1428,71 @@
 									"path": [
 										"vendor-storage",
 										"vendors"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Post inactive vendor",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Storing inactive vendor\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"});",
+											"",
+											"pm.environment.set(\"inactiveVendorId\", pm.response.json().id);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"name\": \"Test inactive vendor\",\n\t\"code\": \"TIV\",\n\t\"vendor_status\" : \"Inactive\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor-storage/vendors",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
 									],
-									"query": [
-										{
-											"key": "query",
-											"value": "vendor_status==Active"
-										},
-										{
-											"key": "limit",
-											"value": "1"
-										}
+									"port": "{{okapiport}}",
+									"path": [
+										"vendor-storage",
+										"vendors"
 									]
 								}
 							},
@@ -4199,13 +4255,17 @@
 											"let utils = eval(globals.loadUtils);",
 											"",
 											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
-											"    let order  = res.json();",
+											"    let order  = utils.prepareOrder(res.json());",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"1MIX1EL\";",
+											"    // Prepare for vendor validation",
+											"    order.vendor = \"{{activeVendorId}}\";",
+											"    order.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+											"    order.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
 											"    // Set new product ids to be sure that new instances will be created",
 											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541133\";",
 											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541134\";",
-											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
+											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(order));",
 											"});"
 										],
 										"type": "text/javascript"
@@ -6504,6 +6564,1009 @@
 				{
 					"name": "Order",
 					"item": [
+						{
+							"name": "Post order - vendor validation",
+							"item": [
+								{
+									"name": "Post order - vendor not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"nonExistVendorId\", \"1a54b431-2e4f-452d-9cae-9cee66c9a852\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{nonExistVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    pm.variables.set(\"po_with_non_exist_vendor\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor not found\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorNotFound\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"nonExistVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_non_exist_vendor}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Post order - access provider not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"nonExistAccessProviderId\", \"1a54b431-2e4f-452d-9cae-9cdd66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{nonExistAccessProviderId}}\";",
+													"    pm.variables.set(\"po_with_non_exist_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider not found\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderNotFound\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"nonExistAccessProviderId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_non_exist_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Post order - vendor is inactive",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.environment.set(\"nonExistVendorId\", \"1a54b431-2e4f-452d-9cae-9cee66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    pm.variables.set(\"po_with_inactive_vendor\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorIsInactive\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_vendor}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Post order - access provider is inactive",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.environment.set(\"nonExistVendorId\", \"1a54b431-2e4f-452d-9cae-9cee66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{inactiveVendorId}}\";",
+													"    json = utils.deletePoNumber(json);",
+													"    pm.variables.set(\"po_with_inactive_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderIsInactive\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Post order - vendor and access provider are inactive",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    pm.variables.set(\"po_with_inactive_vendor_and_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorIsInactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderIsInactive\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 2);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_vendor_and_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Post order - vendor and access providers are inactive and not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"nonExistAccessProviderId\", \"1a54b431-2e4f-452d-9cae-9cee66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{nonExistAccessProviderId}}\";",
+													"    pm.variables.set(\"po_with_inactive_vendor_and_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorIsInactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderIsInactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider not found\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderNotFound\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"nonExistAccessProviderId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 3);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_vendor_and_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Put order - vendor validation",
+							"item": [
+								{
+									"name": "Put order - vendor not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"nonExistVendorId\", \"1a54b431-2e4f-452d-9cae-9cee66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{nonExistVendorId}}\";",
+													"    json.poNumber = \"anyPoNumber\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    pm.variables.set(\"po_with_non_exist_vendor\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor not found\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorNotFound\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"nonExistVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_non_exist_vendor}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Put order - access provider not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "6152f3b1-0b2b-440c-8c8a-70b13548dd49",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"nonExistAccessProviderId\", \"1a54b431-2e4f-452d-9cae-9cdd66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{activeVendorId}}\";",
+													"    json.poNumber = \"1234567\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{nonExistAccessProviderId}}\";",
+													"    pm.variables.set(\"po_with_non_exist_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "5e5efb91-2f1e-4660-81e8-7b765f59f9a9",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider not found\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderNotFound\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"nonExistAccessProviderId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_non_exist_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Put order - vendor is inactive",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{inactiveVendorId}}\";",
+													"    json.poNumber = \"anyPoNumber\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    pm.variables.set(\"po_with_inactive_vendor\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorIsInactive\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_vendor}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Put order - access provider is inactive",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.poNumber = \"1234567\";",
+													"    json.vendor = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{inactiveVendorId}}\";",
+													"    pm.variables.set(\"po_with_inactive_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderIsInactive\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Put order - vendor and access provider are inactive",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "a815d622-e96e-438a-9f1f-743528f146ed",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.poNumber = \"1234567\";",
+													"    json.vendor = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
+													"    pm.variables.set(\"po_with_inactive_vendor_and_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "68a9ba1d-4c80-4489-acd2-312be1dc52f7",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorIsInactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderIsInactive\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 2);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_vendor_and_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Put order - vendor and access providers are inactive and not found",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"nonExistAccessProviderId\", \"1a54b431-2e4f-452d-9cae-9cee66c9a892\");",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.vendor = \"{{inactiveVendorId}}\";",
+													"    json.poNumber = \"anyPoNumber\";",
+													"    json.compositePoLines[0].eresource.accessProvider = \"{{inactiveVendorId}}\";",
+													"    json.compositePoLines[1].eresource.accessProvider = \"{{nonExistAccessProviderId}}\";",
+													"    pm.variables.set(\"po_with_inactive_vendor_and_access_provider\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated vendor is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"vendorIsInactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider is inactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderIsInactive\");",
+													"    pm.expect(pm.response.text()).to.include(\"Order cannot be open as the associated access provider not found\");",
+													"    pm.expect(pm.response.text()).to.include(\"accessProviderNotFound\");",
+													"    ",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"inactiveVendorId\"));",
+													"    pm.expect(pm.response.text()).to.include(pm.variables.get(\"nonExistAccessProviderId\"));",
+													"    ",
+													"    pm.response.to.have.jsonBody(\"total_records\", 3);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_inactive_vendor_and_access_provider}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Get order - bad ID - 400",
 							"event": [
@@ -9586,6 +10649,92 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Delete and verify test vendors deletion",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"sendDeleteVendorRequest = function(vendorId) {",
+									"    utils.sendDeleteRequest(\"/vendor-storage/vendors/\" + vendorId, function (err, res) {",
+									"        if (err) {",
+									"            console.log(err);",
+									"        }",
+									"        pm.test('Piece successfully deleted from storage', function () {",
+									"            pm.expect(res).to.have.property('code', 204);",
+									"        });",
+									"    });",
+									"};",
+									"",
+									"// Deletion test vendors",
+									"sendDeleteVendorRequest(pm.variables.get(\"activeVendorId\"));",
+									"sendDeleteVendorRequest(pm.variables.get(\"inactiveVendorId\"));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"All vendors don't located in mod-orders-storage\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.have.jsonBody(\"total_records\", 0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/vendor-storage/vendors?query=id=={{activeVendorId}} or id=={{inactiveVendorId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"vendor-storage",
+								"vendors"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "id=={{activeVendorId}} or id=={{inactiveVendorId}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Verify no lines left in storage",
 					"event": [
 						{
@@ -9841,6 +10990,16 @@
 					"                \"code\": \"FOLIO\"",
 					"            }",
 					"        };",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Build Order in status \"Open\" without PO Number.",
+					"     */",
+					"    utils.prepareOpenOrderWithoutPoNumber = function (order) {",
+					"        let json = utils.prepareOrder(order);",
+					"        json.workflowStatus = \"Open\";",
+					"        utils.deletePoNumber(json);",
+					"        return order;",
 					"    };",
 					"",
 					"    /**",
@@ -10796,6 +11955,8 @@
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
 					"        pm.environment.unset(\"receivingItemBarcode\");",
+                    "        pm.environment.unset(\"activeVendorId\");",
+                    "        pm.environment.unset(\"inactiveVendorId\");",
 					"    };",
 					"",
 					"    /**",
