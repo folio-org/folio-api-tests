@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "5d8a9772-2ce9-45e3-913c-b324d35cc50b",
+		"_postman_id": "4cb1741e-9498-4b11-8e89-61412395b0a7",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4202,6 +4202,9 @@
 											"    let order  = res.json();",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"1MIX1EL\";",
+											"    // Set new product ids to be sure that new instances will be created",
+											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541133\";",
+											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541134\";",
 											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
 											"});"
 										],
@@ -4541,6 +4544,108 @@
 									]
 								},
 								"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders.\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `false`) items in total, checkinItems is `true`.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Open order. POLines with checkinItems = true",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Open\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.poNumber = \"CH3CK1N\";",
+											"",
+											"    // Set checkingItems flag",
+											"    order.compositePoLines[0].checkinItems = false;",
+											"    order.compositePoLines[1].checkinItems = true;",
+											"",
+											"    // Set new product ids to be sure that new instances will be created",
+											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541131\";",
+											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541132\";",
+											"    ",
+											"    ",
+											"    pm.globals.set(\"po_listed_print_monograph_with_checking_items_true\", JSON.stringify(utils.prepareOrder(order)));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = pm.response.json();",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"po_lines and corresponding Inventory entities exist\", function () {",
+											"    utils.validatePoLines(jsonData, 2, true);",
+											"});",
+											"",
+											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"po_with_checking_items_true_id\", jsonData.id); ",
+											"    pm.expect(jsonData.approved).to.exist;",
+											"    pm.expect(jsonData.poNumber).to.exist;",
+											"    pm.expect(jsonData.notes).to.exist;",
+											"    pm.expect(jsonData.totalItems).to.exist;",
+											"    pm.expect(jsonData.vendor).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_monograph_with_checking_items_true}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
 							},
 							"response": []
 						}
@@ -9218,6 +9323,69 @@
 								"description": "DELETE /orders/composite-orders/id requests that return 204"
 							},
 							"response": []
+						},
+						{
+							"name": "Delete order with checkinItems = true",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{po_with_checking_items_true_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{po_with_checking_items_true_id}}"
+									]
+								},
+								"description": "DELETE /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -9736,12 +9904,15 @@
 					"     */",
 					"    utils.validateInventoryItems = function(line) {",
 					"        let expectedCount = utils.calculateExpectedItemsQuantity(line);",
+					"        if(line.checkinItems === true) {",
+					"            expectedCount = 0;",
+					"        }",
 					"        utils.getItemsByPoLineId(line.id, 0, (err, res) => {",
 					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function() {",
-					"                let body = res.json();",
-					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
-					"                pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
-					"            });",
+					"                    let body = res.json();",
+					"                    pm.expect(body, \"GET Items response is not in json format\").to.exist;",
+					"                    pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
+					"                });",
 					"        });",
 					"    };",
 					"",
@@ -9761,7 +9932,11 @@
 					"        utils.sendGetRequest(\"/holdings-storage/holdings?limit=0&query=instanceId==\" + instanceId, (err, res) => {",
 					"            pm.test(\"Holding Records exist for Created Instance=\" + instanceId, function() {",
 					"                let body = res.json();",
-					"                pm.expect(body.totalRecords).to.be.above(0);",
+					"                if(poLine.checkinItems === true) {",
+					"                  pm.expect(body.totalRecords).to.equal(0);    ",
+					"                } else{",
+					"                  pm.expect(body.totalRecords).to.be.above(0);    ",
+					"                }       ",
 					"            });",
 					"        });",
 					"    };",
@@ -10369,6 +10544,9 @@
 					"",
 					"        let promises = [];",
 					"        order.compositePoLines.forEach(line => {",
+					"            // nothing to delete in case of checkin workflow, so just skip deletion process.",
+					"            if(line.checkinItems === true) return;",
+					"",
 					"            // The function returns Promise",
 					"            promises.push(",
 					"                utils.deleteInventoryItemRecords(line)",
