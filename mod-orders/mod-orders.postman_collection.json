@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "5d8a9772-2ce9-45e3-913c-b324d35cc50b",
+		"_postman_id": "a0ba18fd-7b8b-4eac-8d76-ae82b7de218d",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -1383,7 +1383,7 @@
 											"    pm.response.to.be.withBody;",
 											"});",
 											"",
-											"pm.globals.set(\"activeVendorId\", pm.response.json().id);"
+											"pm.environment.set(\"activeVendorId\", pm.response.json().id);"
 										],
 										"type": "text/javascript"
 									}
@@ -1448,7 +1448,7 @@
 											"    pm.response.to.be.withBody;",
 											"});",
 											"",
-											"pm.globals.set(\"inactiveVendorId\", pm.response.json().id);"
+											"pm.environment.set(\"inactiveVendorId\", pm.response.json().id);"
 										],
 										"type": "text/javascript"
 									}
@@ -4258,14 +4258,14 @@
 											"    let order  = utils.prepareOrder(res.json());",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"1MIX1EL\";",
-											"    order.vendor = \"{{activeVendorId}}\";",
 											"    // Prepare for vendor validation",
+											"    order.vendor = \"{{activeVendorId}}\";",
 											"    order.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
 											"    order.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
 											"    // Set new product ids to be sure that new instances will be created",
 											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541133\";",
 											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541134\";",
-											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
+											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(order));",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4604,108 +4604,6 @@
 									]
 								},
 								"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders.\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `false`) items in total, checkinItems is `true`.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `false`."
-							},
-							"response": []
-						},
-						{
-							"name": "Create Open order. POLines with checkinItems = true",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
-											"    let order  = res.json();",
-											"    order.workflowStatus = \"Open\";",
-											"    order = utils.deletePoNumber(order);",
-											"    order.poNumber = \"CH3CK1N\";",
-											"",
-											"    // Set checkingItems flag",
-											"    order.compositePoLines[0].checkinItems = false;",
-											"    order.compositePoLines[1].checkinItems = true;",
-											"",
-											"    // Set new product ids to be sure that new instances will be created",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541131\";",
-											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541132\";",
-											"    ",
-											"    ",
-											"    pm.globals.set(\"po_listed_print_monograph_with_checking_items_true\", JSON.stringify(utils.prepareOrder(order)));",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"var jsonData = pm.response.json();",
-											" ",
-											"pm.test(\"Status code is 201\", function () {",
-											"    pm.response.to.have.status(201);",
-											"});",
-											"",
-											"pm.test(\"po_lines and corresponding Inventory entities exist\", function () {",
-											"    utils.validatePoLines(jsonData, 2, true);",
-											"});",
-											"",
-											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
-											"",
-											"pm.test(\"Each order has these optional fields\", function() {",
-											"    pm.expect(jsonData.id).to.exist;",
-											"    pm.globals.set(\"po_with_checking_items_true_id\", jsonData.id); ",
-											"    pm.expect(jsonData.approved).to.exist;",
-											"    pm.expect(jsonData.poNumber).to.exist;",
-											"    pm.expect(jsonData.notes).to.exist;",
-											"    pm.expect(jsonData.totalItems).to.exist;",
-											"    pm.expect(jsonData.vendor).to.exist;",
-											"});",
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"name": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{po_listed_print_monograph_with_checking_items_true}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"orders",
-										"composite-orders"
-									]
-								},
-								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
 							},
 							"response": []
 						},
@@ -11019,6 +10917,7 @@
 					"            \"totalRecords\": 1",
 					"        }",
 					"    }",
+					"",
 					"};",
 					"",
 					"// Global testing object - used in further tests",
@@ -12052,12 +11951,12 @@
 					"        pm.globals.unset(\"receivingHistoryPoId\");",
 					"        pm.globals.unset(\"newEmptyPoLine\");",
 					"        pm.globals.unset(\"poNumber\");",
-					"        pm.globals.unset(\"activeVendorId\");",
-					"        pm.globals.unset(\"inactiveVendorId\");",
 					"",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
 					"        pm.environment.unset(\"receivingItemBarcode\");",
+                    "        pm.globals.unset(\"activeVendorId\");",
+                    "        pm.globals.unset(\"inactiveVendorId\");",
 					"    };",
 					"",
 					"    /**",
