@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "f617cd27-2573-4501-9a4d-fa588e9753a3",
+		"_postman_id": "f42f651c-4583-4579-81e8-2cc393cc2191",
 		"name": "shared-tenant",
 		"description": "Test the shared /tenant endpoint used by some modules. The /tenant implementation is in RMB, so we will use mod-users to test it. For now, we run this test along with other OKAPI tests.\n\nNote: \n1, to access mod-users directly, a new environment variable named \"mod_url\" is introduced to point to shared module ALB address. \n2, for some reason, when test against devqa or devqa-tmp, both Postman runner and Newman hang on two requests for a long time (~7 minutes): 1 /_/tenant POST upgrade to same version; 2 /_/DELETE. Those exact same requests can finish pretty quick when use curl or Chrome Advanced Rest Client plugin.\n3, the test does NOT work on Vagrant box even after open the mod-users port.\n\nBTW following collection variables are defined:\n1, schema_errors: errors.schema (Schema name)\n2, schema_error: error.schema (Schema name)\n3, schema_parameters: parameters.schema (Schema name)\n4, schema_loc: https://raw.githubusercontent.com/folio-org (Schema location. Use master branch for now)\n5, test_mod: mod-users (Use which module to test tenant API, aka mod_url context. Need to set it empty if mod-users module is deployed without /mod-users context)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -475,17 +475,13 @@
 					"listen": "test",
 					"script": {
 						"id": "862e28ad-9447-484e-bf00-fb69bfc09ef8",
-						"type": "text/javascript",
 						"exec": [
-							"pm.test(\"Response should be 400 to upgrade non-existing\", function () {",
-							"    pm.response.to.have.status(400);",
-							"});",
-							"",
-							"pm.test(\"Response text should contain word 'not exist'\", function () {",
-							"    pm.expect(pm.response.text()).to.include(\"not exist\");",
+							"pm.test(\"Response should be 201 to upgrade non-existing\", function () {",
+							"    pm.response.to.have.status(201);",
 							"});",
 							""
-						]
+						],
+						"type": "text/javascript"
 					}
 				}
 			],
@@ -499,11 +495,16 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json"
+					},
+					{
+						"key": "x-okapi-url",
+						"value": "{{protocol}}://{{url}}:{{okapiport}}",
+						"type": "text"
 					}
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"module_to\": \"ID9\",\r\n  \"module_from\": \"ID8\"\r\n}"
+					"raw": "{\r\n  \"module_to\": \"ID19\",\r\n  \"module_from\": \"ID18\"\r\n}"
 				},
 				"url": {
 					"raw": "{{mod_url}}/{{test_mod}}/_/tenant",
@@ -526,24 +527,24 @@
 					"listen": "test",
 					"script": {
 						"id": "74582557-8ef2-49e7-a5f3-96636dbe7069",
-						"type": "text/javascript",
 						"exec": [
 							"pm.test(\"Create should be OK for valid request\", function () {",
 							"    pm.response.to.have.status(201);",
 							"});",
 							""
-						]
+						],
+						"type": "text/javascript"
 					}
 				},
 				{
 					"listen": "prerequest",
 					"script": {
 						"id": "b1c5ddbb-83fd-407b-a879-83539cc5d84e",
-						"type": "text/javascript",
 						"exec": [
 							"pm.environment.set(\"test_mod_from_version\", \"100.1\");",
 							"pm.environment.set(\"test_mod_to_version\", \"100.2\");"
-						]
+						],
+						"type": "text/javascript"
 					}
 				}
 			],
@@ -557,6 +558,11 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json"
+					},
+					{
+						"key": "x-okapi-url",
+						"value": "{{protocol}}://{{url}}:{{okapiport}}",
+						"type": "text"
 					}
 				],
 				"body": {
@@ -642,13 +648,13 @@
 					"listen": "test",
 					"script": {
 						"id": "23334e8e-084b-4814-a012-7513ca30c981",
-						"type": "text/javascript",
 						"exec": [
 							"pm.test(\"Response should be 201 if upgrade\", function () {",
 							"    pm.response.to.have.status(201);",
 							"});",
 							""
-						]
+						],
+						"type": "text/javascript"
 					}
 				}
 			],
@@ -662,58 +668,16 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json"
+					},
+					{
+						"key": "x-okapi-url",
+						"value": "{{protocol}}://{{url}}:{{okapiport}}",
+						"type": "text"
 					}
 				],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n  \"module_from\": \"{{test_mod_from_version}}\",\r\n  \"module_to\": \"{{test_mod_to_version}}\"\r\n}"
-				},
-				"url": {
-					"raw": "{{mod_url}}/{{test_mod}}/_/tenant",
-					"host": [
-						"{{mod_url}}"
-					],
-					"path": [
-						"{{test_mod}}",
-						"_",
-						"tenant"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "/_/tenant POST upgrade to same version",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "725090a4-df2a-44d1-ae97-bed085395aca",
-						"type": "text/javascript",
-						"exec": [
-							"pm.test(\"Response should be 204 if upgrade to the same version\", function () {",
-							"    pm.response.to.have.status(204);",
-							"});",
-							""
-						]
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "x-okapi-tenant",
-						"value": "{{test_tenant_id}}"
-					},
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"module_to\": \"{{test_mod_to_version}}\"\r\n}"
 				},
 				"url": {
 					"raw": "{{mod_url}}/{{test_mod}}/_/tenant",
@@ -861,37 +825,37 @@
 	],
 	"variable": [
 		{
-			"id": "0f291f9b-57de-4743-9c7a-4c6ef673365a",
+			"id": "485397b2-b6b1-4567-9e4f-50686eb5e3b5",
 			"key": "schema_errors",
 			"value": "errors.schema",
 			"type": "string"
 		},
 		{
-			"id": "685d9659-7456-4d53-83cc-a13d6930dd22",
+			"id": "e9a91e33-5d99-4de2-9b43-3401a3a4092e",
 			"key": "schema_error",
 			"value": "error.schema",
 			"type": "string"
 		},
 		{
-			"id": "5cb494de-deef-4fe0-b74f-2cd47c2d4ea1",
+			"id": "c9280f89-0cd2-4608-a1b2-a483ad6784d2",
 			"key": "schema_parameters",
 			"value": "parameters.schema",
 			"type": "string"
 		},
 		{
-			"id": "6ffda3d2-f4a2-4690-984f-cc4674627901",
+			"id": "b41ff758-efa1-41d8-b187-7e28b75e29dd",
 			"key": "schema_loc",
 			"value": "https://raw.githubusercontent.com/folio-org",
 			"type": "string"
 		},
 		{
-			"id": "224136b1-6be9-44a3-b08a-fb30ec722a85",
+			"id": "c057f2f6-54c4-4d44-9872-dedb1373bd67",
 			"key": "test_mod",
 			"value": "mod-users",
 			"type": "string"
 		},
 		{
-			"id": "2e077541-5643-418b-aae2-0bd43c542908",
+			"id": "33fddc06-3b2b-4e19-a3f3-50c01b2af67f",
 			"key": "schema_commit",
 			"value": "a22e8c5b7ab919c692407a0d674f53c317088aac",
 			"type": "string"
