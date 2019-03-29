@@ -4048,6 +4048,8 @@
 											"",
 											"pm.test(\"PO Lines exist\", function () {",
 											"    utils.validatePoLines(jsonData, 2);",
+											"    pm.globals.set(\"pendingToOpenPol1\", jsonData.compositePoLines[0].id); ",
+											"    pm.globals.set(\"pendingToOpenPol2\", jsonData.compositePoLines[1].id);",
 											"});",
 											"",
 											"pm.test(\"Each order has these optional fields\", function() {",
@@ -4237,6 +4239,89 @@
 								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
 							},
 							"response": []
+						},
+						{
+							"name": "Verify Pieces created",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"// poLine1 -> 3 physical + 1 electronic = 4 pieces",
+											"// poLine2 -> 3 electronic = 3 pieces",
+											"// 3 + 4 -> 7 Pieces",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.totalRecords).to.equal(7);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{pendingToOpenPol1}} or poLineId=={{pendingToOpenPol2}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{pendingToOpenPol1}} or poLineId=={{pendingToOpenPol2}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -4286,6 +4371,8 @@
 											"",
 											"pm.test(\"PO Lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(jsonData, 2, true);",
+											"    pm.globals.set(\"OpenOrderPEEPol1\", jsonData.compositePoLines[0].id); ",
+											"    pm.globals.set(\"OpenOrderPEEPol2\", jsonData.compositePoLines[1].id);",
 											"});",
 											"",
 											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
@@ -4345,6 +4432,83 @@
 							"response": []
 						},
 						{
+							"name": "Verify Pieces created",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"// poLine1 -> 3 physical + 1 electronic = 4 pieces",
+											"// poLine2 -> 3 electronic = 3 pieces",
+											"// 3 + 4 -> 7 Pieces",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.totalRecords).to.equal(7);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
 							"name": "Create Open order with physical and electronic lines",
 							"event": [
 								{
@@ -4378,6 +4542,8 @@
 											"",
 											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(order, 2, true);",
+											"    pm.globals.set(\"OpenOrderPEPol1\", pm.response.json().compositePoLines[0].id); ",
+											"    pm.globals.set(\"OpenOrderPEPol2\", pm.response.json().compositePoLines[1].id);",
 											"    order.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
 											"});"
 										],
@@ -4424,6 +4590,89 @@
 							"response": []
 						},
 						{
+							"name": "Verify Pieces created",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"// poLine1 -> 25 physical",
+											"// poLine2 -> 10 electronic",
+											"// 25 + 10 -> 35 Pieces",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.totalRecords).to.equal(35);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{OpenOrderPEPol1}} or poLineId=={{OpenOrderPEPol2}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{OpenOrderPEPol1}} or poLineId=={{OpenOrderPEPol2}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
 							"name": "Create Order With receipt not required",
 							"event": [
 								{
@@ -4466,6 +4715,8 @@
 											"});",
 											"",
 											"pm.test(\"Verify two PO Lines exist\", function () {",
+											"    pm.globals.set(\"OpenOrderRNRPol1\", pm.response.json().compositePoLines[0].id); ",
+											"    pm.globals.set(\"OpenOrderRNRPol2\", pm.response.json().compositePoLines[1].id);",
 											"    utils.validatePoLines(jsonData, 2, false);",
 											"});",
 											"",
@@ -4525,6 +4776,86 @@
 							"response": []
 						},
 						{
+							"name": "Verify Pieces created",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.totalRecords).to.equal(0);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{OpenOrderRNRPol1}} or poLineId=={{OpenOrderRNRPol2}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{OpenOrderRNRPol1}} or poLineId=={{OpenOrderRNRPol2}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
 							"name": "Create Open order for receiving history test",
 							"event": [
 								{
@@ -4563,6 +4894,8 @@
 											"",
 											"pm.test(\"Verify two PO Lines exist\", function () {",
 											"    utils.validatePoLines(order, 2, true);",
+											"    pm.globals.set(\"OpenOrderRHTPol1\", pm.response.json().compositePoLines[0].id); ",
+											"    pm.globals.set(\"OpenOrderRHTPol2\", pm.response.json().compositePoLines[1].id);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4604,6 +4937,86 @@
 									]
 								},
 								"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders.\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `false`) items in total, checkinItems is `true`.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Pieces created",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.totalRecords).to.equal(7);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{OpenOrderRHTPol1}} or poLineId=={{OpenOrderRHTPol2}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{OpenOrderRHTPol1}} or poLineId=={{OpenOrderRHTPol2}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
 							},
 							"response": []
 						},
@@ -4652,6 +5065,8 @@
 											"",
 											"pm.test(\"po_lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(jsonData, 2, true);",
+											"    pm.globals.set(\"OpenOrderCheckinPol1\", pm.response.json().compositePoLines[0].id); ",
+											"    pm.globals.set(\"OpenOrderCheckinPol2\", pm.response.json().compositePoLines[1].id);",
 											"});",
 											"",
 											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
@@ -4706,6 +5121,86 @@
 									]
 								},
 								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Pieces created",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"History has pieces to receive\", function() {",
+											"    pm.expect(jsonData.totalRecords).to.equal(4);",
+											"});",
+											"",
+											"pm.test(\"History contains all expected fields\", function(){",
+											"    jsonData.receivingHistory.forEach(history => utils.validateReceivingHistory(history));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{OpenOrderCheckinPol1}} or poLineId=={{OpenOrderCheckinPol2}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{OpenOrderCheckinPol1}} or poLineId=={{OpenOrderCheckinPol2}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
 							},
 							"response": []
 						}
@@ -11664,7 +12159,112 @@
 							"response": []
 						},
 						{
-							"name": "Delete Pieces PE Mix - Delete Open order P/E Mix",
+							"name": "Get and Delete all Pieces",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"let pieces = [];",
+											"pieces = pm.response.json().pieces;",
+											"for (var i = 0; i < pieces.length; i++) {",
+											"    let pieceId = pieces[i].id;",
+											"    //Delete created piece",
+											"    if (pieceId) {",
+											"        utils.sendDeleteRequest(\"/orders-storage/pieces/\" + pieceId, function (err, res) {",
+											"          if (err) { console.log(err); }",
+											"          pm.test('Piece successfully deleted from storage', function () {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 204);",
+											"          });",
+											"    ",
+											"        // Verify is piece deleted",
+											"        utils.sendGetRequest(\"/orders-storage/pieces/\" + pieceId, function (err, res) {",
+											"          if (err) { console.log(err); }",
+											"          pm.test('Piece does not located in storage' , function () {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 404);",
+											"          });",
+											"        });",
+											"      });",
+											"    }",
+											"}",
+											"",
+											"pm.test(\"Verify all pieces are deleted\", function() {",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/pieces?query=limit=300 & poLineId=={{poLineIdPEMix}} or poLineId=={{poLine2IdPEMix}} or poLineId=={{poLineIdPhysical}} or poLineId=={{pendingToOpenPol1}} or poLineId=={{pendingToOpenPol2}} or poLineId=={{OpenOrderPEEPol1}} or poLineId=={{OpenOrderPEEPol2}} or poLineId=={{OpenOrderPEPol1}} or poLineId=={{OpenOrderPEPol2}} or poLineId=={{OpenOrderRNRPol1}} or poLineId=={{OpenOrderRNRPol2}} or poLineId=={{OpenOrderRHTPol1}} or poLineId=={{OpenOrderRHTPol2}} or poLineId=={{OpenOrderCheckinPol1}} or poLineId=={{OpenOrderCheckinPol1}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders-storage",
+										"pieces"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "limit=300 "
+										},
+										{
+											"key": " poLineId",
+											"value": "={{poLineIdPEMix}} or poLineId=={{poLine2IdPEMix}} or poLineId=={{poLineIdPhysical}} or poLineId=={{pendingToOpenPol1}} or poLineId=={{pendingToOpenPol2}} or poLineId=={{OpenOrderPEEPol1}} or poLineId=={{OpenOrderPEEPol2}} or poLineId=={{OpenOrderPEPol1}} or poLineId=={{OpenOrderPEPol2}} or poLineId=={{OpenOrderRNRPol1}} or poLineId=={{OpenOrderRNRPol2}} or poLineId=={{OpenOrderRHTPol1}} or poLineId=={{OpenOrderRHTPol2}} or poLineId=={{OpenOrderCheckinPol1}} or poLineId=={{OpenOrderCheckinPol1}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Pieces PE Mix - Delete Open order P/E Mix",
 							"event": [
 								{
 									"listen": "prerequest",
@@ -11735,7 +12335,7 @@
 							"response": []
 						},
 						{
-							"name": "Delete Pieces Phy - Delete Open order Physical",
+							"name": "Pieces Phy - Delete Open order Physical",
 							"event": [
 								{
 									"listen": "prerequest",
@@ -13387,163 +13987,163 @@
 	],
 	"variable": [
 		{
-			"id": "cfdcd5ff-c7fe-4aa1-bf04-a6089bd8362c",
+			"id": "8db3d0e3-7427-4733-a9f7-9c58907db245",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "ea253d9f-f182-48f0-8859-20f2a4633380",
+			"id": "f4e25468-997a-4472-9b78-568b4a2b5b81",
 			"key": "schema_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
 			"type": "string"
 		},
 		{
-			"id": "817d8e71-f6b2-4fac-91c5-8391d93e85eb",
+			"id": "07cce219-d418-408c-8759-5d101ffe86ba",
 			"key": "schema_composite_purchase_order",
 			"value": "composite_purchase_order.json",
 			"type": "string"
 		},
 		{
-			"id": "3b763648-d83d-40e5-ac30-b92e4b829aa6",
+			"id": "a945b55d-58dd-49fe-9b35-7722f3e9c31b",
 			"key": "schema_alert",
 			"value": "alert.json",
 			"type": "string"
 		},
 		{
-			"id": "fdc3436f-9335-4687-b441-01422d4f5e99",
+			"id": "d5ddf336-222a-4fc3-ad7a-6cd2da26dcdc",
 			"key": "schema_claim",
 			"value": "claim.json",
 			"type": "string"
 		},
 		{
-			"id": "73555e54-3d1a-4b9a-b19b-aba6f0d31607",
+			"id": "ebb89508-0235-44bb-86e4-e0e49a5d035b",
 			"key": "schema_composite_po_line",
 			"value": "composite_po_line.json",
 			"type": "string"
 		},
 		{
-			"id": "c8ceb2f4-cc7c-4fcf-a77c-aea7d07d32a3",
+			"id": "40943390-4096-445f-9a6f-fd03178fb2ae",
 			"key": "schema_cost",
 			"value": "cost.json",
 			"type": "string"
 		},
 		{
-			"id": "b7f3ee7a-1e14-4d30-a3e3-6eab6f9e385e",
+			"id": "5ebfff40-6b74-4768-b2d7-8a48feb12f08",
 			"key": "schema_details",
 			"value": "details.json",
 			"type": "string"
 		},
 		{
-			"id": "a2e499b1-8812-4ee5-83de-75dd34f5b5d1",
+			"id": "3c2d42c4-d0cb-4ec3-989d-238bf91487d9",
 			"key": "schema_eresource",
 			"value": "eresource.json",
 			"type": "string"
 		},
 		{
-			"id": "9b91b546-7745-4b56-b083-9be7599cc650",
+			"id": "be665d76-c932-4c54-84d3-63b7a41fc49d",
 			"key": "schema_fundDistribution",
 			"value": "fund_distribution.json",
 			"type": "string"
 		},
 		{
-			"id": "0ce5c04c-8cd2-496c-9ce6-80ec9bb96be8",
+			"id": "70c96938-5825-4b3b-8af8-8c772e45c612",
 			"key": "schema_location",
 			"value": "location.json",
 			"type": "string"
 		},
 		{
-			"id": "415bbc4b-b673-4030-a4d4-e183b06e8c7c",
+			"id": "fa53fd66-df69-4d57-88df-37e7d011f3e7",
 			"key": "schema_physical",
 			"value": "physical.json",
 			"type": "string"
 		},
 		{
-			"id": "7d54390d-7a94-45d5-895d-2bccf6e6610a",
+			"id": "1d5a3498-236d-4cef-81d3-1a3143ea7772",
 			"key": "schema_renewal",
 			"value": "renewal.json",
 			"type": "string"
 		},
 		{
-			"id": "e33f7b88-1807-42aa-a9fd-7b872f8f5d5c",
+			"id": "7419b906-e9ab-4cb3-9e68-1eea6c962ba6",
 			"key": "schema_reporting_code",
 			"value": "reporting_code.json",
 			"type": "string"
 		},
 		{
-			"id": "d1ce1f3f-8593-48b3-a84a-6d7442dc3c8d",
+			"id": "bba65f5e-92dd-428b-b85f-37eef033aea3",
 			"key": "schema_source",
 			"value": "source.json",
 			"type": "string"
 		},
 		{
-			"id": "c8eba480-028a-451e-80c4-b03821958bdf",
+			"id": "6a5fa33b-335f-4264-9ae6-a9b1218f53d0",
 			"key": "schema_vendorDetail",
 			"value": "vendor_detail.json",
 			"type": "string"
 		},
 		{
-			"id": "d78f811f-e7f0-487f-b78a-bc852efe1d94",
+			"id": "8eb2edb5-e53c-4067-8e58-d4c2c0f16f0b",
 			"key": "schema_orderFormat",
 			"value": "order_format.json",
 			"type": "string"
 		},
 		{
-			"id": "ecacd985-86e2-4b5b-a5ec-2119e1511d52",
+			"id": "6f1afc7b-9a02-4369-8587-634e5b80fd4f",
 			"key": "schema_receiptStatus",
 			"value": "receipt_status.json",
 			"type": "string"
 		},
 		{
-			"id": "22c05f7a-16ea-4082-b394-2db067021aff",
+			"id": "d1313bca-3b55-490e-9bb1-63e0a2713185",
 			"key": "storage_module",
 			"value": "mod-orders-storage",
 			"type": "string"
 		},
 		{
-			"id": "3939ba38-9e94-4f54-89e7-efee37685d24",
+			"id": "b680a618-978f-4554-9da9-e4aaab0f8471",
 			"key": "business_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "a057b8b5-1785-4dd9-ba9e-b426548c4c1c",
+			"id": "9b02b289-89ab-4db5-b48e-16e3fe984a40",
 			"key": "schema_metadata",
 			"value": "metadata.schema",
 			"type": "string"
 		},
 		{
-			"id": "3fa87803-34c5-42a3-a35c-f8a91a3d721e",
+			"id": "48e1b307-e30b-45f3-aab7-5a8a5c06097f",
 			"key": "schema_poNumber",
 			"value": "po_number.json",
 			"type": "string"
 		},
 		{
-			"id": "664106e8-f229-4cca-be98-9f3d8ee6d00d",
+			"id": "899a44eb-7183-4833-825f-a9ca90195f22",
 			"key": "raml_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
 			"type": "string"
 		},
 		{
-			"id": "47b3c7b5-bf5d-4c0a-a6e0-712ad353b949",
+			"id": "74ff660d-2947-4f06-9ff9-fd51ecf57048",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "9bcd16e8-e635-4262-8cea-a61c1ab69ce3",
+			"id": "a0524929-3bbf-485a-8509-bc07bb6d98d0",
 			"key": "orders_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "d917991d-817e-4781-aa19-c56bc088e0f9",
+			"id": "77fbc46b-662f-4ad9-844a-622207364579",
 			"key": "schema_productIdType",
 			"value": "product_id_type.json",
 			"type": "string"
 		},
 		{
-			"id": "4165d636-2ed8-473d-8bcd-f98e65b483fc",
+			"id": "39d3f32b-55ae-45f1-8595-ecde2f26f98f",
 			"key": "common_folder",
 			"value": "common",
 			"type": "string"
