@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "20495259-2077-421f-bd23-3b9890713f41",
+		"_postman_id": "9f9a964d-3722-4b21-a8ec-ab21b9e65b0f",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4019,11 +4019,13 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
-											"    let order  = res.json();",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function(err, res) {",
+											"    let order = res.json();",
 											"    order.workflowStatus = \"Pending\";",
 											"    // Setting create inventory to false for PO Line with P/E Mix format",
 											"    order.compositePoLines[0].eresource.createInventory = \"None\";",
+											"   // order.compositePoLines[1].physical = order.compositePoLines[0].physical;",
+											"   ",
 											"    order.poNumber = \"1MIX1EL1PHYS1OTH\";",
 											"",
 											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
@@ -4123,14 +4125,13 @@
 											"    // Few more cases for MODORDERS-117",
 											"    order.compositePoLines[0].orderFormat = \"Physical Resource\";",
 											"    setPhysicalInfo(order.compositePoLines[0]);",
-											"    order.compositePoLines[1].orderFormat = \"Other\";",
-											"    setPhysicalInfo(order.compositePoLines[1]);",
-											"",
+											"    // order.compositePoLines[1].orderFormat = \"Other\";",
+											"    // setPhysicalInfo(order.compositePoLines[1]);",
+											"    ",
 											"    // add 2 new PO lines",
 											"    pendingOrder.compositePoLines = pendingOrder.compositePoLines.concat(order.compositePoLines);",
 											"    // Set Open status",
 											"    pendingOrder.workflowStatus = \"Open\";",
-											"",
 											"    pm.variables.set(\"request_body\", JSON.stringify(pendingOrder));",
 											"    pm.globals.unset(\"another_complete_order_content\");",
 											"});",
@@ -6288,7 +6289,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"caption\": \"Tutorial Volume 5\",\r\n  \"comment\": \"Special Edition\",\r\n  \"itemId\": \"522a501a-56b5-48d9-b28a-3a8f02482d97\",\r\n  \"locationId\": \"53cf956f-c1df-410b-8bea-27f712cca7c0\",\r\n  \"poLineId\": \"d471d766-8dbb-4609-999a-02681dea6c22\",\r\n  \"receivingStatus\": \"Expected\",\r\n  \"supplement\": true,\r\n  \"receivedDate\": \"2018-10-10T00:00:00.000Z\"\r\n}"
+									"raw": "{\r\n  \"caption\": \"Tutorial Volume 5\",\r\n  \"comment\": \"Special Edition\",\r\n  \"itemId\": \"522a501a-56b5-48d9-b28a-3a8f02482d97\",\r\n  \"format\": \"Physical\",\r\n  \"locationId\": \"53cf956f-c1df-410b-8bea-27f712cca7c0\",\r\n  \"poLineId\": \"d471d766-8dbb-4609-999a-02681dea6c22\",\r\n  \"receivingStatus\": \"Expected\",\r\n  \"supplement\": true,\r\n  \"receivedDate\": \"2018-10-10T00:00:00.000Z\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
@@ -6312,6 +6313,223 @@
 				{
 					"name": "Create Inventory",
 					"item": [
+						{
+							"name": "Test createInventory defaults",
+							"item": [
+								{
+									"name": "Create order with createInventory system value from config",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
+													"",
+													"",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
+													"    let configName = \"createInventory\";",
+													"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
+													"    if (originalConfig) {",
+													"        console.log(originalConfig);",
+													"        utils.deleteConfig(originalConfig.id);",
+													"    }",
+													"    let order = res.json();",
+													"    order.workflowStatus = \"Open\";",
+													"    order.poNumber = \"CR34TE1NV5\";",
+													"    // Set new product ids to be sure that new instances will be tried to create",
+													"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541160\";",
+													"",
+													"    //remove createInventory value",
+													"    delete order.compositePoLines[0].eresource.createInventory;",
+													"    delete order.compositePoLines[0].physical.createInventory;",
+													"",
+													"    pm.variables.set(\"orderWithCreateInventoryNull1\", JSON.stringify(utils.prepareOrder(order)));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var order = {};",
+													"",
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    order = pm.response.json();",
+													"    pm.expect(order.id).to.exist;",
+													"    pm.globals.set(\"orderWithCreateInventoryNullId1\", order.id); ",
+													"});",
+													"",
+													"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function () {",
+													"    utils.validatePoLines(order, 1, true);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderWithCreateInventoryNull1}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+									},
+									"response": []
+								},
+								{
+									"name": "Create order with createInventory default config value",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let testConfigs = globals.testData.configs;",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
+													"",
+													"    let bodyTemplate = testConfigs.bodyTemplate;",
+													"    let configName = \"createInventory\";",
+													"",
+													"    bodyTemplate.configName = configName;",
+													"    bodyTemplate.value = \"{\\\"eresource\\\": \\\"None\\\",\\\"physical\\\": \\\"None\\\", \\\"other\\\": \\\"None\\\"}\";",
+													"    utils.createConfig(bodyTemplate);",
+													"",
+													"    let order = res.json();",
+													"    order.workflowStatus = \"Open\";",
+													"    order.poNumber = \"CR34TE1NV6\";",
+													"    // Set new product ids to be sure that new instances will be tried to create",
+													"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541161\";",
+													"",
+													"    //remove createInventory value",
+													"    delete order.compositePoLines[0].eresource.createInventory;",
+													"    delete order.compositePoLines[0].physical.createInventory;",
+													"",
+													"    pm.globals.set(\"orderWithCreateInventoryNull2\", JSON.stringify(utils.prepareOrder(order)));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var order = {};",
+													"",
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    order = pm.response.json();",
+													"    pm.expect(order.id).to.exist;",
+													"    pm.globals.set(\"orderWithCreateInventoryNullId2\", order.id); ",
+													"});",
+													"",
+													"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function () {",
+													"    utils.validatePoLines(order, 1, true);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderWithCreateInventoryNull2}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+									},
+									"response": []
+								}
+							],
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a05e5386-de4b-4f3b-8c8a-7364b5be79cf",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "f08648ef-232a-4299-87e5-664e6ca8f70f",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Create order with createInventory NONE",
 							"event": [
@@ -6355,7 +6573,7 @@
 											"    pm.globals.set(\"orderWithCreateInventoryNoneId\", order.id); ",
 											"});",
 											"",
-											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
+											"pm.test(\"1 PO Line and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(order, 1, true);",
 											"});",
 											""
@@ -6442,7 +6660,7 @@
 											"    pm.globals.set(\"orderWithCreateInventoryInstanceId\", order.id); ",
 											"});",
 											"",
-											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
+											"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(order, 1, true);",
 											"});"
 										],
@@ -6528,7 +6746,7 @@
 											"    pm.globals.set(\"orderWithCreateInventoryInstanceHoldingId\", order.id); ",
 											"});",
 											"",
-											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
+											"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(order, 1, true);",
 											"});"
 										],
@@ -6614,7 +6832,7 @@
 											"    pm.globals.set(\"orderWithCreateInventoryInstanceHoldingItemId\", order.id); ",
 											"});",
 											"",
-											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
+											"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function () {",
 											"    utils.validatePoLines(order, 1, true);",
 											"});"
 										],
@@ -6641,92 +6859,6 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{{orderWithCreateInventoryInstanceHoldingItem}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"orders",
-										"composite-orders"
-									]
-								},
-								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
-							},
-							"response": []
-						},
-						{
-							"name": "Create order with createInventory is null",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
-											"    let order  = res.json();",
-											"    order.workflowStatus = \"Open\";",
-											"    order.poNumber = \"CR34TE1NV5\";",
-											"    // Set new product ids to be sure that new instances will be tried to create",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541154\";",
-											"    ",
-											"    //remove createInventory value",
-											"    delete order.compositePoLines[0].eresource.createInventory;",
-											"    delete order.compositePoLines[0].physical.createInventory;",
-											"    ",
-											"    pm.globals.set(\"orderWithCreateInventoryNull\", JSON.stringify(utils.prepareOrder(order)));",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"var order = {};",
-											"",
-											"pm.test(\"Status code is 201\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    order = pm.response.json();",
-											"    pm.expect(order.id).to.exist;",
-											"    pm.globals.set(\"orderWithCreateInventoryNullId\", order.id); ",
-											"});",
-											"",
-											"pm.test(\"2 PO Lines and corresponding Inventory entities exist\", function () {",
-											"    utils.validatePoLines(order, 1, true);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{orderWithCreateInventoryNull}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -10361,7 +10493,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"",
 											"let currentConfigs;",
-											"pm.test(\"Storing current configs\", function () {",
+											"pm.test(\"Storing current configs\", function() {",
 											"    pm.response.to.be.ok;",
 											"",
 											"    currentConfigs = pm.response.json().configs;",
@@ -10369,11 +10501,17 @@
 											"});",
 											"",
 											"let configsToProcess = globals.testData.configs.configNames;",
+											"// Add createInventory to the list to be reverted",
+											"configsToProcess.push(\"createInventory\");",
 											"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
 											"for (var i = 0; i < configsToProcess.length; i++) {",
 											"    let configName = configsToProcess[i];",
 											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
+											"",
 											"    if (originalConfig) {",
+											"        if (configName === \"createInventory\") {",
+											"            originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
+											"        }",
 											"        utils.updateConfig(originalConfig);",
 											"    } else if (currentConfigs.length > 0) {",
 											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
@@ -10511,7 +10649,9 @@
 											"script": {
 												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 												"exec": [
-													""
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.deleteInventoryRecords(globals.orderWithCreateInventoryInstanceId, true);"
 												],
 												"type": "text/javascript"
 											}
@@ -10574,7 +10714,9 @@
 											"script": {
 												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 												"exec": [
-													""
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.deleteInventoryRecords(globals.orderWithCreateInventoryInstanceHoldingId, true);"
 												],
 												"type": "text/javascript"
 											}
@@ -10637,7 +10779,9 @@
 											"script": {
 												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 												"exec": [
-													""
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.deleteInventoryRecords(globals.orderWithCreateInventoryInstanceHoldingItemId, true);"
 												],
 												"type": "text/javascript"
 											}
@@ -10693,14 +10837,16 @@
 									"response": []
 								},
 								{
-									"name": "Delete order with createInventory is null",
+									"name": "Delete order with createInventory system default",
 									"event": [
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 												"exec": [
-													""
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.deleteInventoryRecords(globals.orderWithCreateInventoryNullId1, false);"
 												],
 												"type": "text/javascript"
 											}
@@ -10739,7 +10885,7 @@
 											"raw": ""
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderWithCreateInventoryNullId}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderWithCreateInventoryNullId1}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -10748,7 +10894,72 @@
 											"path": [
 												"orders",
 												"composite-orders",
-												"{{orderWithCreateInventoryNullId}}"
+												"{{orderWithCreateInventoryNullId1}}"
+											]
+										},
+										"description": "DELETE /orders/composite-orders/id requests that return 204"
+									},
+									"response": []
+								},
+								{
+									"name": "Delete order with createInventory config default",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.deleteInventoryRecords(globals.orderWithCreateInventoryNullId2, false);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderWithCreateInventoryNullId2}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{orderWithCreateInventoryNullId2}}"
 											]
 										},
 										"description": "DELETE /orders/composite-orders/id requests that return 204"
@@ -11692,7 +11903,7 @@
 					"        pm.expect(history.instanceId, \"Instance id expected\").to.exist;",
 					"        pm.expect(history.poLineId, \"PO Line id expected\").to.exist;",
 					"        pm.expect(history.poLineNumber, \"PO Line number expected\").to.exist;",
-					"        pm.expect(history.poLineOrderFormat, \"Order format expected\").to.exist;",
+					"        pm.expect(history.pieceFormat, \"Piece format expected\").to.exist;",
 					"        pm.expect(history.poLineReceiptStatus, \"Receipt status expected\").to.exist;",
 					"        pm.expect(history.purchaseOrderId, \"Purchase order id expected\").to.exist;",
 					"    };",
@@ -11750,11 +11961,11 @@
 					"            }",
 					"        };",
 					"    };",
-					"    ",
+					"",
 					"    /**",
 					"     * Build Order in status \"Open\" without PO Number.",
 					"     */",
-					"    utils.prepareOpenOrderWithoutPoNumber = function (order) {",
+					"    utils.prepareOpenOrderWithoutPoNumber = function(order) {",
 					"        let json = utils.prepareOrder(order);",
 					"        json.workflowStatus = \"Open\";",
 					"        utils.deletePoNumber(json);",
@@ -11824,16 +12035,15 @@
 					"        let expectedCount = utils.calculateExpectedItemsQuantity(line);",
 					"        utils.getItemsByPoLineId(line.id, 0, (err, res) => {",
 					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function() {",
-					"                    let body = res.json();",
-					"                    pm.expect(body, \"GET Items response is not in json format\").to.exist;",
-					"                    ",
-					"                    if (utils.isItemsUpdateRequired(line)) {",
-					"                        pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
-					"                    }",
-					"                    else {",
-					"                        pm.expect(body.totalRecords, \"Quantity of items should be zero\").to.equal(0);",
-					"                    }",
-					"                });",
+					"                let body = res.json();",
+					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
+					"",
+					"                if (utils.isItemsUpdateRequired(line)) {",
+					"                    pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
+					"                } else {",
+					"                    pm.expect(body.totalRecords, \"Quantity of items should be zero\").to.equal(0);",
+					"                }",
+					"            });",
 					"        });",
 					"    };",
 					"",
@@ -11853,12 +12063,12 @@
 					"        utils.sendGetRequest(\"/holdings-storage/holdings?limit=0&query=instanceId==\" + instanceId, (err, res) => {",
 					"            pm.test(\"Holding Records exist for Created Instance=\" + instanceId, function() {",
 					"                let body = res.json();",
-					"                if(utils.isHoldingsUpdateRequired(poLine)){",
-					"                    pm.expect(body.totalRecords).to.be.above(0);        ",
+					"                if (utils.isHoldingsUpdateRequired(poLine)) {",
+					"                    pm.expect(body.totalRecords).to.be.above(0);",
 					"                } else {",
-					"                    pm.expect(body.totalRecords).to.equal(0);    ",
+					"                    pm.expect(body.totalRecords).to.equal(0);",
 					"                }",
-					"                ",
+					"",
 					"            });",
 					"        });",
 					"    };",
@@ -11920,7 +12130,7 @@
 					"            });",
 					"        });",
 					"    };",
-					"    ",
+					"",
 					"    utils.inventoryUpdateNotRequired = function(compPOL) {",
 					"        // in case of \"Other\" order format check Physical createInventory value only",
 					"        if (compPOL.orderFormat === \"Other\") {",
@@ -11930,40 +12140,38 @@
 					"        let eresourceUpdateNotRequired = (compPOL.eresource == null || compPOL.eresource.createInventory === \"None\");",
 					"",
 					"        return physicalUpdateNotRequired && eresourceUpdateNotRequired;",
-					"   };",
-					"   ",
+					"    };",
+					"",
 					"    utils.isHoldingsUpdateRequired = function(compPOL) {",
-					"      let updatesRequiredForEresource = false;",
-					"      let updateRequiredForPhysical = false;",
-					"    ",
-					"      if (compPOL.eresource != null) {",
-					"        updatesRequiredForEresource = (compPOL.eresource.createInventory === \"Instance, Holding\"",
-					"          || compPOL.eresource.createInventory === \"Instance, Holding, Item\");",
-					"      }",
-					"      if (compPOL.physical != null) {",
-					"        updateRequiredForPhysical = (compPOL.physical.createInventory === \"Instance, Holding\"",
-					"          || compPOL.physical.createInventory === \"Instance, Holding, Item\");",
-					"      }",
-					"      return updatesRequiredForEresource || updateRequiredForPhysical;",
+					"        let updatesRequiredForEresource = false;",
+					"        let updateRequiredForPhysical = false;",
+					"",
+					"        if (compPOL.eresource != null) {",
+					"            updatesRequiredForEresource = (compPOL.eresource.createInventory === \"Instance, Holding\" || compPOL.eresource.createInventory === \"Instance, Holding, Item\");",
+					"        }",
+					"        if (compPOL.physical != null) {",
+					"            updateRequiredForPhysical = (compPOL.physical.createInventory === \"Instance, Holding\" || compPOL.physical.createInventory === \"Instance, Holding, Item\");",
+					"        }",
+					"        return updatesRequiredForEresource || updateRequiredForPhysical;",
 					"    }",
-					"  ",
+					"",
 					"    utils.isItemsUpdateRequired = function(compPOL) {",
-					"      if (compPOL.checkinItems != null && compPOL.checkinItems === true) {",
-					"        return false;",
-					"      }",
-					"      ",
-					"      let itemsRequiredForEresource = false;",
-					"      let itemsRequiredForPhysical = false;",
-					"    ",
-					"      if (compPOL.eresource != null) {",
-					"        itemsRequiredForEresource = compPOL.eresource.createInventory === \"Instance, Holding, Item\";",
-					"      }",
-					"      if (compPOL.physical != null) {",
-					"        itemsRequiredForPhysical = compPOL.physical.createInventory === \"Instance, Holding, Item\";",
-					"      }",
-					"      return itemsRequiredForEresource || itemsRequiredForPhysical;",
+					"        if (compPOL.checkinItems != null && compPOL.checkinItems === true) {",
+					"            return false;",
+					"        }",
+					"",
+					"        let itemsRequiredForEresource = false;",
+					"        let itemsRequiredForPhysical = false;",
+					"",
+					"        if (compPOL.eresource != null) {",
+					"            itemsRequiredForEresource = compPOL.eresource.createInventory === \"Instance, Holding, Item\";",
+					"        }",
+					"        if (compPOL.physical != null) {",
+					"            itemsRequiredForPhysical = compPOL.physical.createInventory === \"Instance, Holding, Item\";",
+					"        }",
+					"        return itemsRequiredForEresource || itemsRequiredForPhysical;",
 					"    }",
-					"    ",
+					"",
 					"",
 					"    /**",
 					"     * Prepare receiving request body for all PO Lines of an order",
@@ -12143,20 +12351,20 @@
 					"        let quantity = 0;",
 					"        switch (poLine.orderFormat) {",
 					"            case \"P/E Mix\":",
-					"              quantity += utils.isItemsUpdateRequiredForEresource(poLine) ? utils.getElectronicItemsQuantity(poLine) : 0;",
-					"              quantity += utils.isItemsUpdateRequiredForPhysical(poLine) ? utils.getPhysicalItemsQuantity(poLine) : 0;",
-					"              return quantity;",
+					"                quantity += utils.isItemsUpdateRequiredForEresource(poLine) ? utils.getElectronicItemsQuantity(poLine) : 0;",
+					"                quantity += utils.isItemsUpdateRequiredForPhysical(poLine) ? utils.getPhysicalItemsQuantity(poLine) : 0;",
+					"                return quantity;",
 					"            case \"Physical Resource\":",
-					"              quantity += utils.isItemsUpdateRequiredForPhysical(poLine) ? utils.getPhysicalItemsQuantity(poLine) : 0;",
-					"              return quantity;",
+					"                quantity += utils.isItemsUpdateRequiredForPhysical(poLine) ? utils.getPhysicalItemsQuantity(poLine) : 0;",
+					"                return quantity;",
 					"            case \"Electronic Resource\":",
-					"              quantity += utils.isItemsUpdateRequiredForEresource(poLine) ? utils.getElectronicItemsQuantity(poLine) : 0;",
-					"              return quantity;",
+					"                quantity += utils.isItemsUpdateRequiredForEresource(poLine) ? utils.getElectronicItemsQuantity(poLine) : 0;",
+					"                return quantity;",
 					"            case \"Other\":",
-					"              quantity += utils.isItemsUpdateRequiredForPhysical(poLine) ? utils.getElectronicItemsQuantity(poLine) : 0;",
-					"              return quantity;",
+					"                quantity += utils.isItemsUpdateRequiredForPhysical(poLine) ? utils.getElectronicItemsQuantity(poLine) : 0;",
+					"                return quantity;",
 					"            default:",
-					"              return 0;",
+					"                return 0;",
 					"        }",
 					"    };",
 					"",
@@ -12215,7 +12423,7 @@
 					"     * Gets quantity of all PO resources.",
 					"     */",
 					"    utils.verifyOrderCalculatedInfo = function(order, expectedTotalPrice) {",
-					"        pm.test(\"Verify PO has calculated data: MODORDERS-181 and MODORDERS-193\", function () {",
+					"        pm.test(\"Verify PO has calculated data: MODORDERS-181 and MODORDERS-193\", function() {",
 					"            pm.expect(order.totalItems).to.exist;",
 					"            pm.expect(order.totalItems).to.equal(utils.getTotalResourcesQuantity(order));",
 					"            if (typeof expectedTotalPrice === \"undefined\") {",
@@ -12240,7 +12448,7 @@
 					"        });",
 					"        return total;",
 					"    };",
-					"    ",
+					"",
 					"    utils.isItemsUpdateRequiredForEresource = function(compPOL) {",
 					"        if (compPOL.checkinItems != null && compPOL.checkinItems) {",
 					"            return false;",
@@ -12488,6 +12696,25 @@
 					"            utils.getItemsByPoLine(line)",
 					"                .then(items => {",
 					"                    let holdingsIds = [];",
+					"                    if (!utils.isItemsUpdateRequired(line)) {",
+					"                        pm.test(items.length + \" item(s) should be empty\" + line.id, () => {",
+					"                            pm.expect(items.length).to.eql(0);",
+					"                        });",
+					"                        if (items.length == 0) {",
+					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
+					"                                let body = res.json();",
+					"                                if (utils.isHoldingsUpdateRequired(line)) {",
+					"                                    body.holdingsRecords.forEach(hld => {",
+					"                                        holdingsIds.push(hld.id);",
+					"                                    });",
+					"                                }",
+					"                                resolve(holdingsIds);",
+					"                            });",
+					"",
+					"                        }",
+					"                        return;",
+					"                    }",
+					"",
 					"                    let promises = [];",
 					"                    items.forEach(item => {",
 					"                        // Using array because Set is not working for some reason",
@@ -12499,7 +12726,7 @@
 					"                    console.log(\"Deleting %d items for line with id=%s\", items.length, line.id);",
 					"                    // Wait for items to be deleted and then return holdings ids as a result of the promise defined in the top",
 					"                    Promise.all(promises)",
-					"                    // The promisses will be always resolved so not handling reject case",
+					"                        // The promisses will be always resolved so not handling reject case",
 					"                        .then(itemDelResults => {",
 					"                            // Returning the holding ids regardless of the result of the item deletion jut to try to delete holdings in any case",
 					"                            resolve(holdingsIds);",
@@ -12525,56 +12752,56 @@
 					"     * Note: The timeout is required when Promise is used. See https://community.getpostman.com/t/using-native-javascript-promises-in-postman/636",
 					"     */",
 					"    utils.deleteInventoryRecords = function(orderId, verifyRecordsDeletion) {",
-					"      utils.sendGetRequest(\"/orders/composite-orders/\" + orderId, (err, res) => {",
-					"        let order = res.json();",
-					"        if (typeof order.id === \"undefined\") {",
-					"            pm.test(\"Inventory records might be not fully cleaned up. Order cannot be found by id=\" + orderId, () => pm.expect(order.id).to.exist);",
-					"            return;",
-					"        }",
+					"        utils.sendGetRequest(\"/orders/composite-orders/\" + orderId, (err, res) => {",
+					"            let order = res.json();",
+					"            if (typeof order.id === \"undefined\") {",
+					"                pm.test(\"Inventory records might be not fully cleaned up. Order cannot be found by id=\" + orderId, () => pm.expect(order.id).to.exist);",
+					"                return;",
+					"            }",
 					"",
-					"        const timerId = setTimeout(() => {}, 60000);",
+					"            const timerId = setTimeout(() => {}, 60000);",
 					"",
-					"        let promises = [];",
-					"        order.compositePoLines.forEach(line => {",
+					"            let promises = [];",
+					"            order.compositePoLines.forEach(line => {",
 					"",
-					"            // The function returns Promise",
-					"            promises.push(",
-					"                utils.deleteInventoryItemRecords(line)",
-					"                .then(holdingsIds => {",
-					"                    console.log(\"%d holdings ids collected for line %s\", holdingsIds.length, line.id);",
-					"                    return holdingsIds.length > 0 ? utils.deleteHoldingsRecords(line.id, holdingsIds) : [];",
-					"                })",
-					"                .then(holdingsDelResult => {",
-					"                    // delete instance if there is an instance id and there is no holdings linked to any item",
-					"                    if (line.instanceId) {",
-					"                        // skip if no instance was created",
-					"                        if (utils.inventoryUpdateNotRequired(line)) {",
-					"                            return -1;",
+					"                // The function returns Promise",
+					"                promises.push(",
+					"                    utils.deleteInventoryItemRecords(line)",
+					"                    .then(holdingsIds => {",
+					"                        console.log(\"%d holdings ids collected for line %s\", holdingsIds.length, line.id);",
+					"                        return holdingsIds.length > 0 ? utils.deleteHoldingsRecords(line.id, holdingsIds) : [];",
+					"                    })",
+					"                    .then(holdingsDelResult => {",
+					"                        // delete instance if there is an instance id and there is no holdings linked to any item",
+					"                        if (line.instanceId) {",
+					"                            // skip if no instance was created",
+					"                            if (utils.inventoryUpdateNotRequired(line)) {",
+					"                                return -1;",
+					"                            }",
+					"                            // see utils.deleteHoldingsRecords()",
+					"                            let holdingsQty = holdingsDelResult.filter(code => code === -1).length;",
+					"                            if (holdingsQty === 0) {",
+					"                                return utils.deleteInventoryInstance(line.instanceId);",
+					"                            } else {",
+					"                                pm.test(holdingsQty + \" holdings record(s) referenced by instance id=\" + line.instanceId + \". The instance deletion is skipped!\", () => {});",
+					"                            }",
 					"                        }",
-					"                        // see utils.deleteHoldingsRecords()",
-					"                        let holdingsQty = holdingsDelResult.filter(code => code === -1).length;",
-					"                        if (holdingsQty === 0) {",
-					"                            return utils.deleteInventoryInstance(line.instanceId);",
-					"                        } else {",
-					"                            pm.test(holdingsQty + \" holdings record(s) referenced by instance id=\" + line.instanceId + \". The instance deletion is skipped!\", () => {});",
-					"                        }",
-					"                    }",
-					"                    return -1;",
-					"                })",
-					"            );",
-					"        });",
-					"",
-					"        Promise.all(promises)",
-					"            .then(success => {",
-					"                console.log(\"Inventory Records deletion processed: \", success);",
-					"                return verifyRecordsDeletion ? utils.verifyInventoryRecordsDeleted(order) : success;",
-					"            })",
-					"            .then(result => clearTimeout(timerId))",
-					"            .catch(err => {",
-					"                console.log(\"Error happened on Inventory Records deletion:\", err);",
-					"                clearTimeout(timerId);",
+					"                        return -1;",
+					"                    })",
+					"                );",
 					"            });",
-					"      });",
+					"",
+					"            Promise.all(promises)",
+					"                .then(success => {",
+					"                    console.log(\"Inventory Records deletion processed: \", success);",
+					"                    return verifyRecordsDeletion ? utils.verifyInventoryRecordsDeleted(order) : success;",
+					"                })",
+					"                .then(result => clearTimeout(timerId))",
+					"                .catch(err => {",
+					"                    console.log(\"Error happened on Inventory Records deletion:\", err);",
+					"                    clearTimeout(timerId);",
+					"                });",
+					"        });",
 					"    };",
 					"",
 					"    /**",
@@ -12730,8 +12957,7 @@
 					"     * Sends DELETE request and uses passed handler to handle result",
 					"     */",
 					"    utils.sendDeleteRequest = function(path, handler) {",
-					"        pm.sendRequest(",
-					"            {",
+					"        pm.sendRequest({",
 					"                url: utils.buildOkapiUrl(path),",
 					"                method: \"DELETE\",",
 					"                header: {",
