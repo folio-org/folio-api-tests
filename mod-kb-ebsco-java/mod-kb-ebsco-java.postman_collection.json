@@ -130,27 +130,39 @@
 									"    data.push(\"raml-util/schemas/tags.schema\");",
 									"}",
 									"",
+									"var interval = setTimeout(() => {}, 30000);",
 									"function traverse(data){",
 									"    addAdditionalSchemas(data);",
-									"     Object.entries(data).forEach(([key, value]) => {",
+									"     var promises = Object.entries(data).map(([key, value]) => {",
 									"         ",
-									"         var url = getURL(value);",
-									"         var request = getRequest(url);",
-									"         var promises = [];",
-									"         promises.push(fetchSchema(request, 200 * key));",
-									"         Promise.all(promises).then(function(response) {",
-									"          response = replaceResponseRefWithName(response.toString());",
-									"              var name = extractName(value);",
-									"              if(!checkVariableExist(name)){",
+									"        var url = getURL(value);",
+									"        var request = getRequest(url);",
+									"        ",
+									"        return fetchSchema(request, 200 * key)",
+									"        .then(function(response) {",
+									"            response = replaceResponseRefWithName(response.toString());",
+									"            var name = extractName(value);",
+									"            if(!checkVariableExist(name)){",
 									"                setEnvironmentVariable(name, response);",
-									"              }",
-									"          }).then(() => setTimeout(() => {}, 10000))",
+									"            }",
+									"        })",
 									"        .catch((err, req) => {",
 									"            console.log(err);",
 									"            console.log(req);",
-									"          });",
+									"        });",
 									"    });",
+									"    ",
+									"    Promise.all(promises)",
+									"        .then(() => {",
+									"            clearTimeout(interval)",
+									"        })",
+									"        .catch((err, req) => {",
+									"            console.log(err);",
+									"            console.log(req);",
+									"            clearTimeout(interval);",
+									"        });",
 									"}",
+									"",
 									"traverse(JSON.parse(responseBody));",
 									""
 								],
@@ -8868,6 +8880,84 @@
 														"eholdings",
 														"packages",
 														"{{custom-package-id-created-in-post}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "update custom package with isSelected false should delete it",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "eb2e7fc5-bb68-457e-bc47-447e4ebc8f67",
+														"exec": [
+															"pm.test(\"success test\", function() {",
+															"    pm.response.to.be.json;",
+															"});",
+															"",
+															"let response = pm.response.json();",
+															"",
+															"//Check that status is 404",
+															"pm.test(\"Status is 404\", function () {",
+															"    pm.response.to.have.status(404);",
+															"});",
+															"",
+															"//Validate response against json api schema",
+															"pm.test(\"Validate schema\", function () {",
+															"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_jsonapiError\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+															"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+															"});",
+															"",
+															"//Ensure that errors array is not empty",
+															"if(response.errors) {",
+															"    pm.test('Ensure that errors array is not empty', function() {",
+															"        pm.expect(response.errors).to.be.an('array').that.is.not.empty;",
+															"    });",
+															"",
+															"    //Test that we get expected error message",
+															"    pm.test('Ensure that we get expected error message', function() {",
+															"        pm.expect(response.errors[0].title).to.eq('Package not found');",
+															"    }); ",
+															"}",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-tenant",
+														"value": "{{xokapitenant}}"
+													},
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/vnd.api+json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"data\": {\n    \"type\": \"packages\",\n    \"attributes\": {\n      \"name\": \"random test package\",\n      \"contentType\": \"Print\",\n      \"customCoverage\": {\n        \"beginCoverage\": \"2003-01-01\",\n        \"endCoverage\": \"2003-12-01\"\n      },\n      \"isSelected\": false,\n      \"visibilityData\": {\n        \"isHidden\": true\n      }\n    }\n  }\n}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{custom-package-id-created-in-post-again}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"eholdings",
+														"packages",
+														"{{custom-package-id-created-in-post-again}}"
 													]
 												}
 											},
