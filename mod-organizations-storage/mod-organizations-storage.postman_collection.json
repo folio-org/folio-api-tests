@@ -1,0 +1,1018 @@
+{
+	"info": {
+		"_postman_id": "71aef567-6b48-4da3-9e13-8f0a91e2c26d",
+		"name": "mod-organizations-storage",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "Auth",
+					"item": [
+						{
+							"name": "/authn/login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Verify required modules enabled",
+					"item": [
+						{
+							"name": "mod-organizations-storage is deployed",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
+										"exec": [
+											"let jsonData = {};",
+											"",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Module deployed\", function () {",
+											"    // In case there is no module no sense to run further requests",
+											"    postman.setNextRequest(null);",
+											"    pm.expect(jsonData).to.have.lengthOf.at.least(1);",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/modules?filter=mod-organizations-storage",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"modules"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "mod-organizations-storage"
+										}
+									]
+								},
+								"description": "Check if mod-organizations-storage is deployed. If no module available, do not proceed to the next request."
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Load schemas for validation",
+					"item": [
+						{
+							"name": "Get schemas and setup env variables",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f930ca9d-df31-4572-90c8-63f5243ae30e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"\r",
+											"pm.test(\"Module has schemas to load\", function () {\r",
+											"    pm.response.to.be.ok;\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"\r",
+											"    let schemas = pm.response.json();\r",
+											"    pm.expect(schemas).to.not.be.empty;\r",
+											"    traverse(pm.response.json());\r",
+											"});\r",
+											"\r",
+											"function traverse(schemas) {\r",
+											"    const timerId = setTimeout(() => { }, 60000);\r",
+											"\r",
+											"    var promises = schemas.map(path => fetchSchema(path));\r",
+											"    Promise.all(promises)\r",
+											"        .then(result => clearTimeout(timerId))\r",
+											"        .catch((err, req) => {\r",
+											"            clearTimeout(timerId);\r",
+											"            console.log(err);\r",
+											"            console.log(req);\r",
+											"        });\r",
+											"}\r",
+											"\r",
+											"function fetchSchema(path) {\r",
+											"    let getRequest = buildGetSchemaRequest(path);\r",
+											"\r",
+											"    return new Promise((resolve, reject) => {\r",
+											"        pm.sendRequest(getRequest, (err, response) => {\r",
+											"            pm.test(\"Schema content loaded: \" + path, () => pm.expect(err).to.equal(null));\r",
+											"\r",
+											"            if (!err) {\r",
+											"                let content = replaceResponseRefWithName(response.text());\r",
+											"                let name = extractName(path);\r",
+											"                setEnvironmentVariable(name, content);\r",
+											"                resolve();\r",
+											"            } else {\r",
+											"                reject(err, getRequest);\r",
+											"            }\r",
+											"        });\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"function setEnvironmentVariable(name, data) {\r",
+											"    pm.environment.set(utils.schemaPrefix + name, data);\r",
+											"}\r",
+											"\r",
+											"function extractName(url) {\r",
+											"    return url.substring(url.lastIndexOf(\"/\") + 1);\r",
+											"}\r",
+											"\r",
+											"function replaceResponseRefWithName(text) {\r",
+											"    return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*(\\.json|\\.schema))/g, \"\\\"$ref\\\":\\\"\" + utils.schemaPrefix);\r",
+											"}\r",
+											"\r",
+											"function buildGetSchemaRequest(path) {\r",
+											"    let getRequest = utils.buildPmRequest(\"/_/jsonSchemas?path=\" + path, \"GET\");\r",
+											"    getRequest.header['X-Okapi-Module-Id'] = pm.variables.get(\"modOrgsId\");\r",
+											"    return getRequest;\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "789cccc8-2479-48c7-ac26-5e35328874bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"const moduleName = 'mod-organizations-storage';\r",
+											"\r",
+											"utils.sendGetRequest('/_/proxy/tenants/' + pm.variables.get(\"xokapitenant\") + '/interfaces/_jsonSchemas', (err, response) => {\r",
+											"    pm.test(\"jsonSchemas provided by \" + moduleName, function () {\r",
+											"        pm.expect(err).to.equal(null);\r",
+											"        pm.expect(response.text()).to.include(moduleName);\r",
+											"\r",
+											"        let moduleId = response.json().map(element => element.id).filter(modId => modId.includes(moduleName))[0];\r",
+											"    \tpm.variables.set('modOrgsId', moduleId);\r",
+											"    });\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"type": "text",
+										"value": "{{modOrgsId}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "9b589a48-d3fa-4985-85c4-8b7dcda638a9",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "b882afd4-d85f-4006-9746-08bea97bbdf5",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
+			"name": "Positive Tests",
+			"item": [
+				{
+					"name": "Organizations",
+					"item": [
+						{
+							"name": "Create active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = {};",
+											"",
+											"pm.test(\"Organization is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    organization = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(organization.id).to.exist;",
+											"    pm.environment.set(\"activeOrganizationId\", organization.id); ",
+											"",
+											"    utils.validateOrganization(organization);",
+											"    pm.expect(organization.status).to.eql(\"Active\");",
+											"    pm.expect(organization.name).to.contain(\"for API Test\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    delete org.id;",
+											"    org.name = \"Active org for API Test\";",
+											"    org.status = \"Active\";",
+											"    org.code = \"ACTIVEORG1\";",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organization-storage",
+										"organizations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = {};",
+											"",
+											"pm.test(\"Organizations found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    organization = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(organization.id).to.eql(pm.environment.get(\"activeOrganizationId\"));",
+											"    utils.validateOrganization(organization);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations/{{activeOrganizationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organization-storage",
+										"organizations",
+										"{{activeOrganizationId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Organization is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations/{{activeOrganizationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organization-storage",
+										"organizations",
+										"{{activeOrganizationId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create inactive org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = {};",
+											"",
+											"pm.test(\"Organization is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    organization = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(organization.id).to.exist;",
+											"    pm.environment.set(\"inactiveOrganizationId\", organization.id); ",
+											"",
+											"    utils.validateOrganization(organization);",
+											"    pm.expect(organization.status).to.eql(\"Inactive\");",
+											"    pm.expect(organization.isVendor).to.be.false;",
+											"    pm.expect(organization.name).to.contain(\"for API Test\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    delete org.id;",
+											"    org.name = \"Inactive for API Test\";",
+											"    org.status = \"Inactive\";",
+											"    org.code = \"INACTIVEORG\";",
+											"    org.isVendor = false;",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organization-storage",
+										"organizations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created orgs",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = [];",
+											"",
+											"pm.test(\"Organizations found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    organizations = pm.response.json().organizations;",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(organizations).to.have.lengthOf(1);",
+											"    organizations.forEach(org => utils.validateOrganization(org));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations?query=name adj for API Test",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organization-storage",
+										"organizations"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name adj for API Test"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "eabc0e99-5321-4b94-8073-c1009945649c",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "42e30b13-2d65-40cc-871d-b736930858cb",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Negative Tests",
+			"item": []
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "Delete organizations for positive tests",
+					"item": [
+						{
+							"name": "Delete inactive org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Organization is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations/{{inactiveOrganizationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organization-storage",
+										"organizations",
+										"{{inactiveOrganizationId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "3576b999-c386-481e-8364-6f3c0b5523f2",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "83dafb48-cc84-4d0b-abdb-8c5457beba28",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete organizations for negative tests",
+					"item": [],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "aab5a49c-aca9-49a0-9d82-a849ee144f9f",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "cd78a8af-536b-403b-8dda-d1f2a64c70c7",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "All test orgs deleted",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"pm.test(\"Organizations not found\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.expect(pm.response.json().organizations).to.have.lengthOf(0);",
+									"});",
+									"",
+									"// Delete all environment variables",
+									"eval(globals.loadUtils).unsetTestVariables();"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/organization-storage/organizations?query=name adj for API Test",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"organization-storage",
+								"organizations"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "name adj for API Test"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "e07ce59d-212b-4673-9fd7-346a4ca947e2",
+				"type": "text/javascript",
+				"exec": [
+					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
+					"    let utils = {};",
+					"    utils.schemaPrefix = \"orgs_schema_\";",
+					"",
+					"    /**",
+					"     * Creates OKAPI URL endpoint based on provided path",
+					"     */",
+					"    utils.buildOkapiUrl = function(path) {",
+					"        return pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path;",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends delete request based on specified path.",
+					"     * The Promise is returned as a result of the operation holding the http code of the response once completed.",
+					"     */",
+					"    utils.processDeleteRequest = function(path) {",
+					"        return new Promise((resolve) => {",
+					"            utils.sendDeleteRequest(path, (err, response) => resolve(response.code));",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Verifies if the delete operation succeeded",
+					"     */",
+					"    utils.validateResultOfDeleteRequest = function(code, message) {",
+					"        pm.test(message ? message : \"Record should be successfully deleted\", function() {",
+					"            pm.expect(code, \"The delete operation has to be completed with 204 code\").to.eql(204);",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendGetRequest = function(path, handler) {",
+					"        pm.sendRequest(utils.buildPmRequest(path, \"GET\"), handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends DELETE request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendDeleteRequest = function(path, handler) {",
+					"        pm.sendRequest(utils.buildPmRequest(path, \"DELETE\"), handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function(path, method) {",
+					"        return {",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"            }",
+					"        };",
+					"    };",
+					"",
+					"    /**",
+					"     * Clean up variables",
+					"     */",
+					"    utils.unsetTestVariables = function() {",
+					"        pm.globals.unset(\"loadUtils\");",
+					"",
+					"        pm.environment.unset(\"activeOrganizationId\");",
+					"        pm.environment.unset(\"inactiveOrganizationId\");",
+					"",
+					"        // Unset schema variables",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils.validateOrganization = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"organization.json\")));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils._validateAgainstSchema = function(jsonData, schema) {",
+					"        utils._addSchemas();",
+					"        var result = tv4.validateMultiple(jsonData, schema);",
+					"        pm.expect(result.valid).to.equal(true, \"Schema validation error: \" + JSON.stringify(result.errors));",
+					"        //make sure no schemas are missing",
+					"        pm.expect(result.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(result.missing));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to load schema defenitions to tv4",
+					"     */",
+					"    utils._addSchemas = function() {",
+					"        //Create and add schemas for validation",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value)));",
+					"    };",
+					"",
+					"    return utils;",
+					"",
+					"} + '; loadUtils();');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "55006f90-5989-4448-9d61-ff39c3e3191b",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "340a6cee-18a4-485f-a079-6e020db80834",
+			"key": "resourcesUrl",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-organizations-storage/master/src/main/resources/data",
+			"type": "string"
+		}
+	]
+}
