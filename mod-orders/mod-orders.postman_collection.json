@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "62528628-343c-4880-a9e5-70811d970f1f",
+		"_postman_id": "5f579279-6d88-41c0-b752-f2c36db8facf",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -8375,7 +8375,7 @@
 							"name": "Test createInventory defaults",
 							"item": [
 								{
-									"name": "Create order with createInventory system value from config",
+									"name": "Create order with createInventory system value from config(createInventory config removed)",
 									"event": [
 										{
 											"listen": "prerequest",
@@ -8384,8 +8384,6 @@
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
 													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
-													"",
-													"",
 													"",
 													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
 													"    let configName = \"createInventory\";",
@@ -8513,7 +8511,6 @@
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
 													"var order = {};",
-													"",
 													"pm.test(\"Status code is 201\", function () {",
 													"    pm.response.to.have.status(201);",
 													"    order = pm.response.json();",
@@ -8564,6 +8561,200 @@
 										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
 									},
 									"response": []
+								},
+								{
+									"name": "Get configs and delete them all",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let testConfigs = globals.testData.configs;",
+													"",
+													"let currentConfigs;",
+													"pm.test(\"Storing current configs\", function() {",
+													"    pm.response.to.be.ok;",
+													"",
+													"    currentConfigs = pm.response.json().configs;",
+													"    console.log(\"Current configs: \", currentConfigs);",
+													"    for (var i = 0; i < currentConfigs.length; i++) {",
+													"        let configId = currentConfigs[i].id;",
+													"        utils.deleteConfig(configId);",
+													"    }",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"configurations",
+												"entries"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "module==ORDERS"
+												}
+											]
+										},
+										"description": "Delete configs to excercise next step. The case when order created with empty configuration"
+									},
+									"response": []
+								},
+								{
+									"name": "Create order with createInventory system value (configs are empty)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
+													"    let order = res.json();",
+													"    order.workflowStatus = \"Open\";",
+													"    order.poNumber = \"CR34TE1NV7\";",
+													"    // Set new product ids to be sure that new instances will be tried to create",
+													"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541162\";",
+													"",
+													"    // remove createInventory value",
+													"    delete order.compositePoLines[0].eresource.createInventory;",
+													"    delete order.compositePoLines[0].physical.createInventory;",
+													"",
+													"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
+													"",
+													"    pm.variables.set(\"orderWithCreateInventoryNull3\", JSON.stringify(utils.prepareOrder(order)));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var order = {};",
+													"",
+													"pm.test(\"Status code is 201\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    order = pm.response.json();",
+													"    pm.expect(order.id).to.exist;",
+													"    pm.globals.set(\"orderWithCreateInventoryNullId3\", order.id);",
+													"});",
+													"",
+													"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function() {",
+													"    utils.validatePoLines(order, 1, true);",
+													"});",
+													"",
+													"//// Restore Configs",
+													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
+													"let testConfigs = globals.testData.configs;",
+													"let testConfigsNames = globals.testData.configs.configNames;",
+													"",
+													"// restore original configs",
+													"for (var i = 0; i < originalConfigs.length; i++) {",
+													"    let config = originalConfigs[i];",
+													"    ",
+													"    // skip restoring original config if test config exists",
+													"    let testConfig = testConfigsNames.filter(value => value === config.configName);",
+													"",
+													"    if (testConfig.length === 0) {",
+													"        delete config.id;",
+													"        delete config.metadata;",
+													"        utils.createConfig(config);",
+													"    }",
+													"}",
+													"",
+													"// restore testConfigs (for negative tests)",
+													"let configNamesToProcess = testConfigs.configNames;",
+													"console.log(\"Config codes to process: \" + configNamesToProcess);",
+													"",
+													"let bodyTemplate = testConfigs.bodyTemplate;",
+													"for (var i = 0; i < configNamesToProcess.length; i++) {",
+													"    let configName = configNamesToProcess[i];",
+													"    let value = pm.variables.get(configName);",
+													"    bodyTemplate.configName = configName;",
+													"    bodyTemplate.value = value;",
+													"    utils.createConfig(bodyTemplate);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderWithCreateInventoryNull3}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Test for the case described in [MODORDERS-209](https://issues.folio.org/browse/MODORDERS-209)"
+									},
+									"response": []
 								}
 							],
 							"event": [
@@ -8591,7 +8782,7 @@
 							"_postman_isSubFolder": true
 						},
 						{
-							"name": "Create order with createInventory NONE and epmty locations",
+							"name": "Create order with createInventory NONE and empty locations",
 							"event": [
 								{
 									"listen": "prerequest",
@@ -12642,17 +12833,14 @@
 											"});",
 											"",
 											"let configsToProcess = globals.testData.configs.configNames;",
-											"// Add createInventory to the list to be reverted",
-											"configsToProcess.push(\"createInventory\");",
+											"",
 											"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
 											"for (var i = 0; i < configsToProcess.length; i++) {",
 											"    let configName = configsToProcess[i];",
 											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
 											"",
 											"    if (originalConfig) {",
-											"        if (configName === \"createInventory\") {",
-											"            originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
-											"        }",
+											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
 											"        utils.updateConfig(originalConfig);",
 											"    } else if (currentConfigs.length > 0) {",
 											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
@@ -13101,6 +13289,71 @@
 												"orders",
 												"composite-orders",
 												"{{orderWithCreateInventoryNullId2}}"
+											]
+										},
+										"description": "DELETE /orders/composite-orders/id requests that return 204"
+									},
+									"response": []
+								},
+								{
+									"name": "Delete order with createInventory and empty config",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.deleteOrderRelatedRecords(globals.orderWithCreateInventoryNullId3, false);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderWithCreateInventoryNullId3}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{orderWithCreateInventoryNullId3}}"
 											]
 										},
 										"description": "DELETE /orders/composite-orders/id requests that return 204"
