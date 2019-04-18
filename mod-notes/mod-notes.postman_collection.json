@@ -731,9 +731,10 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.equal(1);",
-													"    pm.expect(response.notes.length).to.equal(1); // limit default",
+													"    pm.expect(response.notes.length).to.equal(1);",
 													"    pm.expect(response.notes[0].id).to.equal(pm.environment.get(\"noteId\"), \"id does not match\");",
 													"    pm.expect(response.notes[0].typeId).to.equal(pm.environment.get(\"noteTypeId\"), \"noteTypeId does not match\");",
+													"    pm.expect(response.notes[0].type).to.equal(pm.environment.get(\"noteTypeName\"), \"noteTypeName does not match\");",
 													"    pm.expect(response.notes[0].title).to.equal(pm.environment.get(\"noteTitle\"), \"title does not match\");",
 													"    pm.expect(response.notes[0].content).to.equal(pm.environment.get(\"noteContent\"), \"content does not match\");",
 													"});"
@@ -813,9 +814,10 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.equal(1);",
-													"    pm.expect(response.notes.length).to.equal(1); // limit default",
+													"    pm.expect(response.notes.length).to.equal(1);",
 													"    pm.expect(response.notes[0].id).to.equal(pm.environment.get(\"noteId\"), \"id does not match\");",
 													"    pm.expect(response.notes[0].typeId).to.equal(pm.environment.get(\"noteTypeId\"), \"typeId does not match\");",
+													"    pm.expect(response.notes[0].type).to.equal(pm.environment.get(\"noteTypeName\"), \"noteTypeName does not match\");",
 													"    pm.expect(response.notes[0].title).to.equal(pm.environment.get(\"noteTitle\"), \"noteTitle does not match\");",
 													"    pm.expect(response.notes[0].content).to.equal(pm.environment.get(\"noteContent\"), \"content does not match\");",
 													"});"
@@ -1216,7 +1218,6 @@
 											"script": {
 												"id": "fc943a45-a2da-462c-8910-3746fa12cf63",
 												"exec": [
-													"pm.variables.unset('xokapitoken-' + pm.variables.get('module'));",
 													""
 												],
 												"type": "text/javascript"
@@ -3219,95 +3220,61 @@
 											"listen": "test",
 											"script": {
 												"id": "dbd0e8e4-24e5-41e3-9d86-deb965629337",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"success test - 200 and JSON body\", function() {",
 													"    pm.response.to.be.ok;",
 													"    pm.response.to.be.json;",
 													"});",
 													"",
-													"pm.test(\"validate schema\", function() {",
-													"    tv4.addSchema(\"raml-util/schemas/metadata.schema\", pm.variables.get(\"metadata.schema\"));",
+													"var response = pm.response.json();",
 													"",
-													"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"note.json\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"   pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_note\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
 													"});",
 													"",
 													"pm.test(\"validate data\", function() {",
-													"    pm.expect(pm.response.json().id).to.equal(pm.variables.get(\"id\"), \"id does not match\");",
-													"    pm.expect(pm.response.json().link).to.equal(pm.variables.get(\"link\"), \"link does not match\");",
-													"    pm.expect(pm.response.json().text).to.equal(pm.variables.get(\"text\"), \"text does not match\");",
-													"    pm.expect(pm.response.json().domain).to.equal(pm.variables.get(\"domain\"), \"domain does not match\");",
-													"    pm.expect(pm.response.json().creatorUserName).to.equal(pm.environment.get(\"username\"), \"creatorUserName does not match\");",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpNoteFunction\"));",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"    ",
-													"    cleanUpNote(pm.response.json().id, function(err, success) {",
-													"       pm.test(\"remove note\", function() {",
-													"           pm.expect(success).to.be.true;",
-													"       });",
-													"    });",
-													"",
-													"   cleanUpVariables([\"uuid\", \"domain\", \"link\", \"text\", \"id\"]);",
+													"    pm.expect(response.id).to.equal(pm.environment.get(\"noteId\"), \"id does not match\");",
+													"    pm.expect(response.typeId).to.equal(pm.environment.get(\"noteTypeId\"), \"typeId does not match\");",
+													"    pm.expect(response.type).to.equal(pm.environment.get(\"noteTypeName\"), \"noteTypeName does not match\");",
+													"    pm.expect(response.title).to.equal(pm.environment.get(\"noteTitle\"), \"title does not match\");",
+													"    pm.expect(response.content).to.equal(pm.environment.get(\"noteContent\"), \"title does not match\");",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "0dd47a4b-2c8e-4fb9-8fc3-3a75ba8d776e",
-												"type": "text/javascript",
 												"exec": [
-													"// Create a note",
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"domain\", \"items\");",
-													"pm.variables.set(\"link\", \"/\" + pm.variables.get(\"domain\") + \"/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");",
-													"",
-													"let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"",
-													"pm.sendRequest({",
-													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes\",",
-													"    method: 'POST',",
-													"    header: {",
-													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"        'X-Okapi-Token': token,",
-													"        'Content-Type': 'application/json'",
-													"    },",
-													"    body: {",
-													"        mode: 'raw',",
-													"        raw : JSON.stringify({link: pm.variables.get(\"link\"), text: pm.variables.get(\"text\")})",
-													"    }",
-													"}, function(err, res) {",
-													"    if (err !== null) {",
-													"        console.log(\"note creation error: \" + err);",
-													"    } else {",
-													"        if (res.code === 201) {",
-													"            pm.variables.set(\"id\", res.json().id);",
-													"        } else {",
-													"            console.log(\"note creation failed: \" + res.reason());",
-													"        }",
-													"    }",
-													"});"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"method": "GET",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{id}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{noteId}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -3315,7 +3282,7 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"notes",
-												"{{id}}"
+												"{{noteId}}"
 											]
 										},
 										"description": "Returns an existing note"
@@ -3335,30 +3302,41 @@
 											"listen": "test",
 											"script": {
 												"id": "3c311bd3-3072-4897-9763-6910c868d89e",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"400 test - invalid id format in URL\", function() {",
 													"    pm.response.to.have.status(400);",
 													"    pm.response.to.have.body();",
 													"});",
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "9a7071e2-187d-4496-9cd3-442d978289d8",
-												"type": "text/javascript",
 												"exec": [
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"method": "GET",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
@@ -3386,20 +3364,36 @@
 											"listen": "test",
 											"script": {
 												"id": "aeb905b1-c769-4098-8a08-dbf039375edc",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"400 test - empty lang\", function() {",
 													"    pm.response.to.have.status(400);",
 													"    pm.response.to.have.body();",
 													"});",
+													"",
+													"pm.test(\"Response having negative limit parameter error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body(\"\\n 'lang' parameter is incorrect. parameter value {} is not valid: must match \\\"[a-zA-Z]{2}\\\"\");",
+													"});",
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"method": "GET",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
@@ -3433,19 +3427,35 @@
 											"listen": "test",
 											"script": {
 												"id": "508c294a-9bd8-4191-b222-19d75ee89c95",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"400 test - bad lang\", function() {",
 													"    pm.response.to.have.status(400);",
 													"    pm.response.to.have.body();",
+													"});",
+													"",
+													"pm.test(\"Response having negative limit parameter error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body(\"\\n 'lang' parameter is incorrect. parameter value {A1} is not valid: must match \\\"[a-zA-Z]{2}\\\"\");",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"method": "GET",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
@@ -3473,114 +3483,44 @@
 									"response": []
 								},
 								{
-									"name": "/notes/{id} - 401",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "2b79b617-4f51-46cf-b284-3848e4cc7618",
-												"type": "text/javascript",
-												"exec": [
-													"pm.test(\"401 test\", function() {",
-													"    pm.response.to.have.status(401);",
-													"    pm.response.to.have.body();",
-													"});"
-												]
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "29562f38-ef06-464a-82f6-81fee0b071c1",
-												"type": "text/javascript",
-												"exec": [
-													"pm.variables.unset('xokapitoken-' + pm.variables.get('module'));",
-													""
-												]
-											}
-										}
-									],
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"notes",
-												"{{$guid}}"
-											]
-										},
-										"description": "Failure test due to the auth token not being set."
-									},
-									"response": []
-								},
-								{
 									"name": "/notes/{id} - 403",
 									"event": [
 										{
 											"listen": "test",
 											"script": {
 												"id": "5ee448c2-4b9b-493f-99f8-fe1644cf5c80",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"403 test\", function() {",
 													"    pm.response.to.have.status(403);",
 													"    pm.response.to.have.body();",
-													"});",
-													"",
-													"pm.test(\"validate permission\", function() {",
-													"    pm.expect(pm.response.text()).to.include(\"notes.item.get\");",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpUserTestFunction\"));",
-													"",
-													"    cleanUpUserTest();",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "fc943a45-a2da-462c-8910-3746fa12cf63",
-												"type": "text/javascript",
 												"exec": [
-													"eval(pm.variables.get(\"createUserFunction\"));",
-													"",
-													"createUser();",
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"auth": {
-											"type": "bearer",
-											"bearer": [
-												{
-													"key": "token",
-													"value": "{{test_user_token}}",
-													"type": "string"
-												}
-											]
+											"type": "noauth"
 										},
 										"method": "GET",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
@@ -3608,30 +3548,40 @@
 											"listen": "test",
 											"script": {
 												"id": "ec2c712e-07cf-4077-903c-915fc8f89511",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"404 test\", function() {",
 													"    pm.response.to.have.status(404);",
 													"    pm.response.to.have.body();",
-													"});",
-													""
-												]
+													"});"
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "9a7071e2-187d-4496-9cd3-442d978289d8",
-												"type": "text/javascript",
 												"exec": [
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"method": "GET",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
@@ -3654,6 +3604,28 @@
 								}
 							],
 							"_postman_isSubFolder": true
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "acf39a76-6fee-4ec1-8ca2-53544ff67ed7",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "8f315105-f4c6-496f-9778-d0f3cb34beaf",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
 						}
 					],
 					"_postman_isSubFolder": true
@@ -5636,6 +5608,30 @@
 					],
 					"_postman_isSubFolder": true
 				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "5b07068d-07c5-4361-ac57-e2e65ad0d2e0",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "8c592509-db0f-429d-858f-9e192c9239e3",
+						"type": "text/javascript",
+						"exec": [
+							" tv4.addSchema(\"schema_metadata.schema\", pm.environment.get(\"schema_metadata\"));",
+							" tv4.addSchema(\"schema_error.schema\", pm.environment.get(\"schema_error\"));",
+							" tv4.addSchema(\"schema_userDisplayInfo.json\", pm.environment.get(\"schema_userDisplayInfo\"));"
+						]
+					}
+				}
 			]
 		},
 		{
@@ -5669,7 +5665,7 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.equal(1);",
-													"    pm.expect(response.noteTypes.length).to.equal(1); // limit default",
+													"    pm.expect(response.noteTypes.length).to.equal(1);",
 													"    pm.expect(response.noteTypes[0].id).to.equal(pm.environment.get(\"noteTypeId\"), \"id does not match\");",
 													"    pm.expect(response.noteTypes[0].name).to.equal(pm.environment.get(\"noteTypeName\"), \"name does not match\");",
 													"});"
@@ -5749,7 +5745,7 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.equal(1);",
-													"    pm.expect(response.noteTypes.length).to.equal(1); // limit default",
+													"    pm.expect(response.noteTypes.length).to.equal(1);",
 													"    pm.expect(response.noteTypes[0].id).to.equal(pm.environment.get(\"noteTypeId\"), \"id does not match\");",
 													"    pm.expect(response.noteTypes[0].name).to.equal(pm.environment.get(\"noteTypeName\"), \"name does not match\");",
 													"});"
