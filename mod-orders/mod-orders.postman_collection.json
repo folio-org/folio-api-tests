@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "62528628-343c-4880-a9e5-70811d970f1f",
+		"_postman_id": "546c04c5-85a9-4d1e-83f0-0dc7b929925d",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -3109,7 +3109,8 @@
 													"pm.variables.set(\"poLineId\", poLineId);",
 													"utils.sendGetRequest(\"/orders/order-lines/\" + poLineId, (err, res) => {",
 													"    // Get physical object",
-													"    let physical = JSON.parse(pm.globals.get(\"po_listed_print_monograph\")).compositePoLines[0].physical;",
+													"    let compositePoLine = JSON.parse(pm.globals.get(\"po_listed_print_monograph\")).compositePoLines[0];",
+													"    let physical = compositePoLine.physical;",
 													"    // make sure there is no id provided",
 													"    delete physical.id;",
 													"",
@@ -3120,6 +3121,7 @@
 													"",
 													"    let poLine  = res.json();",
 													"    poLine.physical = physical;",
+													"    poLine.locations = [compositePoLine.locations[0]];",
 													"    pm.variables.set(\"updated_po_line\", JSON.stringify(poLine));",
 													"});"
 												],
@@ -3876,7 +3878,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"poNumber\": \"{{poNumber}}\",\n\t\"vendor\": \"{{activeVendorId}}\"\n}"
+											"raw": "{\n\t\"poNumber\": \"{{poNumber}}\",\n\t\"orderType\": \"One-Time\",\n\t\"vendor\": \"{{activeVendorId}}\"\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
@@ -9204,75 +9206,6 @@
 							"name": "Post order - vendor validation",
 							"item": [
 								{
-									"name": "Create empty order with missing vendor UUID",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-												"exec": [
-													"pm.test(\"Status code is 422\", function () {",
-													"    pm.response.to.have.status(422);",
-													"",
-													"    var jsonData = pm.response.json();",
-													"",
-													"    pm.test(\"Vendor UUID is missing\", function () {",
-													"        pm.expect(jsonData.errors[0].parameters[0].key).to.equal(\"vendor\");",
-													"        pm.expect(jsonData.errors[0].parameters[0].value).to.equal(\"null\");",
-													"    });",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n\t\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"orders",
-												"composite-orders"
-											]
-										},
-										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
-									},
-									"response": []
-								},
-								{
 									"name": "Post order - vendor not found",
 									"event": [
 										{
@@ -10273,6 +10206,76 @@
 							"_postman_isSubFolder": true
 						},
 						{
+							"name": "Create empty order with missing required fields",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Vendor and orderType is missing\", function () {",
+											"     ",
+											"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"vendor\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"orderType\").parameters[0].value).to.equal(\"null\");",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create an order with empty body"
+							},
+							"response": []
+						},
+						{
 							"name": "Get order - bad ID - 400",
 							"event": [
 								{
@@ -10812,7 +10815,7 @@
 										"exec": [
 											"pm.test(\"Status code is 422\", function () {",
 											"    pm.response.to.have.status(422);",
-											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(2);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -11008,7 +11011,7 @@
 							"name": "Verify PO Line required properties",
 							"item": [
 								{
-									"name": "Create line - no source - 422",
+									"name": "Create line - without required fields- 422",
 									"event": [
 										{
 											"listen": "prerequest",
@@ -11018,6 +11021,10 @@
 													"let utils = eval(globals.loadUtils);",
 													"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
 													"delete line.source;",
+													"delete line.cost;",
+													"delete line.title;",
+													"delete line.orderFormat;",
+													"delete line.acquisitionMethod;",
 													"pm.variables.set(\"line_body\", JSON.stringify(line));"
 												],
 												"type": "text/javascript"
@@ -11030,7 +11037,7 @@
 												"exec": [
 													"pm.test(\"Status code is 422\", function () {",
 													"    pm.response.to.have.status(422);",
-													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(5);",
 													"});"
 												],
 												"type": "text/javascript"
@@ -11106,6 +11113,7 @@
 													"            location.quantityPhysical = 10;",
 													"        }",
 													"        var emptyLocation = {};",
+													"        emptyLocation.locationId = line.locations[0].locationId;",
 													"        emptyLocation.quantityElectronic = 0;",
 													"        emptyLocation.quantityPhysical = 0;",
 													"        ",
@@ -14235,7 +14243,10 @@
 					"     * Build Order with minimal required fields.",
 					"     */",
 					"    utils.buildOrderWithMinContent = function() {",
-					"        return {\"vendor\": pm.variables.get(\"activeVendorId\")};",
+					"        return {",
+					"            \"vendor\": pm.variables.get(\"activeVendorId\"),",
+					"            \"orderType\": \"One-Time\"",
+					"        };",
 					"    };",
 					"    ",
 					"    /**",
@@ -14243,7 +14254,7 @@
 					"     */",
 					"    utils.buildPoLineWithMinContent = function(orderId) {",
 					"        return {",
-					"            \"poLineNumber\": \"tempnumber-123\",",
+					"            \"acquisitionMethod\": \"Purchase\",",
 					"            \"purchaseOrderId\": orderId,",
 					"            \"source\": {",
 					"                \"code\": \"FOLIO\"",
@@ -14257,11 +14268,7 @@
 					"\t            \"listUnitPrice\": 1,",
 					"\t            \"quantityPhysical\":1",
 					"\t        },",
-					"\t        \"locations\":[{",
-					"\t            \"locationId\": \"00e761ce-68a6-44ac-8a1f-3257a847b027\",",
-					"\t            \"quantityPhysical\":1",
-					"\t        }",
-					"\t        ]",
+					"\t        \"title\": \"Kayak Fishing in the Northern Gulf Coast\"",
 					"        };",
 					"    };",
 					"",
@@ -14832,7 +14839,7 @@
 					"        pm.expect(poLine.id, \"PO line id expected\").to.exist;",
 					"        pm.expect(poLine.purchaseOrderId, \"PO id expected\").to.exist;",
 					"        pm.expect(poLine.source, \"source expected\").to.exist;",
-					"        pm.expect(poLine.acquisitionMethod, \"acquisitionMethod not expected\").to.not.exist;",
+					"        pm.expect(poLine.acquisitionMethod, \"acquisitionMethod expected\").to.exist;",
 					"        pm.expect(poLine.alerts, \"alerts should be empty\").to.be.an('array').that.is.empty;",
 					"        pm.expect(poLine.cancellationRestriction, \"cancellationRestriction not expected\").to.not.exist;",
 					"        pm.expect(poLine.cancellationRestrictionNote, \"cancellationRestrictionNote not expected\").to.not.exist;",
@@ -14842,10 +14849,10 @@
 					"        pm.expect(poLine.description, \"description not expected\").to.not.exist;",
 					"        pm.expect(poLine.donor, \"donor not expected\").to.not.exist;",
 					"        pm.expect(poLine.fundDistribution, \"fundDistribution should be empty\").to.be.an('array').that.is.empty;",
-					"        pm.expect(poLine.locations, \"locations should be present\").to.be.an('array').that.is.not.empty;",
+					"        pm.expect(poLine.locations, \"locations should be empty\").to.be.an('array').that.is.empty;",
 					"        pm.expect(poLine.orderFormat, \"orderFormat expected\").to.exist;",
 					"        pm.expect(poLine.owner, \"owner not expected\").to.not.exist;",
-					"        pm.expect(poLine.paymentStatus, \"paymentStatus not expected\").to.equal(\"Pending\");",
+					"        pm.expect(poLine.paymentStatus, \"paymentStatus is Pending\").to.equal(\"Pending\");",
 					"        pm.expect(poLine.poLineDescription, \"poLineDescription not expected\").to.not.exist;",
 					"        pm.expect(poLine.poLineNumber, \"poLineNumber is expected\").to.exist;",
 					"        pm.expect(poLine.publicationDate, \"publicationDate not expected\").to.not.exist;",
@@ -14857,7 +14864,7 @@
 					"        pm.expect(poLine.rush, \"rush not expected\").to.not.exist;",
 					"        pm.expect(poLine.selector, \"selector not expected\").to.not.exist;",
 					"        pm.expect(poLine.tags, \"tags should be empty\").to.be.an('array').that.is.empty;",
-					"        pm.expect(poLine.title, \"title not expected\").to.not.exist;",
+					"        pm.expect(poLine.title, \"title expected\").to.exist;",
 					"        pm.expect(poLine.vendorDetail, \"vendorDetail not expected\").to.not.exist;",
 					"    };",
 					"",
