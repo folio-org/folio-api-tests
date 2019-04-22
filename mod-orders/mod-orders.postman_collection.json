@@ -1,7 +1,7 @@
 {
 	"info": {
-		"_postman_id": "280c325c-1685-4559-9383-14bc3d4d38ac",
-		"name": "mod-orders",
+		"_postman_id": "0c5a5eab-1ab8-4ba5-8c9f-89b4b8781512",
+		"name": "mod-orders copy",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -4727,6 +4727,131 @@
 								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
 							},
 							"response": []
+						},
+						{
+							"name": "Create order all po lines checkin",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_one_physical_one_electronic_lines.json\", (err, res) => {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Open\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.poNumber = \"CH3CK1NPHYELEC\";",
+											"",
+											"    // Set checkingItems flag",
+											"    order.compositePoLines[0].checkinItems = true;",
+											"    order.compositePoLines[1].checkinItems = true;",
+											"",
+											"    // Set new product ids to be sure that new instances will be created",
+											"    delete order.compositePoLines[0].details.productIds;",
+											"    delete order.compositePoLines[1].details.productIds;",
+											"    ",
+											"    order.compositePoLines[0].details.productIds[0].productId = \"11311321131132\";",
+											"    order.compositePoLines[0].details.productIds[0].productIdType = \"ISBN\";",
+											"    order.compositePoLines[1].details.productIds[0].productId = \"11321331132133\";",
+											"    order.compositePoLines[0].details.productIds[0].productIdType = \"ISBN\";",
+											"    ",
+											"    order.compositePoLines[0].title = \"Hey! Just API testing checkin\"",
+											"    order.compositePoLines[1].title = \"Hey! Just API testing checkin with no items\"",
+											"    ",
+											"    //set proper material Type",
+											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
+											"    ",
+											"    //set create Inventory so that no item interaction is necessary",
+											"    order.compositePoLines[1].eresource.createInventory = \"Instance, Holding\";",
+											"    ",
+											"    pm.variables.set(\"poForTestingCheckin\", JSON.stringify(utils.prepareOrder(order)));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"jsonData.compositePoLines.forEach(line => {",
+											"     utils.validateReceiptStatus(line, \"Awaiting Receipt\");",
+											"    if(line.orderFormat === \"Physical Resource\"){",
+											"        pm.globals.set(\"checkin_physical_poLine\", line);",
+											"    }else{",
+											"        pm.globals.set(\"checkin_electronic_poLine\", line);",
+											"    }",
+											"    });",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"poAllPoLineCheckin\", jsonData.id); ",
+											"    pm.expect(jsonData.approved).to.exist;",
+											"    pm.expect(jsonData.poNumber).to.exist;",
+											"    pm.expect(jsonData.notes).to.exist;",
+											"    pm.expect(jsonData.totalItems).to.exist;",
+											"    pm.expect(jsonData.vendor).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "",
+										"type": "text",
+										"value": "",
+										"disabled": true
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{poForTestingCheckin}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -8369,6 +8494,468 @@
 									]
 								},
 								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "check-in",
+					"item": [
+						{
+							"name": "check-in pieces without items in Inventory",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "36abaaa2-063f-42d6-9cb0-c4020c263425",
+										"exec": [
+											"//create piece - > need po line id , format , (can add location )",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"",
+											"utils.createPieceAndCheckInBody(compPoLine);",
+											" "
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4f537129-29fc-4653-9e93-b75d7b56131b",
+										"exec": [
+											"//verify that the po line receipt status is partially received",
+											"//verify that the piece status is updated to Received",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.variables.get(\"checkinPoLineId\");",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully checked-in\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									],
+									"query": [
+										{
+											"key": "",
+											"value": "",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "revert checked-in piece without items in inventory",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.globals.get(\"checkin_electronic_poLine\").id;",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Awaiting Receipt\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 1, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Electronic and receivingStatus == Received\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id,\"On Order\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "check-in the existing piece",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.globals.get(\"checkin_electronic_poLine\").id;",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Electronic and receivingStatus == Expected\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "check-in pieces with items in inventory",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "10952b47-f0f6-4745-bf89-fc354c3f7a81",
+										"exec": [
+											"//get holdings record Id -> need instance id and location id",
+											"//get loan type id",
+											"//create item -> need material type, loan type and holdings Id",
+											"//create piece - > need po line id , format , (can add location )",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_physical_poLine\");",
+											"",
+											"",
+											"utils.prepareCheckinBodyWithItems(compPoLine);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "78b05458-c363-4075-809d-ee1077eda07f",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.variables.get(\"checkinPoLineId\");",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully checked-in\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
+											"    utils.validateInventoryItemsReceived(line, 1, \"In Process\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "revert checked-in piece with items in inventory",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "deaf3447-5310-4de3-b85e-79a6bddd2035",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.globals.get(\"checkin_physical_poLine\").id;",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Awaiting Receipt\");",
+											"     utils.validateInventoryItemsReceived(line, 1, \"On Order\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 1, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "7d45ea8a-6f0e-4c0e-9c5d-4eab489f57af",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_physical_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Physical and receivingStatus == Received\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id,\"On Order\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								}
 							},
 							"response": []
 						}
@@ -12049,6 +12636,98 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "check-in",
+					"item": [
+						{
+							"name": "check-in already received piece",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 piece failed to process\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, 0, 1);",
+											"    let receivingItemResults = jsonRs.receivingResults[0].receivingItemResults;",
+											"     pm.expect(receivingItemResults[0].processingStatus).to.exist;",
+											"     pm.expect(receivingItemResults[0].processingStatus.type).to.equal(\"failure\");",
+											"     pm.expect(receivingItemResults[0].processingStatus.error).to.exist;",
+											"     pm.expect(receivingItemResults[0].processingStatus.error.code).to.equal(\"pieceAlreadyReceived\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Electronic and receivingStatus == Received\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -13190,6 +13869,69 @@
 								"description": "GET /orders/composite-orders/id requests that return 204"
 							},
 							"response": []
+						},
+						{
+							"name": "Delete order all polines checkin",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"eval(globals.loadUtils).deleteOrderRelatedRecords(globals.poAllPoLineCheckin, true);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{poAllPoLineCheckin}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{poAllPoLineCheckin}}"
+									]
+								},
+								"description": "DELETE /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -13657,6 +14399,52 @@
 					"            }],",
 					"            \"totalRecords\": 1",
 					"        }",
+					"    },",
+					"    piece: {",
+					"        bodyTemplate: {",
+					"                 \"caption\": \"Volume\",",
+					"                 \"comment\": \"creating Piece from API test\",",
+					"                 \"format\": \"\",",
+					"                 \"locationId\": \"\",",
+					"                 \"poLineId\": \"\",",
+					"                 \"receivingStatus\": \"Expected\",",
+					"                 \"supplement\": true",
+					"            }",
+					"    },",
+					"    checkin: {",
+					"        bodyTemplate: {",
+					"            \"toBeCheckedIn\": [",
+					"              {",
+					"                \"poLineId\": \"\",",
+					"                \"checkedIn\": \"\",",
+					"                \"checkInPieces\": [",
+					"                    {",
+					"                        \"id\": \"\",",
+					"                        \"barcode\": Math.floor(Math.random() * 1000),",
+					"                        \"comment\": \"checkedin from API test\",",
+					"                        \"caption\": \"Vol. 1\",",
+					"                        \"createItem\": true,",
+					"                        \"supplement\": false,",
+					"                        \"locationId\": \"\",",
+					"                        \"accessionNumber\": \"1956.1\",",
+					"                        \"itemDescription\": \"This is the piece item checkin\",",
+					"                        \"electronicBookplate\": \"This item is from API tests\",",
+					"                        \"itemStatus\": \"\"",
+					"                    }]",
+					"              }],",
+					"              \"totalRecords\":1",
+					"        }",
+					"    },",
+					"    item: {",
+					"        bodyTemplate: {",
+					"                 \"holdingsRecordId\": \"\",",
+					"                 \"permanentLoanTypeId\": pm.variables.get(\"loanType\"),",
+					"                 \"materialTypeId\": pm.variables.get(\"materialType\"),",
+					"                 \"status\": {",
+					"                        \"name\": \"On Order\"",
+					"                    },",
+					"                 \"purchaseOrderLineIdentifier\":\"\"",
+					"            }",
 					"    }",
 					"",
 					"};",
@@ -13897,12 +14685,14 @@
 					"    };",
 					"",
 					"    /**",
-					"     * Validates that PO Line's receipt status updated to expected",
+					"     * Validates that PO Line's receipt status updated to expected,",
+					"     * and incase of checkin the receipt date has to be validated ",
+					"     * if receipt status is partially received, as it is updated for first piece checkec-in",
 					"     */",
 					"    utils.validateReceiptStatus = function(poLine, receiptStatus) {",
 					"        pm.test(poLine.poLineNumber + \" PO Line should have \" + receiptStatus + \" receipt status\", function() {",
 					"            pm.expect(poLine.receiptStatus, \"Receipt status should be \" + receiptStatus).to.equal(receiptStatus);",
-					"            if (\"Fully Received\" === receiptStatus) {",
+					"            if (\"Fully Received\" === receiptStatus || (poLine.checkinItems === true && \"Partially Received\" === receiptStatus)) {",
 					"                pm.expect(poLine.receiptDate, \"Receipt date should be set\").to.not.be.empty;",
 					"            } else {",
 					"                pm.expect(poLine.receiptDate, \"Receipt date should be empty\").to.not.exist;",
@@ -13922,12 +14712,15 @@
 					"    /**",
 					"     * Validates that items received in the inventory (MODORDERS-103)",
 					"     */",
-					"    utils.validateInventoryItemsReceived = function(poLine, expectedQuantity) {",
+					"    utils.validateInventoryItemsReceived = function(poLine, expectedQuantity, itemStatus) {",
 					"        let expectedCount = typeof expectedQuantity === \"undefined\" ? utils.calculateExpectedItemsQuantity(poLine) : expectedQuantity;",
-					"        utils.sendGetRequest(\"/item-storage/items?limit=100&query=status.name==Received and purchaseOrderLineIdentifier==\" + poLine.id, (err, res) => {",
+					"        let status = typeof itemStatus === \"undefined\" ? \"Received\" : itemStatus;",
+					"        utils.sendGetRequest(\"/item-storage/items?limit=100&query=status.name==\"+status+  \" and purchaseOrderLineIdentifier==\" + poLine.id, (err, res) => {",
 					"            pm.test(expectedCount + \" Item Records marked as received for PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
+					"                console.log(body);",
+					"                console.log(body.totalRecords);",
 					"                pm.expect(body.totalRecords, \"Quantity of items received for PO Line should be \" + expectedCount).to.equal(expectedCount);",
 					"                body.items.forEach(function(item) {",
 					"                    pm.expect(item.barcode, \"Barcode should not be empty\").to.not.be.empty;",
@@ -14519,12 +15312,82 @@
 					"                    resolve(response.json().items);",
 					"",
 					"                    // Test expected items count as the last step to make sure delete requests are sent",
+					"                    // in case of checkin we do not know the item count",
+					"                  if(!line.checkinItems === true){",
 					"                    let foundItems = response.json().totalRecords;",
 					"                    pm.expect(foundItems, \"Expected items count does not match to found\").to.equal(expectedCount);",
+					"                    }",
 					"                });",
 					"            });",
 					"        });",
 					"    };",
+					"     /**check-in methods",
+					"     */",
+					"     utils.postRequest = function (path, postBody, handler) {",
+					"        pm.sendRequest({",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: 'POST',",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\"),",
+					"                \"Content-type\": \"application/json\"",
+					"            },",
+					"            body: {",
+					"                mode: 'raw',",
+					"                raw: JSON.stringify(postBody)",
+					"            }",
+					"        }, handler);",
+					"    }",
+					"    utils.createPieceAndCheckInBody = function (compPoLine, itemId) {",
+					"        let pieceTemplate = globals.testData.piece.bodyTemplate;",
+					"        pieceTemplate.locationId = compPoLine.locations[0].locationId;",
+					"        pieceTemplate.poLineId = compPoLine.id;",
+					"        if(compPoLine.orderFormat == \"Electronic Resource\"){",
+					"            pieceTemplate.format = \"Electronic\";",
+					"        }else{",
+					"            pieceTemplate.format = \"Physical\";",
+					"        }",
+					"        if (typeof itemId === \"undefined\") {",
+					"            delete pieceTemplate.itemId;",
+					"        } else {",
+					"            pieceTemplate.itemId = itemId;",
+					"        }",
+					"        pm.variables.set(\"checkinPoLineId\", compPoLine.id);",
+					"        utils.postRequest(\"/orders/pieces\", pieceTemplate, (err, res) => {",
+					"            utils.prepareCheckinBody(compPoLine, res.json().id);",
+					"        })",
+					"    }",
+					"    utils.prepareCheckinBody = function (compPoLine, pieceId, checkinStatus) {",
+					"        let checkinRq = globals.testData.checkin.bodyTemplate;",
+					"        let toBeCheckedInTemplate = checkinRq.toBeCheckedIn.pop();",
+					"        let checkinPiecesTemplate = toBeCheckedInTemplate.checkInPieces.pop();",
+					"        toBeCheckedInTemplate.poLineId = compPoLine.id;",
+					"        toBeCheckedInTemplate.checkedIn = 1;",
+					"        checkinPiecesTemplate.id = pieceId;",
+					"        checkinPiecesTemplate.locationId = compPoLine.locations[0].locationId;",
+					"         if (typeof checkinStatus === \"undefined\") {",
+					"            checkinPiecesTemplate.itemStatus = \"In Process\";",
+					"         }else{",
+					"            checkinPiecesTemplate.itemStatus = checkinStatus;",
+					"         }",
+					"        toBeCheckedInTemplate.checkInPieces.push(checkinPiecesTemplate);",
+					"        checkinRq.toBeCheckedIn.push(toBeCheckedInTemplate);",
+					"        console.log(JSON.stringify(checkinRq));",
+					"        pm.variables.set(\"checkinBody\", JSON.stringify(checkinRq));",
+					"    }",
+					"    utils.prepareCheckinBodyWithItems = function (compPoLine) {",
+					"        utils.sendGetRequest(\"/holdings-storage/holdings?limit=1&query=instanceId==\" + compPoLine.instanceId + \" and permanentLocationId==\" + compPoLine.locations[0].locationId, (err, res) => {",
+					"            utils.createItem(compPoLine.id, res.json().holdingsRecords[0].id, (err, res) => {",
+					"                utils.createPieceAndCheckInBody(compPoLine, res.json().id);",
+					"            });",
+					"        });",
+					"    }",
+					"    utils.createItem = function (poLineId, holdingsRecordId, handler) {",
+					"        let itemTemplate = globals.testData.item.bodyTemplate;",
+					"        itemTemplate.holdingsRecordId = holdingsRecordId;",
+					"        itemTemplate.purchaseOrderLineIdentifier = poLineId;",
+					"        utils.postRequest(\"/item-storage/items\", itemTemplate, handler);",
+					"    }",
 					"",
 					"    /**",
 					"     * Deletes Item records from Inventory. The function returns Promise which holds holdings ids once completed",
