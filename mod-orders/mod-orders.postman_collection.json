@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "0c5a5eab-1ab8-4ba5-8c9f-89b4b8781512",
-		"name": "mod-orders copy",
+		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -4749,13 +4749,10 @@
 											"    order.compositePoLines[1].checkinItems = true;",
 											"",
 											"    // Set new product ids to be sure that new instances will be created",
-											"    delete order.compositePoLines[0].details.productIds;",
-											"    delete order.compositePoLines[1].details.productIds;",
+											"    order.compositePoLines[0].details.productIds.pop();",
 											"    ",
 											"    order.compositePoLines[0].details.productIds[0].productId = \"11311321131132\";",
-											"    order.compositePoLines[0].details.productIds[0].productIdType = \"ISBN\";",
 											"    order.compositePoLines[1].details.productIds[0].productId = \"11321331132133\";",
-											"    order.compositePoLines[0].details.productIds[0].productIdType = \"ISBN\";",
 											"    ",
 											"    order.compositePoLines[0].title = \"Hey! Just API testing checkin\"",
 											"    order.compositePoLines[1].title = \"Hey! Just API testing checkin with no items\"",
@@ -14611,8 +14608,9 @@
 					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
-					"",
-					"                if (utils.isItemsUpdateRequired(line)) {",
+					"                let isCheckin = typeof line.checkinItems === \"undefined\" ? false : line.checkinItems;",
+					"                //items are not created for checkin while opening the order, but can be created later",
+					"                if (utils.isItemsUpdateRequired(line) && !isCheckin) {",
 					"                    pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
 					"                } else {",
 					"                    pm.expect(body.totalRecords, \"Quantity of items should be zero\").to.equal(0);",
@@ -14772,10 +14770,6 @@
 					"    };",
 					"",
 					"    utils.isItemsUpdateRequired = function(compPOL) {",
-					"        if (compPOL.checkinItems != null && compPOL.checkinItems === true) {",
-					"            return false;",
-					"        }",
-					"",
 					"        let itemsRequiredForEresource = false;",
 					"        let itemsRequiredForPhysical = false;",
 					"",
@@ -15301,7 +15295,16 @@
 					"     */",
 					"    utils.getItemsByPoLine = function(line) {",
 					"        return new Promise((resolve) => {",
-					"            let expectedCount = utils.calculateExpectedItemsQuantity(line);",
+					"            let expectedCount;",
+					"            console.log(\"%%%%%%%%\"+line.checkinItems);",
+					"            //we donot know the checkin count before, so use a default",
+					"            if (line.checkinItems === true) {",
+					"                expectedCount = 100;",
+					"            }",
+					"            else {",
+					"                expectedCount = utils.calculateExpectedItemsQuantity(line);",
+					"            }",
+					"            console.log(\"%%%%%%%%\"+expectedCount);",
 					"            utils.getItemsByPoLineId(line.id, expectedCount, (err, response) => {",
 					"                pm.test(\"Search for item records by PO Line id=\" + line.id, function() {",
 					"                    if (response.code !== 200) {",
@@ -15402,19 +15405,20 @@
 					"                        pm.test(\"No item(s) expected to exist for PO line with id=\" + line.id, () => {",
 					"                            pm.expect(items.length).to.eql(0);",
 					"                        });",
-					"                        if (items.length === 0) {",
+					"                        //for checkin there can be a case where the items are not created but holdings are created",
+					"                    }",
+					"                    ",
+					"                    if (items.length === 0) {",
 					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
 					"                                let body = res.json();",
-					"                                // if (utils.isHoldingsUpdateRequired(line)) {",
 					"                                body.holdingsRecords.forEach(hld => {",
 					"                                    holdingsIds.push(hld.id);",
 					"                                });",
-					"                                //   }",
 					"                                resolve(holdingsIds);",
 					"                            });",
-					"                        }",
-					"                        return;",
+					"                            return;",
 					"                    }",
+					"                    ",
 					"",
 					"                    let promises = [];",
 					"                    items.forEach(item => {",
@@ -15424,12 +15428,27 @@
 					"                        }",
 					"                        promises.push(utils.processDeleteRequest(\"/item-storage/items/\" + item.id));",
 					"                    });",
+					"                    ",
+					"                    //handle a scenario where items do not exist for a holding but it is created while check-in order",
+					"                    promises.push(",
+					"                        new Promise((resolve) => {",
+					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
+					"                                let body = res.json();",
+					"                                body.holdingsRecords.forEach(hld => {",
+					"                                    if (!holdingsIds.includes(hld.id)) {",
+					"                                        holdingsIds.push(hld.id);",
+					"                                    }",
+					"                                });",
+					"                                resolve(res.code);",
+					"                            });",
+					"                        }));",
 					"",
 					"                    // Wait for items to be deleted and then return holdings ids as a result of the promise defined in the top",
 					"                    Promise.all(promises)",
 					"                    // The promisses will be always resolved so not handling reject case",
 					"                        .then(itemDelResults => {",
 					"                            // Returning the holding ids regardless of the result of the item deletion jut to try to delete holdings in any case",
+					"                            ",
 					"                            resolve(holdingsIds);",
 					"",
 					"                            let deletedQty = itemDelResults.filter(code => code === 204).length;",
@@ -15830,163 +15849,163 @@
 	],
 	"variable": [
 		{
-			"id": "3573e6fb-0948-43c3-bd6a-01d7577421f4",
+			"id": "22ff6f01-3a7e-415f-b296-640de2e98dfb",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "7958a9af-3b13-4a03-99ce-afd2cabd58bc",
+			"id": "4e345b04-8174-47a8-a3e4-9e3c328ea36f",
 			"key": "schema_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
 			"type": "string"
 		},
 		{
-			"id": "3a2d1381-e8f2-4a7c-aae8-2c0e4c1987fd",
+			"id": "37c5fbfc-a18e-4599-bda6-3a7bb56ecc6a",
 			"key": "schema_composite_purchase_order",
 			"value": "composite_purchase_order.json",
 			"type": "string"
 		},
 		{
-			"id": "c1771ded-244a-4538-9c38-743a191a31cc",
+			"id": "08ed0adb-7c38-451e-9799-2c5db7c58a6c",
 			"key": "schema_alert",
 			"value": "alert.json",
 			"type": "string"
 		},
 		{
-			"id": "0c08282f-4845-4163-b626-3f7c4cf78342",
+			"id": "f981703c-eafd-4235-a4f4-d735d7483e35",
 			"key": "schema_claim",
 			"value": "claim.json",
 			"type": "string"
 		},
 		{
-			"id": "d8c22c9a-fd01-44de-ac29-ca026cf5c551",
+			"id": "8934075d-72cd-47c0-b6a1-7ac45931c789",
 			"key": "schema_composite_po_line",
 			"value": "composite_po_line.json",
 			"type": "string"
 		},
 		{
-			"id": "713caa13-11ee-4b50-8f2e-1668876b66f6",
+			"id": "bd095cab-79c4-4449-97e0-e80928034554",
 			"key": "schema_cost",
 			"value": "cost.json",
 			"type": "string"
 		},
 		{
-			"id": "9f63b425-d6b0-4067-a1e6-72668868f9e1",
+			"id": "cf34aae9-c52c-4293-93e9-63d1ec4930db",
 			"key": "schema_details",
 			"value": "details.json",
 			"type": "string"
 		},
 		{
-			"id": "15c5fe03-5c76-434c-87f0-28f0087b5758",
+			"id": "7529973d-a864-4707-9a8f-a2d8258eda4b",
 			"key": "schema_eresource",
 			"value": "eresource.json",
 			"type": "string"
 		},
 		{
-			"id": "86bc8fa4-7a5a-4390-a044-600b02f33a5d",
+			"id": "65ed988f-6405-4bd7-a0f6-27e540837eeb",
 			"key": "schema_fundDistribution",
 			"value": "fund_distribution.json",
 			"type": "string"
 		},
 		{
-			"id": "1488c2f3-4c07-4295-bd3b-d5aba2c9b6d4",
+			"id": "6ab97e92-4d25-4ec6-8288-23023b2c8551",
 			"key": "schema_location",
 			"value": "location.json",
 			"type": "string"
 		},
 		{
-			"id": "d8a99dd7-b79f-4c3b-9884-575b807890ae",
+			"id": "31589cce-e71e-48c8-a576-c9a0b70f7274",
 			"key": "schema_physical",
 			"value": "physical.json",
 			"type": "string"
 		},
 		{
-			"id": "5b799621-ddcf-44b4-b950-d8ebf63a52f2",
+			"id": "5d39fc31-3c0d-4806-8113-bac0bd9f1d58",
 			"key": "schema_renewal",
 			"value": "renewal.json",
 			"type": "string"
 		},
 		{
-			"id": "b04d48de-94e7-420c-a379-948eacb3fe8a",
+			"id": "31ab6f54-d823-4c8a-bf89-98654b291653",
 			"key": "schema_reporting_code",
 			"value": "reporting_code.json",
 			"type": "string"
 		},
 		{
-			"id": "b2206055-48f7-40e3-9ff8-8dfe9b8e063b",
+			"id": "5688e398-82c1-4f3c-a056-863bcbfe841d",
 			"key": "schema_source",
 			"value": "source.json",
 			"type": "string"
 		},
 		{
-			"id": "5224357c-e3d8-4423-85cb-1eee5461a7ef",
+			"id": "c60523fd-597f-46c9-8414-e85d71ca2479",
 			"key": "schema_vendorDetail",
 			"value": "vendor_detail.json",
 			"type": "string"
 		},
 		{
-			"id": "94aae42d-bc49-4b21-b005-fe64248b9e42",
+			"id": "c0c0b98e-b42f-4a89-9120-6a846347213d",
 			"key": "schema_orderFormat",
 			"value": "order_format.json",
 			"type": "string"
 		},
 		{
-			"id": "0756fadf-70c6-4d4a-919c-18e9f1dd23a4",
+			"id": "7d2587de-7b77-4b71-adc9-cf04c2daa245",
 			"key": "schema_receiptStatus",
 			"value": "receipt_status.json",
 			"type": "string"
 		},
 		{
-			"id": "5e7c5ba1-f8ba-4397-a7c3-006b16d78fb8",
+			"id": "0981fb4d-5040-4a68-aead-f1c8873c2cf1",
 			"key": "storage_module",
 			"value": "mod-orders-storage",
 			"type": "string"
 		},
 		{
-			"id": "301fea28-aebc-4308-a1f3-8c3d8a903bfe",
+			"id": "c915d014-4915-406a-801a-930afcb7ec32",
 			"key": "business_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "dcb5cb4b-f683-4151-b458-86ade9bd7cd6",
+			"id": "625efe10-de33-4ec7-989d-ba4d9d45e298",
 			"key": "schema_metadata",
 			"value": "metadata.schema",
 			"type": "string"
 		},
 		{
-			"id": "7e2ca12b-6e4d-4934-98aa-f714b858dd46",
+			"id": "88f5074f-a16d-4229-ae75-cce9db449710",
 			"key": "schema_poNumber",
 			"value": "po_number.json",
 			"type": "string"
 		},
 		{
-			"id": "90068f31-c201-443f-a229-869ab5b8e083",
+			"id": "fd410383-f51e-4519-b458-1bb8c7ec46b0",
 			"key": "raml_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
 			"type": "string"
 		},
 		{
-			"id": "ce7309f6-aac5-4a37-8452-bde81da022f1",
+			"id": "1f04db93-d44a-42ec-8e5f-96d360900eaf",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "8d40040d-c8d4-4ec1-ad55-7c8661069370",
+			"id": "d9c7e0ec-6239-4a96-9046-88b0c7e3514a",
 			"key": "orders_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "33142d57-2ac3-460b-a153-8cbf81fb0922",
+			"id": "c448741f-bd66-4ad6-a23b-bb7e8785a2cc",
 			"key": "schema_productIdType",
 			"value": "product_id_type.json",
 			"type": "string"
 		},
 		{
-			"id": "5ad91fec-2fd0-4368-9eaf-99658dcc880a",
+			"id": "668b53e9-d04b-45bb-a5d9-c0bba0ee3473",
 			"key": "common_folder",
 			"value": "common",
 			"type": "string"
