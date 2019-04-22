@@ -8595,7 +8595,8 @@
 											"disabled": true
 										}
 									]
-								}
+								},
+								"description": "creates a piece without any items in inventory and performs check-in. \nTests to see if the piece status is changed.\nThe order used for checkin is created in the request \"Create order all po lines checkin\""
 							},
 							"response": []
 						},
@@ -8683,7 +8684,8 @@
 										"orders",
 										"check-in"
 									]
-								}
+								},
+								"description": "rever the checked in piece in the prior request to Expected status"
 							},
 							"response": []
 						},
@@ -8771,7 +8773,8 @@
 										"orders",
 										"check-in"
 									]
-								}
+								},
+								"description": "Do not create a new piece, but the existing piece must be successfully checked in"
 							},
 							"response": []
 						},
@@ -8863,7 +8866,8 @@
 										"orders",
 										"check-in"
 									]
-								}
+								},
+								"description": "creates a piece with items in inventory and performs check-in. Tests to see if the piece status is changed and also the Po line status. The order used for checkin is created in the request \"Create order all po lines checkin\""
 							},
 							"response": []
 						},
@@ -8952,7 +8956,8 @@
 										"orders",
 										"check-in"
 									]
-								}
+								},
+								"description": "rever the checked in piece with items. The item status as well as the piece status must be modified"
 							},
 							"response": []
 						}
@@ -13887,7 +13892,12 @@
 										"exec": [
 											"pm.test(\"Status code is 204\", function () {",
 											"    pm.response.to.have.status(204);",
-											"});"
+											"});",
+											"",
+											"// Clean-Up",
+											"pm.globals.unset(\"checkin_electronic_poLine\");",
+											"pm.globals.unset(\"checkin_physical_poLine\");",
+											"pm.globals.unset(\"poAllPoLineCheckin\");"
 										],
 										"type": "text/javascript"
 									}
@@ -14717,8 +14727,6 @@
 					"            pm.test(expectedCount + \" Item Records marked as received for PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
-					"                console.log(body);",
-					"                console.log(body.totalRecords);",
 					"                pm.expect(body.totalRecords, \"Quantity of items received for PO Line should be \" + expectedCount).to.equal(expectedCount);",
 					"                body.items.forEach(function(item) {",
 					"                    pm.expect(item.barcode, \"Barcode should not be empty\").to.not.be.empty;",
@@ -15296,7 +15304,6 @@
 					"    utils.getItemsByPoLine = function(line) {",
 					"        return new Promise((resolve) => {",
 					"            let expectedCount;",
-					"            console.log(\"%%%%%%%%\"+line.checkinItems);",
 					"            //we donot know the checkin count before, so use a default",
 					"            if (line.checkinItems === true) {",
 					"                expectedCount = 100;",
@@ -15304,7 +15311,6 @@
 					"            else {",
 					"                expectedCount = utils.calculateExpectedItemsQuantity(line);",
 					"            }",
-					"            console.log(\"%%%%%%%%\"+expectedCount);",
 					"            utils.getItemsByPoLineId(line.id, expectedCount, (err, response) => {",
 					"                pm.test(\"Search for item records by PO Line id=\" + line.id, function() {",
 					"                    if (response.code !== 200) {",
@@ -15324,7 +15330,8 @@
 					"            });",
 					"        });",
 					"    };",
-					"     /**check-in methods",
+					"     /**",
+					"      * check-in methods",
 					"     */",
 					"     utils.postRequest = function (path, postBody, handler) {",
 					"        pm.sendRequest({",
@@ -15341,6 +15348,11 @@
 					"            }",
 					"        }, handler);",
 					"    }",
+					"    ",
+					"    /**",
+					"     *This method creates a piece and also calls the prepares the check-in body.",
+					"     * If itemId is not provided the check-in flow just updates the piece record",
+					"     */",
 					"    utils.createPieceAndCheckInBody = function (compPoLine, itemId) {",
 					"        let pieceTemplate = globals.testData.piece.bodyTemplate;",
 					"        pieceTemplate.locationId = compPoLine.locations[0].locationId;",
@@ -15357,9 +15369,18 @@
 					"        }",
 					"        pm.variables.set(\"checkinPoLineId\", compPoLine.id);",
 					"        utils.postRequest(\"/orders/pieces\", pieceTemplate, (err, res) => {",
+					"            pm.test(\"creating piece for check-in \", function(){",
+					"                    pm.expect(res).to.have.property('code', 201);",
+					"                });",
 					"            utils.prepareCheckinBody(compPoLine, res.json().id);",
-					"        })",
+					"        });",
 					"    }",
+					"    ",
+					"    /**",
+					"     * This method is used for both checking in a piece and also reverting it,",
+					"     * If the checkinstatus is not provided by default it is set to check-in item",
+					"     * ",
+					"     */",
 					"    utils.prepareCheckinBody = function (compPoLine, pieceId, checkinStatus) {",
 					"        let checkinRq = globals.testData.checkin.bodyTemplate;",
 					"        let toBeCheckedInTemplate = checkinRq.toBeCheckedIn.pop();",
@@ -15378,13 +15399,23 @@
 					"        console.log(JSON.stringify(checkinRq));",
 					"        pm.variables.set(\"checkinBody\", JSON.stringify(checkinRq));",
 					"    }",
+					"    ",
+					"    /**",
+					"     * Get the holding where the item needs to be created , create an item",
+					"     * and then use the item id to create a piece",
+					"     * ",
+					"     */",
 					"    utils.prepareCheckinBodyWithItems = function (compPoLine) {",
 					"        utils.sendGetRequest(\"/holdings-storage/holdings?limit=1&query=instanceId==\" + compPoLine.instanceId + \" and permanentLocationId==\" + compPoLine.locations[0].locationId, (err, res) => {",
 					"            utils.createItem(compPoLine.id, res.json().holdingsRecords[0].id, (err, res) => {",
+					"                pm.test(\"creating item for check-in\", function(){",
+					"                    pm.expect(res).to.have.property('code', 201);",
+					"                });",
 					"                utils.createPieceAndCheckInBody(compPoLine, res.json().id);",
 					"            });",
 					"        });",
 					"    }",
+					"    ",
 					"    utils.createItem = function (poLineId, holdingsRecordId, handler) {",
 					"        let itemTemplate = globals.testData.item.bodyTemplate;",
 					"        itemTemplate.holdingsRecordId = holdingsRecordId;",
@@ -15405,9 +15436,9 @@
 					"                        pm.test(\"No item(s) expected to exist for PO line with id=\" + line.id, () => {",
 					"                            pm.expect(items.length).to.eql(0);",
 					"                        });",
-					"                        //for checkin there can be a case where the items are not created but holdings are created",
 					"                    }",
 					"                    ",
+					"                    //for checkin there can be a case where the items are not created but holdings are created",
 					"                    if (items.length === 0) {",
 					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
 					"                                let body = res.json();",
@@ -15429,7 +15460,7 @@
 					"                        promises.push(utils.processDeleteRequest(\"/item-storage/items/\" + item.id));",
 					"                    });",
 					"                    ",
-					"                    //handle a scenario where items do not exist for a holding but it is created while check-in order",
+					"                    //to cover a scenario where items do not exist for a holding but it is created while check-in order",
 					"                    promises.push(",
 					"                        new Promise((resolve) => {",
 					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
@@ -15849,163 +15880,163 @@
 	],
 	"variable": [
 		{
-			"id": "22ff6f01-3a7e-415f-b296-640de2e98dfb",
+			"id": "a4f0096c-f928-474c-992b-9383625e848c",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "4e345b04-8174-47a8-a3e4-9e3c328ea36f",
+			"id": "f12943b5-1c98-477e-b3e8-a42c537b6a09",
 			"key": "schema_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
 			"type": "string"
 		},
 		{
-			"id": "37c5fbfc-a18e-4599-bda6-3a7bb56ecc6a",
+			"id": "090b6e00-e4c4-4194-bc6a-c8998fd96312",
 			"key": "schema_composite_purchase_order",
 			"value": "composite_purchase_order.json",
 			"type": "string"
 		},
 		{
-			"id": "08ed0adb-7c38-451e-9799-2c5db7c58a6c",
+			"id": "4273acb0-da01-47aa-8c98-282ed9a26b7e",
 			"key": "schema_alert",
 			"value": "alert.json",
 			"type": "string"
 		},
 		{
-			"id": "f981703c-eafd-4235-a4f4-d735d7483e35",
+			"id": "256fb9b6-a4a9-4344-a5c4-0cd57aeb3078",
 			"key": "schema_claim",
 			"value": "claim.json",
 			"type": "string"
 		},
 		{
-			"id": "8934075d-72cd-47c0-b6a1-7ac45931c789",
+			"id": "846568b7-d21c-4559-8ed5-8d7f3f5f339c",
 			"key": "schema_composite_po_line",
 			"value": "composite_po_line.json",
 			"type": "string"
 		},
 		{
-			"id": "bd095cab-79c4-4449-97e0-e80928034554",
+			"id": "76bac7c7-df51-4a77-9ec7-dd2b0b1e0e00",
 			"key": "schema_cost",
 			"value": "cost.json",
 			"type": "string"
 		},
 		{
-			"id": "cf34aae9-c52c-4293-93e9-63d1ec4930db",
+			"id": "c020004f-c2fc-459e-a462-92aac180ceff",
 			"key": "schema_details",
 			"value": "details.json",
 			"type": "string"
 		},
 		{
-			"id": "7529973d-a864-4707-9a8f-a2d8258eda4b",
+			"id": "235a97f2-3088-4f8e-9afa-ce3b4fb6a3c4",
 			"key": "schema_eresource",
 			"value": "eresource.json",
 			"type": "string"
 		},
 		{
-			"id": "65ed988f-6405-4bd7-a0f6-27e540837eeb",
+			"id": "007f26ad-47bd-4392-a023-d31eee97d4a1",
 			"key": "schema_fundDistribution",
 			"value": "fund_distribution.json",
 			"type": "string"
 		},
 		{
-			"id": "6ab97e92-4d25-4ec6-8288-23023b2c8551",
+			"id": "4bead911-c630-45b4-9abc-5afe05d2612c",
 			"key": "schema_location",
 			"value": "location.json",
 			"type": "string"
 		},
 		{
-			"id": "31589cce-e71e-48c8-a576-c9a0b70f7274",
+			"id": "f7b719aa-6fb6-4da7-b1f4-e3125e4d61a1",
 			"key": "schema_physical",
 			"value": "physical.json",
 			"type": "string"
 		},
 		{
-			"id": "5d39fc31-3c0d-4806-8113-bac0bd9f1d58",
+			"id": "12b37121-7e0c-4a43-b7d3-2e25caf1eeb8",
 			"key": "schema_renewal",
 			"value": "renewal.json",
 			"type": "string"
 		},
 		{
-			"id": "31ab6f54-d823-4c8a-bf89-98654b291653",
+			"id": "4cbbdef8-2c69-4261-afe8-2093b045c38c",
 			"key": "schema_reporting_code",
 			"value": "reporting_code.json",
 			"type": "string"
 		},
 		{
-			"id": "5688e398-82c1-4f3c-a056-863bcbfe841d",
+			"id": "dbefdcb9-4f87-4107-91dc-10f351c27867",
 			"key": "schema_source",
 			"value": "source.json",
 			"type": "string"
 		},
 		{
-			"id": "c60523fd-597f-46c9-8414-e85d71ca2479",
+			"id": "ce197754-bff3-4658-9091-47e409cfb2b9",
 			"key": "schema_vendorDetail",
 			"value": "vendor_detail.json",
 			"type": "string"
 		},
 		{
-			"id": "c0c0b98e-b42f-4a89-9120-6a846347213d",
+			"id": "3d95d927-69b1-476c-86e9-4c1a59152a29",
 			"key": "schema_orderFormat",
 			"value": "order_format.json",
 			"type": "string"
 		},
 		{
-			"id": "7d2587de-7b77-4b71-adc9-cf04c2daa245",
+			"id": "ff8cff09-3668-4f0b-89b8-58cc7f73ed6d",
 			"key": "schema_receiptStatus",
 			"value": "receipt_status.json",
 			"type": "string"
 		},
 		{
-			"id": "0981fb4d-5040-4a68-aead-f1c8873c2cf1",
+			"id": "f35d1c1b-ef93-4821-86af-a582bc498f35",
 			"key": "storage_module",
 			"value": "mod-orders-storage",
 			"type": "string"
 		},
 		{
-			"id": "c915d014-4915-406a-801a-930afcb7ec32",
+			"id": "1474db6d-b527-42f9-ae66-1dcb7e8b5ca5",
 			"key": "business_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "625efe10-de33-4ec7-989d-ba4d9d45e298",
+			"id": "75cfde83-d2da-4fa5-baf6-082597ec0a28",
 			"key": "schema_metadata",
 			"value": "metadata.schema",
 			"type": "string"
 		},
 		{
-			"id": "88f5074f-a16d-4229-ae75-cce9db449710",
+			"id": "6057836c-e712-4261-8535-a09be0c5ab9d",
 			"key": "schema_poNumber",
 			"value": "po_number.json",
 			"type": "string"
 		},
 		{
-			"id": "fd410383-f51e-4519-b458-1bb8c7ec46b0",
+			"id": "4af8bf72-cabb-4819-87d9-66c32084025a",
 			"key": "raml_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
 			"type": "string"
 		},
 		{
-			"id": "1f04db93-d44a-42ec-8e5f-96d360900eaf",
+			"id": "7ed8e829-ba13-4bfc-a8a0-2ac5ff422535",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "d9c7e0ec-6239-4a96-9046-88b0c7e3514a",
+			"id": "d32ef6d3-ef55-48ed-8cd7-8981c5fafd82",
 			"key": "orders_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "c448741f-bd66-4ad6-a23b-bb7e8785a2cc",
+			"id": "849f2816-1c9a-4970-b97b-39487e6da524",
 			"key": "schema_productIdType",
 			"value": "product_id_type.json",
 			"type": "string"
 		},
 		{
-			"id": "668b53e9-d04b-45bb-a5d9-c0bba0ee3473",
+			"id": "de889976-1158-4da8-b7b4-f2e28ae5d263",
 			"key": "common_folder",
 			"value": "common",
 			"type": "string"
