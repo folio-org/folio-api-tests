@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "0c5a5eab-1ab8-4ba5-8c9f-89b4b8781512",
+		"_postman_id": "42827316-cd11-4c8c-a277-6fb24253e5b2",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -345,32 +345,95 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Load schemas for validation",
+					"name": "Load all schemas for validation",
 					"item": [
 						{
-							"name": "composite_purchase_order.json",
+							"name": "Get schemas and setup env variables",
 							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f930ca9d-df31-4572-90c8-63f5243ae30e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"pm.test(\"Module has schemas to load\", function () {\r",
+											"    pm.response.to.be.ok;\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"\r",
+											"    let schemas = pm.response.json();\r",
+											"    pm.expect(schemas).to.not.be.empty;\r",
+											"    traverse(pm.response.json());\r",
+											"});\r",
+											"\r",
+											"function traverse(schemas) {\r",
+											"    const timerId = setTimeout(() => { }, 60000);\r",
+											"\r",
+											"    var promises = schemas.map(path => fetchSchema(path));\r",
+											"    Promise.all(promises)\r",
+											"        .then(result => clearTimeout(timerId))\r",
+											"        .catch((err, req) => {\r",
+											"            clearTimeout(timerId);\r",
+											"            console.log(err);\r",
+											"            console.log(req);\r",
+											"        });\r",
+											"}\r",
+											"\r",
+											"function fetchSchema(path) {\r",
+											"    let getRequest = buildGetSchemaRequest(path);\r",
+											"    return new Promise((resolve, reject) => {\r",
+											"        pm.sendRequest(getRequest, (err, response) => {\r",
+											"            pm.test(\"Schema content loaded: \" + path, () => pm.expect(err).to.equal(null));\r",
+											"\r",
+											"            if (!err) {\r",
+											"                let content = replaceResponseRefWithName(response.text());\r",
+											"                let name = extractName(path);\r",
+											"                setEnvironmentVariable(name, content);\r",
+											"                resolve();\r",
+											"            } else {\r",
+											"                reject(err, getRequest);\r",
+											"            }\r",
+											"        });\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"function setEnvironmentVariable(name, data) {\r",
+											"    pm.environment.set(utils.schemaPrefix + name, data);\r",
+											"}\r",
+											"\r",
+											"function extractName(url) {\r",
+											"    return url.substring(url.lastIndexOf(\"/\") + 1);\r",
+											"}\r",
+											"\r",
+											"function replaceResponseRefWithName(text) {\r",
+											"    return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*(\\.json|\\.schema))/g, \"\\\"$ref\\\":\\\"\" + utils.schemaPrefix);\r",
+											"}\r",
+											"\r",
+											"function buildGetSchemaRequest(path) {\r",
+											"    let getRequest = utils.buildPmRequest(\"/_/jsonSchemas?path=\" + path, \"GET\");\r",
+											"    getRequest.header['X-Okapi-Module-Id'] = pm.variables.get(\"modOrdersId\");\r",
+											"    return getRequest;\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
 								{
 									"listen": "prerequest",
 									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
+										"id": "789cccc8-2479-48c7-ac26-5e35328874bd",
 										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_composite_purchase_order\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_composite_purchase_order_content\", responseBody);"
+											"let utils = eval(globals.loadUtils);\r",
+											"const moduleName = 'mod-orders';\r",
+											"\r",
+											"utils.sendGetRequest('/_/proxy/tenants/' + pm.variables.get(\"xokapitenant\") + '/interfaces/_jsonSchemas', (err, response) => {\r",
+											"    pm.test(\"jsonSchemas provided by \" + moduleName, function () {\r",
+											"        pm.expect(err).to.equal(null);\r",
+											"        pm.expect(response.text()).to.include(moduleName);\r",
+											"        let moduleId = response.json().map(element => element.id).filter(modId => modId.includes(moduleName))[0];\r",
+											"    \tpm.variables.set('modOrdersId', moduleId);\r",
+											"    });\r",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -378,963 +441,32 @@
 							],
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"type": "text",
+										"value": "{{modOrdersId}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{schema_loc}}/{{orders_module}}/schemas/{{schema_composite_purchase_order}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+									"protocol": "{{protocol}}",
 									"host": [
-										"{{schema_loc}}"
+										"{{url}}"
 									],
+									"port": "{{okapiport}}",
 									"path": [
-										"{{orders_module}}",
-										"schemas",
-										"{{schema_composite_purchase_order}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "alert.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_alert\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_alert_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_alert}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_alert}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "composite_po_line.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_composite_po_line\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_composite_po_line_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{orders_module}}/schemas/{{schema_composite_po_line}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{orders_module}}",
-										"schemas",
-										"{{schema_composite_po_line}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "contributor.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(\"contributor.json GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_contributor_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/contributor.json",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"contributor.json"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "cost.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_cost\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_cost_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_cost}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_cost}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "claim.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_claim\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_claim_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_claim}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_claim}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "details.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_details\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_details_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_details}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_details}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "eresource.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_eresource\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_eresource_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_eresource}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_eresource}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "fund_distribution.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_fundDistribution\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_fundDistribution_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_fundDistribution}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_fundDistribution}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "license.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(\"license.json GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_license_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/license.json",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"license.json"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "location.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_location\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_location_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_location}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_location}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "physical.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_physical\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_physical_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_physical}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_physical}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "renewal.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_renewal\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_renewal_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_renewal}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_renewal}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "reporting_code.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_reporting_code\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_reporting_code_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_reporting_code}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_reporting_code}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "source.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_source\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_source_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_source}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_source}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "vendor_detail.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_vendorDetail\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_vendorDetail_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_vendorDetail}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_vendorDetail}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "metadata.shcema",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_metadata\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_metadata_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{raml_loc}}/schemas/{{schema_metadata}}",
-									"host": [
-										"{{raml_loc}}"
-									],
-									"path": [
-										"schemas",
-										"{{schema_metadata}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "po_number.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_poNumber\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_poNumber_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{business_module}}/schemas/{{schema_poNumber}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{business_module}}",
-										"schemas",
-										"{{schema_poNumber}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "order_format.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_orderFormat\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_orderFormat_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_orderFormat}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_orderFormat}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "receipt_status.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_receiptStatus\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_receiptStatus_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_receiptStatus}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_receiptStatus}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "product_id_type.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_productIdType\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_productIdType_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{common_folder}}/schemas/{{schema_productIdType}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{common_folder}}",
-										"schemas",
-										"{{schema_productIdType}}"
+										"_",
+										"jsonSchemas"
 									]
 								}
 							},
@@ -5858,7 +4990,7 @@
 											"});\r",
 											"\r",
 											"// 2. Validate PoNumber schema\r",
-											"var schema = JSON.parse(globals.schema_poNumber_content);\r",
+											"var schema = JSON.parse(pm.environment.get(utils.schemaPrefix + \"po_number.json\"));\r",
 											"pm.test('PoNumber schema is valid', function() {\r",
 											"  pm.expect(tv4.validate(jsonData, schema)).to.be.true;\r",
 											"});\r",
@@ -8647,7 +7779,7 @@
 									"raw": "{{checkinBody}}"
 								},
 								"url": {
-									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in?",
 									"protocol": "http",
 									"host": [
 										"{{url}}"
@@ -14552,7 +13684,8 @@
 					"",
 					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
 					"    let utils = {};",
-					"",
+					"    utils.schemaPrefix = \"orders_schema_\";",
+					"     ",
 					"    utils.validateReceivingHistory = function(history) {",
 					"        pm.expect(history.id, \"Piece id expected\").to.exist;",
 					"        pm.expect(history.dateOrdered, \"Order date expected\").to.exist;",
@@ -14572,6 +13705,20 @@
 					"        pm.expect(piece.receivingStatus, \"Piece receiving status expected\").to.exist;",
 					"    };",
 					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function(path, method) {",
+					"        return {",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"            }",
+					"        };",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Updates PO json removing ids and updating PO lines.",
 					"     */",
@@ -15301,16 +14448,14 @@
 					"     * Validates the PO line content against schemas",
 					"     */",
 					"    utils.validatePoLineAgainstSchema = function(jsonData) {",
-					"        let schema = JSON.parse(globals.schema_composite_po_line_content);",
-					"        utils._validateAgainstSchema(jsonData, schema);",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"composite_po_line.json\")));",
 					"    };",
 					"",
 					"    /**",
 					"     * Validates the PO content against schemas",
 					"     */",
 					"    utils.validateOrderAgainstSchema = function(jsonData) {",
-					"        let schema = JSON.parse(globals.schema_composite_purchase_order_content);",
-					"        utils._validateAgainstSchema(jsonData, schema);",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"composite_purchase_order.json\")));",
 					"    };",
 					"",
 					"    /**",
@@ -15843,29 +14988,14 @@
 					"     * Clean up variables",
 					"     */",
 					"    utils.unsetTestVariables = function() {",
+					"",
+					"        // Unset schema variables",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
+					"            ",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
-					"        pm.globals.unset(\"schema_composite_purchase_order_content\");",
-					"        pm.globals.unset(\"schema_alert_content\");",
-					"        pm.globals.unset(\"schema_composite_po_line_content\");",
-					"        pm.globals.unset(\"schema_cost_content\");",
-					"        pm.globals.unset(\"schema_contributor_content\");",
-					"        pm.globals.unset(\"schema_claim_content\");",
-					"        pm.globals.unset(\"schema_details_content\");",
-					"        pm.globals.unset(\"schema_eresource_content\");",
-					"        pm.globals.unset(\"schema_fundDistribution_content\");",
-					"        pm.globals.unset(\"schema_license_content\");",
-					"        pm.globals.unset(\"schema_location_content\");",
-					"        pm.globals.unset(\"schema_physical_content\");",
-					"        pm.globals.unset(\"schema_renewal_content\");",
-					"        pm.globals.unset(\"schema_reporting_code_content\");",
-					"        pm.globals.unset(\"schema_source_content\");",
-					"        pm.globals.unset(\"schema_vendorDetail_content\");",
-					"        pm.globals.unset(\"schema_metadata_content\");",
-					"        pm.globals.unset(\"schema_poNumber_content\");",
-					"        pm.globals.unset(\"schema_orderFormat_content\");",
-					"        pm.globals.unset(\"schema_receiptStatus_content\");",
-					"        pm.globals.unset(\"schema_productIdType_content\");",
 					"        pm.globals.unset(\"emptyOrderId\");",
 					"        pm.globals.unset(\"po_listed_print_monograph\");",
 					"        pm.globals.unset(\"completePolineIds\");",
@@ -15914,29 +15044,21 @@
 					"     */",
 					"    utils._addSchemas = function() {",
 					"        //Create and add schemas for validation",
-					"        //https://github.com/folio-org/acq-models/blob/master/composite_purchase_order.json",
-					"        //https://github.com/folio-org/acq-models/blob/master/composite_po_line.json",
-					"        tv4.addSchema(\"composite_po_line.json\", JSON.parse(globals.schema_composite_po_line_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/alert.json\", JSON.parse(globals.schema_alert_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/claim.json\", JSON.parse(globals.schema_claim_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/cost.json\", JSON.parse(globals.schema_cost_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/contributor.json\", JSON.parse(globals.schema_contributor_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/details.json\", JSON.parse(globals.schema_details_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/eresource.json\", JSON.parse(globals.schema_eresource_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/fund_distribution.json\", JSON.parse(globals.schema_fundDistribution_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/license.json\", JSON.parse(globals.schema_license_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/location.json\", JSON.parse(globals.schema_location_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/physical.json\", JSON.parse(globals.schema_physical_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/renewal.json\", JSON.parse(globals.schema_renewal_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/reporting_code.json\", JSON.parse(globals.schema_reporting_code_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/source.json\", JSON.parse(globals.schema_source_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/vendor_detail.json\", JSON.parse(globals.schema_vendorDetail_content));",
-					"        tv4.addSchema(\"raml-util/schemas/metadata.schema\", JSON.parse(globals.schema_metadata_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/order_format.json\", JSON.parse(globals.schema_orderFormat_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/receipt_status.json\", JSON.parse(globals.schema_receiptStatus_content));",
-					"        tv4.addSchema(\"common/schemas/product_id_type.json\", JSON.parse(globals.schema_productIdType_content));",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value))); ",
 					"    };",
 					"",
+					"    /**",
+					"     * Internal function to load schema defenitions to tv4",
+					"     */",
+					"    utils._addSchemas = function() {",
+					"        //Create and add schemas for validation",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value))); ",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Internal function to iterate sub-objects in array and delete ids",
 					"     */",
@@ -15971,163 +15093,43 @@
 	],
 	"variable": [
 		{
-			"id": "ff471e0a-84a6-4060-93d7-9324d6f7c772",
+			"id": "0b9cda48-47ad-4091-9364-2bfe524b8359",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "092e5f68-0f02-4ca0-9802-e365053909b6",
-			"key": "schema_loc",
-			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
-			"type": "string"
-		},
-		{
-			"id": "f243c27a-cdb9-4299-a1fa-8890f5ebc827",
-			"key": "schema_composite_purchase_order",
-			"value": "composite_purchase_order.json",
-			"type": "string"
-		},
-		{
-			"id": "39083b98-51b9-4692-b469-9b9db91bd126",
-			"key": "schema_alert",
-			"value": "alert.json",
-			"type": "string"
-		},
-		{
-			"id": "18a97ff3-f967-47e5-9fc6-df8a7d154e1e",
-			"key": "schema_claim",
-			"value": "claim.json",
-			"type": "string"
-		},
-		{
-			"id": "b8453125-78b1-437b-8df4-4266de145e68",
-			"key": "schema_composite_po_line",
-			"value": "composite_po_line.json",
-			"type": "string"
-		},
-		{
-			"id": "bb6a4903-25fe-41c0-af1d-b4bc277d9fd7",
-			"key": "schema_cost",
-			"value": "cost.json",
-			"type": "string"
-		},
-		{
-			"id": "a2966b2b-a4b4-4f7b-b51f-c5d5003ee009",
-			"key": "schema_details",
-			"value": "details.json",
-			"type": "string"
-		},
-		{
-			"id": "446000e8-47ba-4ac7-a4b5-930ba218af5b",
-			"key": "schema_eresource",
-			"value": "eresource.json",
-			"type": "string"
-		},
-		{
-			"id": "ca442409-f6c0-4e67-ad3c-7dd3759602c5",
-			"key": "schema_fundDistribution",
-			"value": "fund_distribution.json",
-			"type": "string"
-		},
-		{
-			"id": "7cb3a96d-a183-40e5-8e8f-4360a43bc18c",
-			"key": "schema_location",
-			"value": "location.json",
-			"type": "string"
-		},
-		{
-			"id": "7b27689f-287a-4b3c-b9dd-b7c338a11f05",
-			"key": "schema_physical",
-			"value": "physical.json",
-			"type": "string"
-		},
-		{
-			"id": "1f6f7826-ae3e-4986-a5ae-6bffef59bcd1",
-			"key": "schema_renewal",
-			"value": "renewal.json",
-			"type": "string"
-		},
-		{
-			"id": "a4ab225e-2ccd-4241-b6a2-cdedb19ee3c8",
-			"key": "schema_reporting_code",
-			"value": "reporting_code.json",
-			"type": "string"
-		},
-		{
-			"id": "674a7855-b750-443a-aba4-e8e5b63ec5b9",
-			"key": "schema_source",
-			"value": "source.json",
-			"type": "string"
-		},
-		{
-			"id": "c33dd130-0bd0-4434-9269-a21fcd2de44e",
-			"key": "schema_vendorDetail",
-			"value": "vendor_detail.json",
-			"type": "string"
-		},
-		{
-			"id": "9190e9cd-b9a8-49ff-bcf5-6e83c100ab95",
-			"key": "schema_orderFormat",
-			"value": "order_format.json",
-			"type": "string"
-		},
-		{
-			"id": "176cb4b7-017a-40e4-86b4-97dced95d48e",
-			"key": "schema_receiptStatus",
-			"value": "receipt_status.json",
-			"type": "string"
-		},
-		{
-			"id": "b6080b8f-cb74-40e6-9f2f-396059a02f18",
+			"id": "fc35cb36-2f74-405a-a388-9346605704b7",
 			"key": "storage_module",
 			"value": "mod-orders-storage",
 			"type": "string"
 		},
 		{
-			"id": "13dd2746-311e-4617-9f48-03e1887b929a",
+			"id": "1a8f6619-69c6-4021-b6ff-fd7b5c6d7599",
 			"key": "business_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "ed50f16f-0cab-40b7-bc8d-7a3e1618aa99",
-			"key": "schema_metadata",
-			"value": "metadata.schema",
-			"type": "string"
-		},
-		{
-			"id": "ae6a35bd-eada-4e48-a0a1-88c2d6208209",
-			"key": "schema_poNumber",
-			"value": "po_number.json",
-			"type": "string"
-		},
-		{
-			"id": "1d6562e1-be65-445b-baa3-204461ee32be",
+			"id": "64973f63-79b2-4dca-be29-71ec46a1d241",
 			"key": "raml_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
 			"type": "string"
 		},
 		{
-			"id": "4250d872-e563-49fa-a8ed-af88bff8e443",
+			"id": "c9eeba3e-9d77-4af3-854c-fbc2d73eb31a",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "8eec6020-2232-4277-bcc7-ccd660ae36ef",
+			"id": "c3cd4a6f-c978-49fc-86b2-98402a4769be",
 			"key": "orders_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "8e197e9b-ed95-4c98-b884-a8468736e092",
-			"key": "schema_productIdType",
-			"value": "product_id_type.json",
-			"type": "string"
-		},
-		{
-			"id": "8b6628fc-4e3b-4039-b4c4-82674faa7e65",
+			"id": "599bf47a-7e2b-4e5f-afb3-a086b6c8d0fb",
 			"key": "common_folder",
 			"value": "common",
 			"type": "string"
