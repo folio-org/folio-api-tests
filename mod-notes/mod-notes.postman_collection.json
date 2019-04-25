@@ -489,7 +489,9 @@
 									"pm.environment.set(\"noteContent\", response.content);",
 									"pm.environment.set(\"noteLinkId\", response.links[0].id);",
 									"pm.environment.set(\"noteLinkType\", response.links[0].type);",
-									"pm.environment.set(\"noteLinkDomain\", response.links[0].domain);"
+									"pm.environment.set(\"noteLinkDomain\", response.links[0].domain);",
+									"pm.environment.set(\"incorrectNoteId\", \"12345\");",
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -2051,9 +2053,14 @@
 													"    pm.expect(response.links[0].domain).eq(\"eholdings\");",
 													"});",
 													"",
-													"pm.test(\"validate Location header\", () => {",
-													"    pm.expect(pm.response.headers.get(\"Location\")).to.equal(\"/notes/\" + pm.response.json().id);",
+													"//Test that title matches what was passed in POST request",
+													"pm.test('title matches value passed in', function() {",
+													"    pm.expect(response.title).to.eq('BU Campus Access Issues');",
 													"});",
+													"",
+													"if(response.id){",
+													"pm.environment.set(\"noteId-creating-in-post\", response.id);",
+													"}",
 													""
 												],
 												"type": "text/javascript"
@@ -2163,6 +2170,10 @@
 													"pm.test(\"validate Location header\", () => {",
 													"    pm.expect(pm.response.headers.get(\"Location\")).to.equal(\"/notes/\" + pm.response.json().id);",
 													"});",
+													"",
+													"if(response.id){",
+													"pm.environment.set(\"noteId-creating-in-post-second\", response.id);",
+													"}",
 													""
 												],
 												"type": "text/javascript"
@@ -2658,8 +2669,16 @@
 										}
 									],
 									"request": {
+										"auth": {
+											"type": "noauth"
+										},
 										"method": "POST",
 										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
 											{
 												"key": "Content-Type",
 												"value": "application/json"
@@ -2695,7 +2714,7 @@
 									"response": []
 								},
 								{
-									"name": "/notes - 422 (missing link field)",
+									"name": "/notes - 422 (missing text field)",
 									"event": [
 										{
 											"listen": "prerequest",
@@ -3449,96 +3468,46 @@
 											"listen": "test",
 											"script": {
 												"id": "6f1b83dd-dd78-4091-a71a-2cb8a75e0bc7",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"success test - 204 and no body\", function() {",
 													"    pm.response.to.have.status(204);",
 													"    pm.response.to.not.be.withBody;",
 													"});",
 													"",
-													"pm.test(\"retrieve updated note\", function() {",
-													"    let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
+													"//Check that status is 204",
+													"pm.test(\"Status is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});",
 													"",
-													"    pm.sendRequest({",
-													"        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes/\" + pm.variables.get(\"id\"),",
-													"        method: 'GET',",
-													"        header: {",
-													"            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"            'X-Okapi-Token': token",
-													"        }",
-													"    }, function(err, res) {",
-													"        pm.test(\"validate data\", function() {",
-													"            pm.expect(res.code).to.equal(200);",
-													"            pm.expect(res.json().id).to.equal(pm.variables.get(\"id\"), \"id does not match\");",
-													"            pm.expect(res.json().link).to.equal(pm.variables.get(\"updated_link\"), \"link does not match\");",
-													"            pm.expect(res.json().text).to.equal(pm.variables.get(\"updated_text\"), \"text does not match\");",
-													"            pm.expect(res.json().domain).to.equal(pm.variables.get(\"updated_domain\"), \"domain does not match\");",
-													"            pm.expect(res.json().creatorUserName).to.equal(pm.environment.get(\"username\"), \"creatorUserName does not match\");",
-													"",
-													"            pm.test(\"clean up\", function() {",
-													"                eval(pm.variables.get(\"cleanUpNoteFunction\"));",
-													"                eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"                ",
-													"                cleanUpNote(res.json().id, function(err, success) {",
-													"                   pm.test(\"remove note\", function() {",
-													"                       pm.expect(success).to.be.true;",
-													"                   });",
-													"                });",
-													"            ",
-													"               cleanUpVariables([\"uuid\", \"domain\", \"link\", \"text\", \"id\", \"updated_uuid\", \"updated_domain\", \"updated_link\", \"updated_text\"]);",
-													"            });",
-													"        });",
+													"pm.sendRequest({",
+													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes/\" + pm.environment.get(\"noteId-creating-in-post\"),",
+													"    method: 'GET',",
+													"    header: {",
+													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+													"        'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+													"        'Content-Type': 'application/json'",
+													"    },",
+													"}, function(err, res) {",
+													"    pm.test(\"Check changes\", function () {",
+													"        var response = res.json();",
+													"        pm.expect(response.typeId).to.equal(pm.environment.get(\"noteTypeId\"));",
+													"        pm.expect(response.title).to.equal(\"Updated title\");",
+													"        pm.expect(response.content).to.equal(\"Updated content\");",
 													"    });",
 													"});",
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "3c91d9cc-4f5a-4416-957b-7848bf43fd38",
-												"type": "text/javascript",
 												"exec": [
-													"// Create a note",
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"domain\", \"items\");",
-													"pm.variables.set(\"link\", \"/\" + pm.variables.get(\"domain\") + \"/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");",
-													"",
-													"let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"",
-													"pm.sendRequest({",
-													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes\",",
-													"    method: 'POST',",
-													"    header: {",
-													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"        'X-Okapi-Token': token,",
-													"        'Content-Type': 'application/json'",
-													"    },",
-													"    body: {",
-													"        mode: 'raw',",
-													"        raw : JSON.stringify({link: pm.variables.get(\"link\"), text: pm.variables.get(\"text\"), domain: pm.variables.get(\"domain\")})",
-													"    }",
-													"}, function(err, res) {",
-													"    if (err !== null) {",
-													"        console.log(\"note creation error: \" + err);",
-													"    } else {",
-													"        if (res.code === 201) {",
-													"            pm.variables.set(\"id\", res.json().id);",
-													"        } else {",
-													"            console.log(\"note creation failed: \" + res.reason());",
-													"        }",
-													"    }",
-													"});",
-													"",
-													"pm.variables.set(\"updated_uuid\", uuid.v4());",
-													"pm.variables.set(\"updated_domain\", \"users\");",
-													"pm.variables.set(\"updated_link\", \"/\" + pm.variables.get(\"updated_domain\") + \"/\" + pm.variables.get(\"updated_uuid\"));",
-													"pm.variables.set(\"updated_text\", \"Lorem ipsum dolor sit amet consectetur adipiscing elit sagittis, hac eleifend sem posuere venenatis proin. Facilisi cursus ridiculus eleifend bibendum ex egestas morbi venenatis et mollis amet hac vestibulum, erat hendrerit natoque tincidunt netus lorem nec a sem justo maecenas. Varius mattis mi placerat sollicitudin imperdiet pulvinar congue id lectus, dictum nibh potenti hac eget lorem habitasse quisque bibendum vitae, eleifend convallis magna amet cubilia porttitor scelerisque penatibus. Laoreet pulvinar cubilia taciti primis amet at lorem suscipit, est turpis commodo elementum justo libero lectus viverra tincidunt, auctor cras faucibus facilisis posuere fusce ac. Senectus libero sapien consequat curabitur vitae metus imperdiet lectus class morbi, elementum praesent dis dignissim tristique diam rhoncus tellus pellentesque augue, lacus quis magnis penatibus est purus mus turpis cursus.\");"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -3548,14 +3517,24 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{updated_link}}\",\n\t\"text\": \"{{updated_text}}\",\n\t\"domain\": \"{{updated_domain}}\"\n}"
+											"raw": "{\r\n\t\"type\" : \"Type\",\r\n\t\"title\" : \"Updated title\",\r\n\t\"content\": \"Updated content\",\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"583-2356521\",\r\n\t\t\t\"type\": \"package\",\r\n\t\t\t\"domain\": \"eholdings\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{id}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{noteId-creating-in-post}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -3563,10 +3542,96 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"notes",
-												"{{id}}"
+												"{{noteId-creating-in-post}}"
 											]
 										},
 										"description": "Updates an existing note"
+									},
+									"response": []
+								},
+								{
+									"name": "/notes/{id} - (empty fields)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "9d64c5c0-aa66-470a-a622-01b26b186f3f",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "79e5a5b5-32d7-464d-ac1d-dc8b705f203b",
+												"exec": [
+													"pm.test(\"success test - 204 and no body\", function() {",
+													"    pm.response.to.have.status(204);",
+													"    pm.response.to.not.be.withBody;",
+													"});",
+													"",
+													"//Check that status is 204",
+													"pm.test(\"Status is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"pm.sendRequest({",
+													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes/\" + pm.environment.get(\"noteId-creating-in-post\"),",
+													"    method: 'GET',",
+													"    header: {",
+													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+													"        'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+													"        'Content-Type': 'application/json'",
+													"    },",
+													"}, function(err, res) {",
+													"    pm.test(\"Fields is changed\", function () {",
+													"        pm.expect(res.json().title).to.equal(\"\");",
+													"        pm.expect(res.json().content).to.equal(\"\");",
+													"    });",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n\t\"title\" : \"\",\r\n\t\"content\": \"\",\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"\",\r\n\t\t\t\"type\": \"\",\r\n\t\t\t\"domain\": \"\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{noteId-creating-in-post}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"notes",
+												"{{noteId-creating-in-post}}"
+											]
+										},
+										"description": "Update an existing note with JSON body missing the required \"text\" field."
 									},
 									"response": []
 								}
@@ -3583,33 +3648,23 @@
 											"listen": "test",
 											"script": {
 												"id": "e0535ffb-0247-43b7-880c-e90e74a7b09a",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"400 test - invalid id format in URL\", function() {",
 													"    pm.response.to.have.status(400);",
 													"    pm.response.to.have.body();",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"    ",
-													"    cleanUpVariables([\"uuid\", \"link\", \"text\"]);",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "2d37b73e-f81e-4079-88e8-dcc2ae81db02",
-												"type": "text/javascript",
 												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -3619,14 +3674,24 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{link}}\",\n\t\"text\": \"{{text}}\"\n}"
+											"raw": "{\r\n\t\"title\" : \"Updated title\",\r\n\t\"content\": \"Updated content\",\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"583-2356521\",\r\n\t\t\t\"type\": \"package\",\r\n\t\t\t\"domain\": \"eholdings\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/12345",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{incorrectNoteId}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -3634,7 +3699,7 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"notes",
-												"12345"
+												"{{incorrectNoteId}}"
 											]
 										},
 										"description": "Updates an existing note with an invalid id format"
@@ -3648,33 +3713,28 @@
 											"listen": "test",
 											"script": {
 												"id": "31babbce-2c1e-4294-8f22-5ebd3aec6082",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"400 test - empty lang\", function() {",
 													"    pm.response.to.have.status(400);",
 													"    pm.response.to.have.body();",
 													"});",
 													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"    ",
-													"    cleanUpVariables([\"uuid\", \"link\", \"text\"]);",
+													"pm.test(\"Response having negative limit parameter error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body(\"\\n 'lang' parameter is incorrect. parameter value {} is not valid: must match \\\"[a-zA-Z]{2}\\\"\");",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "0ca33893-8a80-4ac1-adc9-728a40946110",
-												"type": "text/javascript",
 												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -3684,11 +3744,21 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{link}}\",\n\t\"text\": \"{{text}}\"\n}"
+											"raw": "{\r\n\t\"title\" : \"Updated title\",\r\n\t\"content\": \"Updated content\",\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"583-2356521\",\r\n\t\t\t\"type\": \"package\",\r\n\t\t\t\"domain\": \"eholdings\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}?lang=",
@@ -3719,33 +3789,28 @@
 											"listen": "test",
 											"script": {
 												"id": "31ad0b1a-c324-4c5b-8a70-b1d9384495a5",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"400 test - bad lang\", function() {",
 													"    pm.response.to.have.status(400);",
 													"    pm.response.to.have.body();",
 													"});",
 													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"    ",
-													"    cleanUpVariables([\"uuid\", \"link\", \"text\"]);",
+													"pm.test(\"Response having negative limit parameter error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body(\"\\n 'lang' parameter is incorrect. parameter value {A1} is not valid: must match \\\"[a-zA-Z]{2}\\\"\");",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "8e9cab5c-0e43-4bfd-815f-396cda5bf9c2",
-												"type": "text/javascript",
 												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -3755,11 +3820,21 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{link}}\",\n\t\"text\": \"{{text}}\"\n}"
+											"raw": "{\r\n\t\"title\" : \"Updated title\",\r\n\t\"content\": \"Updated content\",\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"583-2356521\",\r\n\t\t\t\"type\": \"package\",\r\n\t\t\t\"domain\": \"eholdings\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}?lang=A1",
@@ -3784,320 +3859,12 @@
 									"response": []
 								},
 								{
-									"name": "/notes/{id} - 401",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "2b79b617-4f51-46cf-b284-3848e4cc7618",
-												"type": "text/javascript",
-												"exec": [
-													"pm.test(\"401 test\", function() {",
-													"    pm.response.to.have.status(401);",
-													"    pm.response.to.have.body();",
-													"});"
-												]
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "29562f38-ef06-464a-82f6-81fee0b071c1",
-												"type": "text/javascript",
-												"exec": [
-													"pm.variables.unset('xokapitoken-' + pm.variables.get('module'));",
-													""
-												]
-											}
-										}
-									],
-									"request": {
-										"method": "PUT",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"notes",
-												"{{$guid}}"
-											]
-										},
-										"description": "Failure test due to the auth token not being set."
-									},
-									"response": []
-								},
-								{
-									"name": "/notes/{id} - 401 (user has no domain permissions)",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "55989bb4-5f90-456a-a183-1696133abbcc",
-												"type": "text/javascript",
-												"exec": [
-													"pm.test(\"401 test - no domain permissions\", function() {",
-													"    pm.response.to.have.status(401);",
-													"    pm.response.to.have.body();",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpNoteFunction\"));",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"    ",
-													"    cleanUpNote(pm.variables.get(\"id\"), function(err, success) {",
-													"       pm.test(\"remove note\", function() {",
-													"           pm.expect(success).to.be.true;",
-													"           ",
-													"           cleanUpVariables([\"uuid\", \"domain\", \"link\", \"text\", \"id\", \"updated_uuid\", \"updated_domain\", \"updated_link\", \"updated_text\"]);",
-													"       });",
-													"    });",
-													"",
-													"    let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"    ",
-													"    pm.sendRequest({",
-													"        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/users/\" + pm.variables.get('test_user_id'),",
-													"        method: 'DELETE',",
-													"        header: {",
-													"            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"            'X-Okapi-Token': token,",
-													"            'Content-Type': 'application/json'",
-													"        }",
-													"    }, function(err, res) {",
-													"        pm.test(\"user deleted\", function() {",
-													"            pm.expect(res).to.have.status(204);",
-													"            cleanUpVariables([\"test_user_id\", \"test_user_token\"]);",
-													"            pm.sendRequest({",
-													"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/credentials/\" + pm.variables.get('test_user_credId'),",
-													"                method: 'DELETE',",
-													"                header: {",
-													"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"                    'X-Okapi-Token': token,",
-													"                    'Content-Type': 'application/json'",
-													"                }",
-													"            }, function(err, res) {",
-													"                pm.test(\"credentials deleted\", function() {",
-													"                    pm.expect(res).to.have.status(204);",
-													"                    cleanUpVariables([\"test_user_credId\"]);",
-													"                    pm.sendRequest({",
-													"                        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/perms/users/\" + pm.variables.get('test_user_permsId'),",
-													"                        method: 'DELETE',",
-													"                        header: {",
-													"                            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"                            'X-Okapi-Token': token,",
-													"                            'Content-Type': 'application/json'",
-													"                        }",
-													"                    }, function(err, res) {",
-													"                        pm.test(\"permissions deleted\", function() {",
-													"                            pm.expect(res).to.have.status(204);",
-													"                            cleanUpVariables([\"test_user_permsId\"]);",
-													"                        });",
-													"                    });",
-													"                });",
-													"            });",
-													"        });",
-													"    });            ",
-													"});",
-													""
-												]
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "ffc85de9-cbc2-47b7-bd79-77012dcbf6e7",
-												"type": "text/javascript",
-												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");",
-													"",
-													"pm.variables.set('test_user_id', uuid.v4());",
-													"",
-													"let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"",
-													"pm.sendRequest({",
-													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/users\",",
-													"    method: 'POST',",
-													"    header: {",
-													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"        'X-Okapi-Token': token,",
-													"        'Content-Type': 'application/json'",
-													"    },",
-													"    body: {",
-													"        mode: 'raw',",
-													"        raw : JSON.stringify({ username: 'test_user', id: pm.variables.get('test_user_id'), active: true})",
-													"    }",
-													"}, function(err, res) {",
-													"    if (err !== null) {",
-													"        console.log(\"user creation error: \" + err);",
-													"    } else {",
-													"        if (res.code === 201) {",
-													"            pm.sendRequest({",
-													"                url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/credentials\",",
-													"                method: 'POST',",
-													"                header: {",
-													"                    'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"                    'X-Okapi-Token': token,",
-													"                    'Content-Type': 'application/json'",
-													"                },",
-													"                body: {",
-													"                    mode: 'raw',",
-													"                    raw : JSON.stringify({ username: 'test_user', id: pm.variables.get('test_user_id'), password: 'test_user'})",
-													"                }",
-													"            }, function(err, res) {",
-													"                if (err !== null) {",
-													"                    console.log(\"Credential creation error: \" + err);",
-													"                } else {",
-													"                    if (res.code === 201) {",
-													"                        pm.variables.set('test_user_credId', res.json().id);",
-													"                        pm.sendRequest({",
-													"                            url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/perms/users\",",
-													"                            method: 'POST',",
-													"                            header: {",
-													"                                'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"                                'X-Okapi-Token': token,",
-													"                                'Content-Type': 'application/json'",
-													"                            },",
-													"                            body: {",
-													"                                mode: 'raw',",
-													"                                raw : JSON.stringify({ userId: pm.variables.get('test_user_id'), permissions: [\"notes.item.put\", \"notes.item.get\"]})",
-													"                            }",
-													"                        }, function(err, res) {",
-													"                            if (err !== null) {",
-													"                                console.log(\"permissions creation error: \" + err);",
-													"                            } else {",
-													"                                if (res.code === 201) {",
-													"                                    pm.variables.set('test_user_permsId', res.json().id);",
-													"                                    pm.sendRequest({",
-													"                                        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/authn/login\",",
-													"                                        method: 'POST',",
-													"                                        header: {",
-													"                                            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"                                            'Content-Type': 'application/json'",
-													"                                        },",
-													"                                        body: {",
-													"                                            mode: 'raw',",
-													"                                            raw : JSON.stringify({ username: 'test_user', password: 'test_user'})",
-													"                                        }",
-													"                                    }, function(err, res) {",
-													"                                        if (err !== null) {",
-													"                                            console.log(\"Test user login error: \" + err);",
-													"                                        } else {",
-													"                                            if (res.code === 201) {",
-													"                                                pm.variables.set('test_user_token', res.headers.get(\"X-Okapi-Token\"));",
-													"                                                pm.sendRequest({",
-													"                                                    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes\",",
-													"                                                    method: 'POST',",
-													"                                                    header: {",
-													"                                                        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"                                                        'X-Okapi-Token': token,",
-													"                                                        'Content-Type': 'application/json'",
-													"                                                    },",
-													"                                                    body: {",
-													"                                                        mode: 'raw',",
-													"                                                        raw : JSON.stringify({link: pm.variables.get(\"link\"), text: pm.variables.get(\"text\")})",
-													"                                                    }",
-													"                                                }, function(err, res) {",
-													"                                                    if (err !== null) {",
-													"                                                        console.log(\"note creation error: \" + err);",
-													"                                                    } else {",
-													"                                                        if (res.code === 201) {",
-													"                                                            pm.variables.set(\"id\", res.json().id);",
-													"                                                        } else {",
-													"                                                            console.log(\"note creation failed: \" + res.reason());",
-													"                                                        }",
-													"                                                    }",
-													"                                                });",
-													"                                            } else {",
-													"                                                console.log(\"Test user login failed: \" + res.reason());",
-													"                                            }",
-													"                                        }",
-													"                                    });",
-													"                                } else {",
-													"                                    console.log(\"permissions creation failed: \" + res.reason());",
-													"                                }",
-													"                            }",
-													"                        });",
-													"                    } else {",
-													"                        console.log(\"Auth creation failed: \" + res.reason());",
-													"                    }",
-													"                }",
-													"            });",
-													"        } else {",
-													"            console.log(\"User creation failed: \" + res.reason());",
-													"        }",
-													"    }",
-													"});",
-													"",
-													"pm.variables.set(\"updated_uuid\", uuid.v4());",
-													"pm.variables.set(\"updated_domain\", \"users\");",
-													"pm.variables.set(\"updated_link\", \"/\" + pm.variables.get(\"updated_domain\") + \"/\" + pm.variables.get(\"updated_uuid\"));",
-													"pm.variables.set(\"updated_text\", \"Lorem ipsum dolor sit amet consectetur adipiscing elit sagittis, hac eleifend sem posuere venenatis proin. Facilisi cursus ridiculus eleifend bibendum ex egestas morbi venenatis et mollis amet hac vestibulum, erat hendrerit natoque tincidunt netus lorem nec a sem justo maecenas. Varius mattis mi placerat sollicitudin imperdiet pulvinar congue id lectus, dictum nibh potenti hac eget lorem habitasse quisque bibendum vitae, eleifend convallis magna amet cubilia porttitor scelerisque penatibus. Laoreet pulvinar cubilia taciti primis amet at lorem suscipit, est turpis commodo elementum justo libero lectus viverra tincidunt, auctor cras faucibus facilisis posuere fusce ac. Senectus libero sapien consequat curabitur vitae metus imperdiet lectus class morbi, elementum praesent dis dignissim tristique diam rhoncus tellus pellentesque augue, lacus quis magnis penatibus est purus mus turpis cursus.\");"
-												]
-											}
-										}
-									],
-									"request": {
-										"auth": {
-											"type": "bearer",
-											"bearer": [
-												{
-													"key": "token",
-													"value": "{{test_user_token}}",
-													"type": "string"
-												}
-											]
-										},
-										"method": "PUT",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{updated_link}}\",\n\t\"text\": \"{{updated_text}}\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{id}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"notes",
-												"{{id}}"
-											]
-										},
-										"description": "Failure test for a user missing \"domain\" permissions. In order to PUT a note, the user not only needs the \"notes.item.put\" permission, but \"notes.domain.all\" or \"notes.domain.*\". The domain is defined by the \"domain\" field or by extracting the domain from the link, e.g. \"/users/12345\", domain is \"users\"."
-									},
-									"response": []
-								},
-								{
 									"name": "/notes/{id} - 403",
 									"event": [
 										{
 											"listen": "test",
 											"script": {
 												"id": "37417d71-7f2c-4ff0-b4c3-420aac5bf6b7",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"403 test\", function() {",
 													"    pm.response.to.have.status(403);",
@@ -4105,44 +3872,36 @@
 													"});",
 													"",
 													"pm.test(\"validate permission\", function() {",
-													"    pm.expect(pm.response.text()).to.include(\"notes.item.put\");",
+													"    pm.expect(pm.response.text()).to.include(\"notes.domain.all\");",
 													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpUserTestFunction\"));",
-													"",
-													"    cleanUpUserTest();",
-													"});"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "fc943a45-a2da-462c-8910-3746fa12cf63",
-												"type": "text/javascript",
 												"exec": [
-													"eval(pm.variables.get(\"createUserFunction\"));",
-													"",
-													"createUser();",
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
 									"request": {
 										"auth": {
-											"type": "bearer",
-											"bearer": [
-												{
-													"key": "token",
-													"value": "{{test_user_token}}",
-													"type": "string"
-												}
-											]
+											"type": "noauth"
 										},
 										"method": "PUT",
-										"header": [],
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
 										"body": {
 											"mode": "raw",
 											"raw": ""
@@ -4170,33 +3929,23 @@
 											"listen": "test",
 											"script": {
 												"id": "e7323028-c782-4e36-9f00-e7209fe3b99d",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"404 test\", function() {",
 													"    pm.response.to.have.status(404);",
 													"    pm.response.to.have.body();",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"    ",
-													"    cleanUpVariables([\"uuid\", \"link\", \"text\"]);",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "d4351f0f-adb3-4994-9f25-9869782c708d",
-												"type": "text/javascript",
 												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -4206,11 +3955,21 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{link}}\",\n\t\"text\": \"{{text}}\"\n}"
+											"raw": "{\r\n\t\"title\" : \"Updated title\",\r\n\t\"content\": \"Updated content\",\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"583-2356521\",\r\n\t\t\t\"type\": \"package\",\r\n\t\t\t\"domain\": \"eholdings\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}",
@@ -4229,48 +3988,42 @@
 									"response": []
 								},
 								{
-									"name": "/notes/{id} - 422 (missing text field)",
+									"name": "/notes/{id} - 422 (missing some fields)",
 									"event": [
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "9d64c5c0-aa66-470a-a622-01b26b186f3f",
-												"type": "text/javascript",
 												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\")"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "test",
 											"script": {
 												"id": "79e5a5b5-32d7-464d-ac1d-dc8b705f203b",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"422 - missing text field\", function() {",
 													"    pm.response.to.have.status(422);",
 													"    pm.response.to.be.json;",
 													"});",
 													"",
-													"pm.test(\"validate schema\", function() {",
-													"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
-													"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+													"var response = pm.response.json();",
 													"",
-													"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													" pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_errors\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
 													"});",
 													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"",
-													"    cleanUpVariables([\"uuid\", \"link\", \"text\"]);",
+													"pm.test(\"checking message\", function(){",
+													"    pm.expect(response.errors[0].message).eq(\"may not be null\");",
 													"});",
+													"",
 													""
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -4280,11 +4033,21 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"{{link}}\"\n}"
+											"raw": "{\r\n\t\"typeId\": \"{{noteTypeId}}\",\r\n\t\"links\": [\r\n\t\t{\r\n\t\t\t\"id\" : \"583-2356521\",\r\n\t\t\t\"type\": \"package\",\r\n\t\t\t\"domain\": \"eholdings\"\r\n\t\t\t\r\n\t\t}\r\n\t\t]\r\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}",
@@ -4303,157 +4066,40 @@
 									"response": []
 								},
 								{
-									"name": "/notes/{id} - 422 (missing link field)",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "9d64c5c0-aa66-470a-a622-01b26b186f3f",
-												"type": "text/javascript",
-												"exec": [
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"link\", \"/items/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\")"
-												]
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "f227b010-9c69-4bc5-b568-773b342946cc",
-												"type": "text/javascript",
-												"exec": [
-													"pm.test(\"422 - missing text field\", function() {",
-													"    pm.response.to.have.status(422);",
-													"    pm.response.to.be.json;",
-													"});",
-													"",
-													"pm.test(\"validate schema\", function() {",
-													"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
-													"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
-													"",
-													"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"",
-													"    cleanUpVariables([\"uuid\", \"link\", \"text\"]);",
-													"});",
-													""
-												]
-											}
-										}
-									],
-									"request": {
-										"method": "PUT",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n\t\"text\": \"{{text}}\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{$guid}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"notes",
-												"{{$guid}}"
-											]
-										},
-										"description": "Create a new note with JSON body missing the required \"link\" field."
-									},
-									"response": []
-								},
-								{
 									"name": "/notes/{id} - 422 (empty JSON)",
 									"event": [
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "42676a49-83cc-4c27-afc1-efb64fb18d0a",
-												"type": "text/javascript",
 												"exec": [
-													"// Create a note",
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"domain\", \"items\");",
-													"pm.variables.set(\"link\", \"/\" + pm.variables.get(\"domain\") + \"/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");",
-													"",
-													"let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"",
-													"pm.sendRequest({",
-													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes\",",
-													"    method: 'POST',",
-													"    header: {",
-													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"        'X-Okapi-Token': token,",
-													"        'Content-Type': 'application/json'",
-													"    },",
-													"    body: {",
-													"        mode: 'raw',",
-													"        raw : JSON.stringify({link: pm.variables.get(\"link\"), text: pm.variables.get(\"text\"), domain: pm.variables.get(\"domain\")})",
-													"    }",
-													"}, function(err, res) {",
-													"    if (err !== null) {",
-													"        console.log(\"note creation error: \" + err);",
-													"    } else {",
-													"        if (res.code === 201) {",
-													"            pm.variables.set(\"id\", res.json().id);",
-													"        } else {",
-													"            console.log(\"note creation failed: \" + res.reason());",
-													"        }",
-													"    }",
-													"});"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "test",
 											"script": {
 												"id": "8664ff6c-55c7-4014-b869-fce54a563bc1",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"422 - missing text field\", function() {",
 													"    pm.response.to.have.status(422);",
 													"    pm.response.to.be.json;",
 													"});",
 													"",
-													"pm.test(\"validate schema\", function() {",
-													"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
-													"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+													"var response = pm.response.json();",
 													"",
-													"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													" pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_errors\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
 													"});",
 													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpNoteFunction\"));",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"",
-													"    cleanUpNote(pm.variables.get(\"id\"), function(err, success) {",
-													"       pm.test(\"remove note\", function() {",
-													"           pm.expect(success).to.be.true;",
-													"       });",
-													"    });",
-													"",
-													"    cleanUpVariables([\"uuid\", \"domain\", \"link\", \"text\", \"id\"]);",
-													"});",
-													""
-												]
+													"pm.test(\"checking message\", function(){",
+													"    pm.expect(response.errors[0].message).eq(\"may not be null\");",
+													"});"
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -4463,6 +4109,16 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
@@ -4470,7 +4126,7 @@
 											"raw": "{}"
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{id}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{noteId}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -4478,7 +4134,7 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"notes",
-												"{{id}}"
+												"{{noteId}}"
 											]
 										},
 										"description": "Update an existing note with an empty JSON body."
@@ -4486,82 +4142,36 @@
 									"response": []
 								},
 								{
-									"name": "/notes/{id} - 422 (unknown field)",
+									"name": "/notes/{id} - 422 (unknown fields)",
 									"event": [
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "310ebf88-f3ce-4d20-a640-f28bdd343e07",
-												"type": "text/javascript",
 												"exec": [
-													"// Create a note",
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"domain\", \"items\");",
-													"pm.variables.set(\"link\", \"/\" + pm.variables.get(\"domain\") + \"/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");",
-													"",
-													"let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"",
-													"pm.sendRequest({",
-													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes\",",
-													"    method: 'POST',",
-													"    header: {",
-													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"        'X-Okapi-Token': token,",
-													"        'Content-Type': 'application/json'",
-													"    },",
-													"    body: {",
-													"        mode: 'raw',",
-													"        raw : JSON.stringify({link: pm.variables.get(\"link\"), text: pm.variables.get(\"text\"), domain: pm.variables.get(\"domain\")})",
-													"    }",
-													"}, function(err, res) {",
-													"    if (err !== null) {",
-													"        console.log(\"note creation error: \" + err);",
-													"    } else {",
-													"        if (res.code === 201) {",
-													"            pm.variables.set(\"id\", res.json().id);",
-													"        } else {",
-													"            console.log(\"note creation failed: \" + res.reason());",
-													"        }",
-													"    }",
-													"});"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "test",
 											"script": {
 												"id": "7c8c6944-72ba-421f-8c17-0acefe2b56cc",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"422 - missing text field\", function() {",
 													"    pm.response.to.have.status(422);",
 													"    pm.response.to.be.json;",
 													"});",
 													"",
-													"pm.test(\"validate schema\", function() {",
-													"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
-													"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+													"var response = pm.response.json();",
 													"",
-													"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													" pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_errors\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpNoteFunction\"));",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"",
-													"    cleanUpNote(pm.variables.get(\"id\"), function(err, success) {",
-													"       pm.test(\"remove note\", function() {",
-													"           pm.expect(success).to.be.true;",
-													"       });",
-													"    });",
-													"",
-													"    cleanUpVariables([\"uuid\", \"domain\", \"link\", \"text\", \"id\"]);",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -4571,6 +4181,16 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
@@ -4578,7 +4198,7 @@
 											"raw": "{\n\t\"link\": \"/items/xxxxxx\",\n\t\"text\": \"xxxxxxxx\",\n\t\"xyzzy\": \"867-5309\"\n}"
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{id}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{noteId}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -4586,7 +4206,7 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"notes",
-												"{{id}}"
+												"{{noteId}}"
 											]
 										},
 										"description": "Update an existing note with JSON body containing an unknown field."
@@ -4600,76 +4220,30 @@
 											"listen": "prerequest",
 											"script": {
 												"id": "8834cd24-eb40-44d1-ba86-4a32b7e63259",
-												"type": "text/javascript",
 												"exec": [
-													"// Create a note",
-													"var uuid = require('uuid');",
-													"",
-													"pm.variables.set(\"uuid\", uuid.v4());",
-													"pm.variables.set(\"domain\", \"items\");",
-													"pm.variables.set(\"link\", \"/\" + pm.variables.get(\"domain\") + \"/\" + pm.variables.get(\"uuid\"));",
-													"pm.variables.set(\"text\", \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\");",
-													"",
-													"let token = pm.variables.get(\"xokapitoken-\" + pm.variables.get(\"module\"));",
-													"",
-													"pm.sendRequest({",
-													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/notes\",",
-													"    method: 'POST',",
-													"    header: {",
-													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
-													"        'X-Okapi-Token': token,",
-													"        'Content-Type': 'application/json'",
-													"    },",
-													"    body: {",
-													"        mode: 'raw',",
-													"        raw : JSON.stringify({link: pm.variables.get(\"link\"), text: pm.variables.get(\"text\"), domain: pm.variables.get(\"domain\")})",
-													"    }",
-													"}, function(err, res) {",
-													"    if (err !== null) {",
-													"        console.log(\"note creation error: \" + err);",
-													"    } else {",
-													"        if (res.code === 201) {",
-													"            pm.variables.set(\"id\", res.json().id);",
-													"        } else {",
-													"            console.log(\"note creation failed: \" + res.reason());",
-													"        }",
-													"    }",
-													"});"
-												]
+													""
+												],
+												"type": "text/javascript"
 											}
 										},
 										{
 											"listen": "test",
 											"script": {
 												"id": "8bd865f6-0eef-473b-acb4-d0f5c1735ef9",
-												"type": "text/javascript",
 												"exec": [
 													"pm.test(\"422 - unknown metadata field\", function() {",
 													"    pm.response.to.have.status(422);",
 													"    pm.response.to.be.json;",
 													"});",
 													"",
-													"pm.test(\"validate schema\", function() {",
-													"    tv4.addSchema(\"error.schema\", pm.variables.get(\"error.schema\"));",
-													"    tv4.addSchema(\"parameters.schema\", pm.variables.get(\"parameters.schema\"));",
+													"var response = pm.response.json();",
 													"",
-													"    pm.expect(tv4.validate(pm.response.json(), pm.variables.get(\"errors.schema\"))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													" pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_errors\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
 													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"pm.test(\"clean up\", function() {",
-													"    eval(pm.variables.get(\"cleanUpNoteFunction\"));",
-													"    eval(pm.variables.get(\"cleanUpVariablesFunction\"));",
-													"",
-													"    cleanUpNote(pm.variables.get(\"id\"), function(err, success) {",
-													"       pm.test(\"remove note\", function() {",
-													"           pm.expect(success).to.be.true;",
-													"       });",
-													"    });",
-													"",
-													"    cleanUpVariables([\"uuid\", \"domain\", \"link\", \"text\", \"id\"]);",
 													"});"
-												]
+												],
+												"type": "text/javascript"
 											}
 										}
 									],
@@ -4679,14 +4253,24 @@
 											{
 												"key": "Content-Type",
 												"value": "application/json"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
 											}
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n\t\"link\": \"/items/xxxxxx\",\n\t\"text\": \"xxxxxxxx\",\n\t\"metadata\": {\n\t\t\"xyzzy\": \"867-5309\"\n\t}\n}"
+											"raw": "{\n\t\"metadata\": {\n\t\t\"xyzzy\": \"867-5309\"\n\t}\n}"
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{id}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/notes/{{noteId}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -4694,7 +4278,7 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"notes",
-												"{{id}}"
+												"{{noteId}}"
 											]
 										},
 										"description": "Update an existing note with JSON body containing an unknown metadata field."
@@ -6511,10 +6095,18 @@
 											"script": {
 												"id": "aeb905b1-c769-4098-8a08-dbf039375edc",
 												"exec": [
-													"pm.test(\"400 test - empty lang\", function() {",
-													"    pm.response.to.have.status(400);",
+													"pm.test(\"422 test - empty lang\", function() {",
+													"    pm.response.to.have.status(422);",
 													"    pm.response.to.have.body();",
 													"});",
+													"",
+													"var response = pm.response.json();",
+													"",
+													"   pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_errors\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
 													""
 												],
 												"type": "text/javascript"
@@ -7598,11 +7190,7 @@
 													"    pm.response.to.have.status(500);",
 													"    pm.response.to.have.body();",
 													"});",
-													"",
-													"pm.test(\"Response having negative error message\", function () {",
-													"    pm.response.to.be.withBody;",
-													"    pm.response.to.have.body(\"ErrorMessage(fields=Map(Line -> 146, File -> uuid.c, SQLSTATE -> 22P02, Routine -> string_to_uuid, V -> ERROR, Message -> invalid input syntax for uuid: \\\"12345\\\", Severity -> ERROR))\");",
-													"});"
+													""
 												],
 												"type": "text/javascript"
 											}
@@ -7851,7 +7439,6 @@
 													"",
 													"pm.test(\"Response having error message\", function () {",
 													"    pm.response.to.be.withBody;",
-													"    pm.response.to.have.body(\"Not found\");",
 													"});"
 												],
 												"type": "text/javascript"
@@ -8557,8 +8144,7 @@
 											"script": {
 												"id": "d2c58203-5ec6-4cab-969f-6a3d088bd3f3",
 												"exec": [
-													"var uuid = require('uuid');",
-													"pm.variables.set(\"noteType-uuid\", uuid.v4());"
+													""
 												],
 												"type": "text/javascript"
 											}
@@ -8571,7 +8157,21 @@
 													"pm.test(\"success test\", function() {",
 													"    pm.response.to.have.status(204);",
 													"});",
-													""
+													"",
+													"pm.sendRequest({",
+													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/note-types/\" + pm.environment.get(\"noteTypeId-creating-in-post\"),",
+													"    method: 'GET',",
+													"    header: {",
+													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+													"        'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+													"        'Content-Type': 'application/json'",
+													"    },",
+													"}, function(err, res) {",
+													"    console.log(res);",
+													"    pm.test(\"Note does not exist\", function () {",
+													"         res.code === 404;",
+													"    });",
+													"});"
 												],
 												"type": "text/javascript"
 											}
@@ -8612,72 +8212,6 @@
 											]
 										},
 										"description": "Create a new note"
-									},
-									"response": []
-								},
-								{
-									"name": "/note-types/{{noteType-createing-in-post-second}} - 201",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "489cefc9-561e-4e0a-9ea8-a535867f5859",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "363e43fd-a2ba-467d-8b4d-4670122c4043",
-												"exec": [
-													"pm.test(\"success test\", function() {",
-													"    pm.response.to.have.status(204);",
-													"});",
-													"",
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "DELETE",
-										"header": [
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
-											{
-												"key": "X-Okapi-Tenant",
-												"type": "text",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "X-Okapi-Token",
-												"type": "text",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-types/{{noteTypeId-creating-in-post-second}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"note-types",
-												"{{noteTypeId-creating-in-post-second}}"
-											]
-										},
-										"description": "Create a new note with read only fields set. These will be replaced with server side enforced values. The read only values will be ignored and note creation will succeed."
 									},
 									"response": []
 								}
@@ -9076,6 +8610,85 @@
 		{
 			"name": "teardown note-types",
 			"item": [
+				{
+					"name": "/note-types/{{noteType-createing-in-post-second}} - 201",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "489cefc9-561e-4e0a-9ea8-a535867f5859",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "363e43fd-a2ba-467d-8b4d-4670122c4043",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"pm.sendRequest({",
+									"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/note-types/\" + pm.environment.get(\"noteTypeId-creating-in-post-second\"),",
+									"    method: 'GET',",
+									"    header: {",
+									"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+									"        'Content-Type': 'application/json'",
+									"    },",
+									"}, function(err, res) {",
+									"    console.log(res);",
+									"    pm.test(\"Note does not exist\", function () {",
+									"         res.code === 404;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Okapi-Tenant",
+								"type": "text",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "X-Okapi-Token",
+								"type": "text",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-types/{{noteTypeId-creating-in-post-second}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"note-types",
+								"{{noteTypeId-creating-in-post-second}}"
+							]
+						},
+						"description": "Create a new note with read only fields set. These will be replaced with server side enforced values. The read only values will be ignored and note creation will succeed."
+					},
+					"response": []
+				},
 				{
 					"name": "DELETE testing note-type",
 					"event": [
