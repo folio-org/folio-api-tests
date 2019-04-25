@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "280c325c-1685-4559-9383-14bc3d4d38ac",
+		"_postman_id": "42827316-cd11-4c8c-a277-6fb24253e5b2",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -345,32 +345,95 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Load schemas for validation",
+					"name": "Load all schemas for validation",
 					"item": [
 						{
-							"name": "composite_purchase_order.json",
+							"name": "Get schemas and setup env variables",
 							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f930ca9d-df31-4572-90c8-63f5243ae30e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"pm.test(\"Module has schemas to load\", function () {\r",
+											"    pm.response.to.be.ok;\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"\r",
+											"    let schemas = pm.response.json();\r",
+											"    pm.expect(schemas).to.not.be.empty;\r",
+											"    traverse(pm.response.json());\r",
+											"});\r",
+											"\r",
+											"function traverse(schemas) {\r",
+											"    const timerId = setTimeout(() => { }, 60000);\r",
+											"\r",
+											"    var promises = schemas.map(path => fetchSchema(path));\r",
+											"    Promise.all(promises)\r",
+											"        .then(result => clearTimeout(timerId))\r",
+											"        .catch((err, req) => {\r",
+											"            clearTimeout(timerId);\r",
+											"            console.log(err);\r",
+											"            console.log(req);\r",
+											"        });\r",
+											"}\r",
+											"\r",
+											"function fetchSchema(path) {\r",
+											"    let getRequest = buildGetSchemaRequest(path);\r",
+											"    return new Promise((resolve, reject) => {\r",
+											"        pm.sendRequest(getRequest, (err, response) => {\r",
+											"            pm.test(\"Schema content loaded: \" + path, () => pm.expect(err).to.equal(null));\r",
+											"\r",
+											"            if (!err) {\r",
+											"                let content = replaceResponseRefWithName(response.text());\r",
+											"                let name = extractName(path);\r",
+											"                setEnvironmentVariable(name, content);\r",
+											"                resolve();\r",
+											"            } else {\r",
+											"                reject(err, getRequest);\r",
+											"            }\r",
+											"        });\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"function setEnvironmentVariable(name, data) {\r",
+											"    pm.environment.set(utils.schemaPrefix + name, data);\r",
+											"}\r",
+											"\r",
+											"function extractName(url) {\r",
+											"    return url.substring(url.lastIndexOf(\"/\") + 1);\r",
+											"}\r",
+											"\r",
+											"function replaceResponseRefWithName(text) {\r",
+											"    return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*(\\.json|\\.schema))/g, \"\\\"$ref\\\":\\\"\" + utils.schemaPrefix);\r",
+											"}\r",
+											"\r",
+											"function buildGetSchemaRequest(path) {\r",
+											"    let getRequest = utils.buildPmRequest(\"/_/jsonSchemas?path=\" + path, \"GET\");\r",
+											"    getRequest.header['X-Okapi-Module-Id'] = pm.variables.get(\"modOrdersId\");\r",
+											"    return getRequest;\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
 								{
 									"listen": "prerequest",
 									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
+										"id": "789cccc8-2479-48c7-ac26-5e35328874bd",
 										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_composite_purchase_order\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_composite_purchase_order_content\", responseBody);"
+											"let utils = eval(globals.loadUtils);\r",
+											"const moduleName = 'mod-orders';\r",
+											"\r",
+											"utils.sendGetRequest('/_/proxy/tenants/' + pm.variables.get(\"xokapitenant\") + '/interfaces/_jsonSchemas', (err, response) => {\r",
+											"    pm.test(\"jsonSchemas provided by \" + moduleName, function () {\r",
+											"        pm.expect(err).to.equal(null);\r",
+											"        pm.expect(response.text()).to.include(moduleName);\r",
+											"        let moduleId = response.json().map(element => element.id).filter(modId => modId.includes(moduleName))[0];\r",
+											"    \tpm.variables.set('modOrdersId', moduleId);\r",
+											"    });\r",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -378,963 +441,32 @@
 							],
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"type": "text",
+										"value": "{{modOrdersId}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{schema_loc}}/{{orders_module}}/schemas/{{schema_composite_purchase_order}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+									"protocol": "{{protocol}}",
 									"host": [
-										"{{schema_loc}}"
+										"{{url}}"
 									],
+									"port": "{{okapiport}}",
 									"path": [
-										"{{orders_module}}",
-										"schemas",
-										"{{schema_composite_purchase_order}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "alert.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_alert\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_alert_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_alert}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_alert}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "composite_po_line.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_composite_po_line\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_composite_po_line_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{orders_module}}/schemas/{{schema_composite_po_line}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{orders_module}}",
-										"schemas",
-										"{{schema_composite_po_line}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "contributor.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(\"contributor.json GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_contributor_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/contributor.json",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"contributor.json"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "cost.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_cost\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_cost_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_cost}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_cost}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "claim.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_claim\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_claim_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_claim}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_claim}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "details.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_details\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_details_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_details}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_details}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "eresource.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_eresource\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_eresource_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_eresource}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_eresource}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "fund_distribution.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_fundDistribution\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_fundDistribution_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_fundDistribution}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_fundDistribution}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "license.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(\"license.json GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_license_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/license.json",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"license.json"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "location.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_location\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_location_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_location}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_location}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "physical.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_physical\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_physical_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_physical}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_physical}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "renewal.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_renewal\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_renewal_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_renewal}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_renewal}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "reporting_code.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_reporting_code\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_reporting_code_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_reporting_code}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_reporting_code}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "source.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_source\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_source_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_source}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_source}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "vendor_detail.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_vendorDetail\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_vendorDetail_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_vendorDetail}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_vendorDetail}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "metadata.shcema",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_metadata\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_metadata_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{raml_loc}}/schemas/{{schema_metadata}}",
-									"host": [
-										"{{raml_loc}}"
-									],
-									"path": [
-										"schemas",
-										"{{schema_metadata}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "po_number.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_poNumber\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_poNumber_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{business_module}}/schemas/{{schema_poNumber}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{business_module}}",
-										"schemas",
-										"{{schema_poNumber}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "order_format.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_orderFormat\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_orderFormat_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_orderFormat}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_orderFormat}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "receipt_status.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_receiptStatus\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_receiptStatus_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_receiptStatus}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_receiptStatus}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "product_id_type.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_productIdType\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_productIdType_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{common_folder}}/schemas/{{schema_productIdType}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{common_folder}}",
-										"schemas",
-										"{{schema_productIdType}}"
+										"_",
+										"jsonSchemas"
 									]
 								}
 							},
@@ -1559,6 +691,73 @@
 									"port": "{{okapiport}}",
 									"path": [
 										"material-types"
+									]
+								},
+								"description": "Get material types to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Get Loan type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"Successfully retrieved default loan type\", function () {",
+											"    pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"});  ",
+											"",
+											"pm.test(\"Get the default loan type\", function () {",
+											"    pm.globals.set(\"loanType\", jsonData.loantypes[0].id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/loan-types?query=name==\"Can Circulate\"",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"loan-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name==\"Can Circulate\""
+										}
 									]
 								},
 								"description": "Get material types to be used accross the orders while interaction with inventory"
@@ -4117,6 +3316,8 @@
 											"    order.compositePoLines[0].orderFormat = \"Physical Resource\";",
 											"    setPhysicalInfo(order.compositePoLines[0]);",
 											"    order.compositePoLines[1].orderFormat = \"Other\";",
+											"    //using a new product Id for Other , because it can have create Inventory different based on the environment",
+											"    order.compositePoLines[1].details.productIds[0].productId = \"768768768768\";",
 											"    setPhysicalInfo(order.compositePoLines[1]);",
 											"    ",
 											"    pendingOrder.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
@@ -4711,6 +3912,128 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{{poListedPrintMonographForPartialCheckIn}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
+							},
+							"response": []
+						},
+						{
+							"name": "Create order all po lines checkin",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_one_physical_one_electronic_lines.json\", (err, res) => {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Open\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.poNumber = \"CH3CK1NPHYELEC\";",
+											"",
+											"    // Set checkingItems flag",
+											"    order.compositePoLines[0].checkinItems = true;",
+											"    order.compositePoLines[1].checkinItems = true;",
+											"",
+											"    // Set new product ids to be sure that new instances will be created",
+											"    order.compositePoLines[0].details.productIds.pop();",
+											"    ",
+											"    order.compositePoLines[0].details.productIds[0].productId = \"11311321131132\";",
+											"    order.compositePoLines[1].details.productIds[0].productId = \"11321331132133\";",
+											"    ",
+											"    order.compositePoLines[0].title = \"Hey! Just API testing checkin\"",
+											"    order.compositePoLines[1].title = \"Hey! Just API testing checkin with no items\"",
+											"    ",
+											"    //set proper material Type",
+											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
+											"    ",
+											"    //set create Inventory so that no item interaction is necessary",
+											"    order.compositePoLines[1].eresource.createInventory = \"Instance, Holding\";",
+											"    ",
+											"    pm.variables.set(\"poForTestingCheckin\", JSON.stringify(utils.prepareOrder(order)));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"jsonData.compositePoLines.forEach(line => {",
+											"     utils.validateReceiptStatus(line, \"Awaiting Receipt\");",
+											"    if(line.orderFormat === \"Physical Resource\"){",
+											"        pm.globals.set(\"checkin_physical_poLine\", line);",
+											"    }else{",
+											"        pm.globals.set(\"checkin_electronic_poLine\", line);",
+											"    }",
+											"    });",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"poAllPoLineCheckin\", jsonData.id); ",
+											"    pm.expect(jsonData.approved).to.exist;",
+											"    pm.expect(jsonData.poNumber).to.exist;",
+											"    pm.expect(jsonData.notes).to.exist;",
+											"    pm.expect(jsonData.totalItems).to.exist;",
+											"    pm.expect(jsonData.vendor).to.exist;",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "",
+										"type": "text",
+										"value": "",
+										"disabled": true
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{poForTestingCheckin}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -5667,7 +4990,7 @@
 											"});\r",
 											"\r",
 											"// 2. Validate PoNumber schema\r",
-											"var schema = JSON.parse(globals.schema_poNumber_content);\r",
+											"var schema = JSON.parse(pm.environment.get(utils.schemaPrefix + \"po_number.json\"));\r",
 											"pm.test('PoNumber schema is valid', function() {\r",
 											"  pm.expect(tv4.validate(jsonData, schema)).to.be.true;\r",
 											"});\r",
@@ -8371,6 +7694,495 @@
 								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
 							},
 							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Check-in",
+					"item": [
+						{
+							"name": "check-in pieces without items in Inventory",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "36abaaa2-063f-42d6-9cb0-c4020c263425",
+										"exec": [
+											"//create piece - > need po line id , format , (can add location )",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"",
+											"utils.createPieceAndCheckInBody(compPoLine);",
+											" "
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4f537129-29fc-4653-9e93-b75d7b56131b",
+										"exec": [
+											"//verify that the po line receipt status is partially received",
+											"//verify that the piece status is updated to Received",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.variables.get(\"checkinPoLineId\");",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully checked-in\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in?",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									],
+									"query": [
+										{
+											"key": "",
+											"value": "",
+											"disabled": true
+										}
+									]
+								},
+								"description": "creates a piece without any items in inventory and performs check-in. \nTests to see if the piece status is changed.\nThe order used for checkin is created in the request \"Create order all po lines checkin\""
+							},
+							"response": []
+						},
+						{
+							"name": "revert checked-in piece without items in inventory",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.globals.get(\"checkin_electronic_poLine\").id;",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Awaiting Receipt\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 1, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Electronic and receivingStatus == Received\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id,\"On Order\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "rever the checked in piece in the prior request to Expected status"
+							},
+							"response": []
+						},
+						{
+							"name": "check-in the existing piece",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.globals.get(\"checkin_electronic_poLine\").id;",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Electronic and receivingStatus == Expected\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "Do not create a new piece, but the existing piece must be successfully checked in"
+							},
+							"response": []
+						},
+						{
+							"name": "check-in pieces with items in inventory",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "10952b47-f0f6-4745-bf89-fc354c3f7a81",
+										"exec": [
+											"//get holdings record Id -> need instance id and location id",
+											"//get loan type id",
+											"//create item -> need material type, loan type and holdings Id",
+											"//create piece - > need po line id , format , (can add location )",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_physical_poLine\");",
+											"",
+											"",
+											"utils.prepareCheckinBodyWithItems(compPoLine);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "78b05458-c363-4075-809d-ee1077eda07f",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.variables.get(\"checkinPoLineId\");",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully checked-in\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Partially Received\");",
+											"    utils.validateInventoryItemsReceived(line, 1, \"In Process\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 0, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "creates a piece with items in inventory and performs check-in. Tests to see if the piece status is changed and also the Po line status. The order used for checkin is created in the request \"Create order all po lines checkin\""
+							},
+							"response": []
+						},
+						{
+							"name": "revert checked-in piece with items in inventory",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "deaf3447-5310-4de3-b85e-79a6bddd2035",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.globals.get(\"checkin_physical_poLine\").id;",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines/\" + checkinPoLineId, (err, res) => {",
+											"    let line = res.json();",
+											"    utils.validateReceiptStatus(line, \"Awaiting Receipt\");",
+											"     utils.validateInventoryItemsReceived(line, 1, \"On Order\");",
+											"    utils.validateReceivingHistoryNumberOfPiecesByStatus(line, 1, \"Expected\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "7d45ea8a-6f0e-4c0e-9c5d-4eab489f57af",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_physical_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Physical and receivingStatus == Received\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id,\"On Order\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "rever the checked in piece with items. The item status as well as the piece status must be modified"
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "ab27b964-955c-4491-86dd-eb8085658f9e",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "a9c355ce-ab55-4d87-a0af-027fa014a6c6",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
 						}
 					],
 					"_postman_isSubFolder": true
@@ -12049,6 +11861,98 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Check-in",
+					"item": [
+						{
+							"name": "check-in already received piece",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 piece failed to process\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, 0, 1);",
+											"    let receivingItemResults = jsonRs.receivingResults[0].receivingItemResults;",
+											"     pm.expect(receivingItemResults[0].processingStatus).to.exist;",
+											"     pm.expect(receivingItemResults[0].processingStatus.type).to.equal(\"failure\");",
+											"     pm.expect(receivingItemResults[0].processingStatus.error).to.exist;",
+											"     pm.expect(receivingItemResults[0].processingStatus.error.code).to.equal(\"pieceAlreadyReceived\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"checkin_electronic_poLine\");",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id +\" and format == Electronic and receivingStatus == Received\", (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine,res.json().pieces[0].id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "http://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "http",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -13190,6 +13094,74 @@
 								"description": "GET /orders/composite-orders/id requests that return 204"
 							},
 							"response": []
+						},
+						{
+							"name": "Delete order all polines checkin",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"eval(globals.loadUtils).deleteOrderRelatedRecords(globals.poAllPoLineCheckin, true);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"// Clean-Up",
+											"pm.globals.unset(\"checkin_electronic_poLine\");",
+											"pm.globals.unset(\"checkin_physical_poLine\");",
+											"pm.globals.unset(\"poAllPoLineCheckin\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{poAllPoLineCheckin}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{poAllPoLineCheckin}}"
+									]
+								},
+								"description": "DELETE /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -13657,6 +13629,52 @@
 					"            }],",
 					"            \"totalRecords\": 1",
 					"        }",
+					"    },",
+					"    piece: {",
+					"        bodyTemplate: {",
+					"                 \"caption\": \"Volume\",",
+					"                 \"comment\": \"creating Piece from API test\",",
+					"                 \"format\": \"\",",
+					"                 \"locationId\": \"\",",
+					"                 \"poLineId\": \"\",",
+					"                 \"receivingStatus\": \"Expected\",",
+					"                 \"supplement\": true",
+					"            }",
+					"    },",
+					"    checkin: {",
+					"        bodyTemplate: {",
+					"            \"toBeCheckedIn\": [",
+					"              {",
+					"                \"poLineId\": \"\",",
+					"                \"checkedIn\": \"\",",
+					"                \"checkInPieces\": [",
+					"                    {",
+					"                        \"id\": \"\",",
+					"                        \"barcode\": Math.floor(Math.random() * 1000),",
+					"                        \"comment\": \"checkedin from API test\",",
+					"                        \"caption\": \"Vol. 1\",",
+					"                        \"createItem\": true,",
+					"                        \"supplement\": false,",
+					"                        \"locationId\": \"\",",
+					"                        \"accessionNumber\": \"1956.1\",",
+					"                        \"itemDescription\": \"This is the piece item checkin\",",
+					"                        \"electronicBookplate\": \"This item is from API tests\",",
+					"                        \"itemStatus\": \"\"",
+					"                    }]",
+					"              }],",
+					"              \"totalRecords\":1",
+					"        }",
+					"    },",
+					"    item: {",
+					"        bodyTemplate: {",
+					"                 \"holdingsRecordId\": \"\",",
+					"                 \"permanentLoanTypeId\": pm.variables.get(\"loanType\"),",
+					"                 \"materialTypeId\": pm.variables.get(\"materialType\"),",
+					"                 \"status\": {",
+					"                        \"name\": \"On Order\"",
+					"                    },",
+					"                 \"purchaseOrderLineIdentifier\":\"\"",
+					"            }",
 					"    }",
 					"",
 					"};",
@@ -13666,7 +13684,8 @@
 					"",
 					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
 					"    let utils = {};",
-					"",
+					"    utils.schemaPrefix = \"orders_schema_\";",
+					"     ",
 					"    utils.validateReceivingHistory = function(history) {",
 					"        pm.expect(history.id, \"Piece id expected\").to.exist;",
 					"        pm.expect(history.dateOrdered, \"Order date expected\").to.exist;",
@@ -13686,6 +13705,20 @@
 					"        pm.expect(piece.receivingStatus, \"Piece receiving status expected\").to.exist;",
 					"    };",
 					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function(path, method) {",
+					"        return {",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"            }",
+					"        };",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Updates PO json removing ids and updating PO lines.",
 					"     */",
@@ -13823,8 +13856,9 @@
 					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
-					"",
-					"                if (utils.isItemsUpdateRequired(line)) {",
+					"                let isCheckin = typeof line.checkinItems === \"undefined\" ? false : line.checkinItems;",
+					"                //items are not created for checkin while opening the order, but can be created later",
+					"                if (utils.isItemsUpdateRequired(line) && !isCheckin) {",
 					"                    pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
 					"                } else {",
 					"                    pm.expect(body.totalRecords, \"Quantity of items should be zero\").to.equal(0);",
@@ -13897,12 +13931,14 @@
 					"    };",
 					"",
 					"    /**",
-					"     * Validates that PO Line's receipt status updated to expected",
+					"     * Validates that PO Line's receipt status updated to expected,",
+					"     * and incase of checkin the receipt date has to be validated ",
+					"     * if receipt status is partially received, as it is updated for first piece checkec-in",
 					"     */",
 					"    utils.validateReceiptStatus = function(poLine, receiptStatus) {",
 					"        pm.test(poLine.poLineNumber + \" PO Line should have \" + receiptStatus + \" receipt status\", function() {",
 					"            pm.expect(poLine.receiptStatus, \"Receipt status should be \" + receiptStatus).to.equal(receiptStatus);",
-					"            if (\"Fully Received\" === receiptStatus) {",
+					"            if (\"Fully Received\" === receiptStatus || (poLine.checkinItems === true && \"Partially Received\" === receiptStatus)) {",
 					"                pm.expect(poLine.receiptDate, \"Receipt date should be set\").to.not.be.empty;",
 					"            } else {",
 					"                pm.expect(poLine.receiptDate, \"Receipt date should be empty\").to.not.exist;",
@@ -13922,9 +13958,10 @@
 					"    /**",
 					"     * Validates that items received in the inventory (MODORDERS-103)",
 					"     */",
-					"    utils.validateInventoryItemsReceived = function(poLine, expectedQuantity) {",
+					"    utils.validateInventoryItemsReceived = function(poLine, expectedQuantity, itemStatus) {",
 					"        let expectedCount = typeof expectedQuantity === \"undefined\" ? utils.calculateExpectedItemsQuantity(poLine) : expectedQuantity;",
-					"        utils.sendGetRequest(\"/item-storage/items?limit=100&query=status.name==Received and purchaseOrderLineIdentifier==\" + poLine.id, (err, res) => {",
+					"        let status = typeof itemStatus === \"undefined\" ? \"Received\" : itemStatus;",
+					"        utils.sendGetRequest(\"/item-storage/items?limit=100&query=status.name==\"+status+  \" and purchaseOrderLineIdentifier==\" + poLine.id, (err, res) => {",
 					"            pm.test(expectedCount + \" Item Records marked as received for PO Line with number=\" + poLine.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
@@ -13979,10 +14016,6 @@
 					"    };",
 					"",
 					"    utils.isItemsUpdateRequired = function(compPOL) {",
-					"        if (compPOL.checkinItems != null && compPOL.checkinItems === true) {",
-					"            return false;",
-					"        }",
-					"",
 					"        let itemsRequiredForEresource = false;",
 					"        let itemsRequiredForPhysical = false;",
 					"",
@@ -14415,16 +14448,14 @@
 					"     * Validates the PO line content against schemas",
 					"     */",
 					"    utils.validatePoLineAgainstSchema = function(jsonData) {",
-					"        let schema = JSON.parse(globals.schema_composite_po_line_content);",
-					"        utils._validateAgainstSchema(jsonData, schema);",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"composite_po_line.json\")));",
 					"    };",
 					"",
 					"    /**",
 					"     * Validates the PO content against schemas",
 					"     */",
 					"    utils.validateOrderAgainstSchema = function(jsonData) {",
-					"        let schema = JSON.parse(globals.schema_composite_purchase_order_content);",
-					"        utils._validateAgainstSchema(jsonData, schema);",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"composite_purchase_order.json\")));",
 					"    };",
 					"",
 					"    /**",
@@ -14508,7 +14539,14 @@
 					"     */",
 					"    utils.getItemsByPoLine = function(line) {",
 					"        return new Promise((resolve) => {",
-					"            let expectedCount = utils.calculateExpectedItemsQuantity(line);",
+					"            let expectedCount;",
+					"            //we donot know the checkin count before, so use a default",
+					"            if (line.checkinItems === true) {",
+					"                expectedCount = 100;",
+					"            }",
+					"            else {",
+					"                expectedCount = utils.calculateExpectedItemsQuantity(line);",
+					"            }",
 					"            utils.getItemsByPoLineId(line.id, expectedCount, (err, response) => {",
 					"                pm.test(\"Search for item records by PO Line id=\" + line.id, function() {",
 					"                    if (response.code !== 200) {",
@@ -14519,12 +14557,107 @@
 					"                    resolve(response.json().items);",
 					"",
 					"                    // Test expected items count as the last step to make sure delete requests are sent",
+					"                    // in case of checkin we do not know the item count",
+					"                  if(!line.checkinItems === true){",
 					"                    let foundItems = response.json().totalRecords;",
 					"                    pm.expect(foundItems, \"Expected items count does not match to found\").to.equal(expectedCount);",
+					"                    }",
 					"                });",
 					"            });",
 					"        });",
 					"    };",
+					"     /**",
+					"      * check-in methods",
+					"     */",
+					"     utils.postRequest = function (path, postBody, handler) {",
+					"        pm.sendRequest({",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: 'POST',",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\"),",
+					"                \"Content-type\": \"application/json\"",
+					"            },",
+					"            body: {",
+					"                mode: 'raw',",
+					"                raw: JSON.stringify(postBody)",
+					"            }",
+					"        }, handler);",
+					"    }",
+					"    ",
+					"    /**",
+					"     *This method creates a piece and also calls the prepares the check-in body.",
+					"     * If itemId is not provided the check-in flow just updates the piece record",
+					"     */",
+					"    utils.createPieceAndCheckInBody = function (compPoLine, itemId) {",
+					"        let pieceTemplate = globals.testData.piece.bodyTemplate;",
+					"        pieceTemplate.locationId = compPoLine.locations[0].locationId;",
+					"        pieceTemplate.poLineId = compPoLine.id;",
+					"        if(compPoLine.orderFormat == \"Electronic Resource\"){",
+					"            pieceTemplate.format = \"Electronic\";",
+					"        }else{",
+					"            pieceTemplate.format = \"Physical\";",
+					"        }",
+					"        if (typeof itemId === \"undefined\") {",
+					"            delete pieceTemplate.itemId;",
+					"        } else {",
+					"            pieceTemplate.itemId = itemId;",
+					"        }",
+					"        pm.variables.set(\"checkinPoLineId\", compPoLine.id);",
+					"        utils.postRequest(\"/orders/pieces\", pieceTemplate, (err, res) => {",
+					"            pm.test(\"creating piece for check-in \", function(){",
+					"                    pm.expect(res).to.have.property('code', 201);",
+					"                });",
+					"            utils.prepareCheckinBody(compPoLine, res.json().id);",
+					"        });",
+					"    }",
+					"    ",
+					"    /**",
+					"     * This method is used for both checking in a piece and also reverting it,",
+					"     * If the checkinstatus is not provided by default it is set to check-in item",
+					"     * ",
+					"     */",
+					"    utils.prepareCheckinBody = function (compPoLine, pieceId, checkinStatus) {",
+					"        let checkinRq = globals.testData.checkin.bodyTemplate;",
+					"        let toBeCheckedInTemplate = checkinRq.toBeCheckedIn.pop();",
+					"        let checkinPiecesTemplate = toBeCheckedInTemplate.checkInPieces.pop();",
+					"        toBeCheckedInTemplate.poLineId = compPoLine.id;",
+					"        toBeCheckedInTemplate.checkedIn = 1;",
+					"        checkinPiecesTemplate.id = pieceId;",
+					"        checkinPiecesTemplate.locationId = compPoLine.locations[0].locationId;",
+					"         if (typeof checkinStatus === \"undefined\") {",
+					"            checkinPiecesTemplate.itemStatus = \"In Process\";",
+					"         }else{",
+					"            checkinPiecesTemplate.itemStatus = checkinStatus;",
+					"         }",
+					"        toBeCheckedInTemplate.checkInPieces.push(checkinPiecesTemplate);",
+					"        checkinRq.toBeCheckedIn.push(toBeCheckedInTemplate);",
+					"        console.log(JSON.stringify(checkinRq));",
+					"        pm.variables.set(\"checkinBody\", JSON.stringify(checkinRq));",
+					"    }",
+					"    ",
+					"    /**",
+					"     * Get the holding where the item needs to be created , create an item",
+					"     * and then use the item id to create a piece",
+					"     * ",
+					"     */",
+					"    utils.prepareCheckinBodyWithItems = function (compPoLine) {",
+					"        utils.sendGetRequest(\"/holdings-storage/holdings?limit=1&query=instanceId==\" + compPoLine.instanceId + \" and permanentLocationId==\" + compPoLine.locations[0].locationId, (err, res) => {",
+					"            utils.createItem(compPoLine.id, res.json().holdingsRecords[0].id, (err, res) => {",
+					"                pm.test(\"creating item for check-in\", function(){",
+					"                    pm.expect(res).to.have.property('code', 201);",
+					"                });",
+					"                utils.createPieceAndCheckInBody(compPoLine, res.json().id);",
+					"            });",
+					"        });",
+					"    }",
+					"    ",
+					"    utils.createItem = function (poLineId, holdingsRecordId, handler) {",
+					"        let itemTemplate = globals.testData.item.bodyTemplate;",
+					"        itemTemplate.holdingsRecordId = holdingsRecordId;",
+					"        itemTemplate.purchaseOrderLineIdentifier = poLineId;",
+					"        utils.postRequest(\"/item-storage/items\", itemTemplate, handler);",
+					"    }",
 					"",
 					"    /**",
 					"     * Deletes Item records from Inventory. The function returns Promise which holds holdings ids once completed",
@@ -14539,19 +14672,20 @@
 					"                        pm.test(\"No item(s) expected to exist for PO line with id=\" + line.id, () => {",
 					"                            pm.expect(items.length).to.eql(0);",
 					"                        });",
-					"                        if (items.length === 0) {",
+					"                    }",
+					"                    ",
+					"                    //for checkin there can be a case where the items are not created but holdings are created",
+					"                    if (items.length === 0) {",
 					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
 					"                                let body = res.json();",
-					"                                // if (utils.isHoldingsUpdateRequired(line)) {",
 					"                                body.holdingsRecords.forEach(hld => {",
 					"                                    holdingsIds.push(hld.id);",
 					"                                });",
-					"                                //   }",
 					"                                resolve(holdingsIds);",
 					"                            });",
-					"                        }",
-					"                        return;",
+					"                            return;",
 					"                    }",
+					"                    ",
 					"",
 					"                    let promises = [];",
 					"                    items.forEach(item => {",
@@ -14561,12 +14695,27 @@
 					"                        }",
 					"                        promises.push(utils.processDeleteRequest(\"/item-storage/items/\" + item.id));",
 					"                    });",
+					"                    ",
+					"                    //to cover a scenario where items do not exist for a holding but it is created while check-in order",
+					"                    promises.push(",
+					"                        new Promise((resolve) => {",
+					"                            utils.sendGetRequest(\"/holdings-storage/holdings?limit=100&query=instanceId==\" + line.instanceId, (err, res) => {",
+					"                                let body = res.json();",
+					"                                body.holdingsRecords.forEach(hld => {",
+					"                                    if (!holdingsIds.includes(hld.id)) {",
+					"                                        holdingsIds.push(hld.id);",
+					"                                    }",
+					"                                });",
+					"                                resolve(res.code);",
+					"                            });",
+					"                        }));",
 					"",
 					"                    // Wait for items to be deleted and then return holdings ids as a result of the promise defined in the top",
 					"                    Promise.all(promises)",
 					"                    // The promisses will be always resolved so not handling reject case",
 					"                        .then(itemDelResults => {",
 					"                            // Returning the holding ids regardless of the result of the item deletion jut to try to delete holdings in any case",
+					"                            ",
 					"                            resolve(holdingsIds);",
 					"",
 					"                            let deletedQty = itemDelResults.filter(code => code === 204).length;",
@@ -14839,29 +14988,14 @@
 					"     * Clean up variables",
 					"     */",
 					"    utils.unsetTestVariables = function() {",
+					"",
+					"        // Unset schema variables",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
+					"            ",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
-					"        pm.globals.unset(\"schema_composite_purchase_order_content\");",
-					"        pm.globals.unset(\"schema_alert_content\");",
-					"        pm.globals.unset(\"schema_composite_po_line_content\");",
-					"        pm.globals.unset(\"schema_cost_content\");",
-					"        pm.globals.unset(\"schema_contributor_content\");",
-					"        pm.globals.unset(\"schema_claim_content\");",
-					"        pm.globals.unset(\"schema_details_content\");",
-					"        pm.globals.unset(\"schema_eresource_content\");",
-					"        pm.globals.unset(\"schema_fundDistribution_content\");",
-					"        pm.globals.unset(\"schema_license_content\");",
-					"        pm.globals.unset(\"schema_location_content\");",
-					"        pm.globals.unset(\"schema_physical_content\");",
-					"        pm.globals.unset(\"schema_renewal_content\");",
-					"        pm.globals.unset(\"schema_reporting_code_content\");",
-					"        pm.globals.unset(\"schema_source_content\");",
-					"        pm.globals.unset(\"schema_vendorDetail_content\");",
-					"        pm.globals.unset(\"schema_metadata_content\");",
-					"        pm.globals.unset(\"schema_poNumber_content\");",
-					"        pm.globals.unset(\"schema_orderFormat_content\");",
-					"        pm.globals.unset(\"schema_receiptStatus_content\");",
-					"        pm.globals.unset(\"schema_productIdType_content\");",
 					"        pm.globals.unset(\"emptyOrderId\");",
 					"        pm.globals.unset(\"po_listed_print_monograph\");",
 					"        pm.globals.unset(\"completePolineIds\");",
@@ -14910,29 +15044,21 @@
 					"     */",
 					"    utils._addSchemas = function() {",
 					"        //Create and add schemas for validation",
-					"        //https://github.com/folio-org/acq-models/blob/master/composite_purchase_order.json",
-					"        //https://github.com/folio-org/acq-models/blob/master/composite_po_line.json",
-					"        tv4.addSchema(\"composite_po_line.json\", JSON.parse(globals.schema_composite_po_line_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/alert.json\", JSON.parse(globals.schema_alert_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/claim.json\", JSON.parse(globals.schema_claim_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/cost.json\", JSON.parse(globals.schema_cost_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/contributor.json\", JSON.parse(globals.schema_contributor_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/details.json\", JSON.parse(globals.schema_details_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/eresource.json\", JSON.parse(globals.schema_eresource_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/fund_distribution.json\", JSON.parse(globals.schema_fundDistribution_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/license.json\", JSON.parse(globals.schema_license_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/location.json\", JSON.parse(globals.schema_location_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/physical.json\", JSON.parse(globals.schema_physical_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/renewal.json\", JSON.parse(globals.schema_renewal_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/reporting_code.json\", JSON.parse(globals.schema_reporting_code_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/source.json\", JSON.parse(globals.schema_source_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/vendor_detail.json\", JSON.parse(globals.schema_vendorDetail_content));",
-					"        tv4.addSchema(\"raml-util/schemas/metadata.schema\", JSON.parse(globals.schema_metadata_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/order_format.json\", JSON.parse(globals.schema_orderFormat_content));",
-					"        tv4.addSchema(\"mod-orders-storage/schemas/receipt_status.json\", JSON.parse(globals.schema_receiptStatus_content));",
-					"        tv4.addSchema(\"common/schemas/product_id_type.json\", JSON.parse(globals.schema_productIdType_content));",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value))); ",
 					"    };",
 					"",
+					"    /**",
+					"     * Internal function to load schema defenitions to tv4",
+					"     */",
+					"    utils._addSchemas = function() {",
+					"        //Create and add schemas for validation",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value))); ",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Internal function to iterate sub-objects in array and delete ids",
 					"     */",
@@ -14967,163 +15093,43 @@
 	],
 	"variable": [
 		{
-			"id": "3573e6fb-0948-43c3-bd6a-01d7577421f4",
+			"id": "0b9cda48-47ad-4091-9364-2bfe524b8359",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "7958a9af-3b13-4a03-99ce-afd2cabd58bc",
-			"key": "schema_loc",
-			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
-			"type": "string"
-		},
-		{
-			"id": "3a2d1381-e8f2-4a7c-aae8-2c0e4c1987fd",
-			"key": "schema_composite_purchase_order",
-			"value": "composite_purchase_order.json",
-			"type": "string"
-		},
-		{
-			"id": "c1771ded-244a-4538-9c38-743a191a31cc",
-			"key": "schema_alert",
-			"value": "alert.json",
-			"type": "string"
-		},
-		{
-			"id": "0c08282f-4845-4163-b626-3f7c4cf78342",
-			"key": "schema_claim",
-			"value": "claim.json",
-			"type": "string"
-		},
-		{
-			"id": "d8c22c9a-fd01-44de-ac29-ca026cf5c551",
-			"key": "schema_composite_po_line",
-			"value": "composite_po_line.json",
-			"type": "string"
-		},
-		{
-			"id": "713caa13-11ee-4b50-8f2e-1668876b66f6",
-			"key": "schema_cost",
-			"value": "cost.json",
-			"type": "string"
-		},
-		{
-			"id": "9f63b425-d6b0-4067-a1e6-72668868f9e1",
-			"key": "schema_details",
-			"value": "details.json",
-			"type": "string"
-		},
-		{
-			"id": "15c5fe03-5c76-434c-87f0-28f0087b5758",
-			"key": "schema_eresource",
-			"value": "eresource.json",
-			"type": "string"
-		},
-		{
-			"id": "86bc8fa4-7a5a-4390-a044-600b02f33a5d",
-			"key": "schema_fundDistribution",
-			"value": "fund_distribution.json",
-			"type": "string"
-		},
-		{
-			"id": "1488c2f3-4c07-4295-bd3b-d5aba2c9b6d4",
-			"key": "schema_location",
-			"value": "location.json",
-			"type": "string"
-		},
-		{
-			"id": "d8a99dd7-b79f-4c3b-9884-575b807890ae",
-			"key": "schema_physical",
-			"value": "physical.json",
-			"type": "string"
-		},
-		{
-			"id": "5b799621-ddcf-44b4-b950-d8ebf63a52f2",
-			"key": "schema_renewal",
-			"value": "renewal.json",
-			"type": "string"
-		},
-		{
-			"id": "b04d48de-94e7-420c-a379-948eacb3fe8a",
-			"key": "schema_reporting_code",
-			"value": "reporting_code.json",
-			"type": "string"
-		},
-		{
-			"id": "b2206055-48f7-40e3-9ff8-8dfe9b8e063b",
-			"key": "schema_source",
-			"value": "source.json",
-			"type": "string"
-		},
-		{
-			"id": "5224357c-e3d8-4423-85cb-1eee5461a7ef",
-			"key": "schema_vendorDetail",
-			"value": "vendor_detail.json",
-			"type": "string"
-		},
-		{
-			"id": "94aae42d-bc49-4b21-b005-fe64248b9e42",
-			"key": "schema_orderFormat",
-			"value": "order_format.json",
-			"type": "string"
-		},
-		{
-			"id": "0756fadf-70c6-4d4a-919c-18e9f1dd23a4",
-			"key": "schema_receiptStatus",
-			"value": "receipt_status.json",
-			"type": "string"
-		},
-		{
-			"id": "5e7c5ba1-f8ba-4397-a7c3-006b16d78fb8",
+			"id": "fc35cb36-2f74-405a-a388-9346605704b7",
 			"key": "storage_module",
 			"value": "mod-orders-storage",
 			"type": "string"
 		},
 		{
-			"id": "301fea28-aebc-4308-a1f3-8c3d8a903bfe",
+			"id": "1a8f6619-69c6-4021-b6ff-fd7b5c6d7599",
 			"key": "business_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "dcb5cb4b-f683-4151-b458-86ade9bd7cd6",
-			"key": "schema_metadata",
-			"value": "metadata.schema",
-			"type": "string"
-		},
-		{
-			"id": "7e2ca12b-6e4d-4934-98aa-f714b858dd46",
-			"key": "schema_poNumber",
-			"value": "po_number.json",
-			"type": "string"
-		},
-		{
-			"id": "90068f31-c201-443f-a229-869ab5b8e083",
+			"id": "64973f63-79b2-4dca-be29-71ec46a1d241",
 			"key": "raml_loc",
 			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
 			"type": "string"
 		},
 		{
-			"id": "ce7309f6-aac5-4a37-8452-bde81da022f1",
+			"id": "c9eeba3e-9d77-4af3-854c-fbc2d73eb31a",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "8d40040d-c8d4-4ec1-ad55-7c8661069370",
+			"id": "c3cd4a6f-c978-49fc-86b2-98402a4769be",
 			"key": "orders_module",
 			"value": "mod-orders",
 			"type": "string"
 		},
 		{
-			"id": "33142d57-2ac3-460b-a153-8cbf81fb0922",
-			"key": "schema_productIdType",
-			"value": "product_id_type.json",
-			"type": "string"
-		},
-		{
-			"id": "5ad91fec-2fd0-4368-9eaf-99658dcc880a",
+			"id": "599bf47a-7e2b-4e5f-afb3-a086b6c8d0fb",
 			"key": "common_folder",
 			"value": "common",
 			"type": "string"
