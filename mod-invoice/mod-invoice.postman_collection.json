@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "becbd52c-462f-4ce0-b5b0-aa9628652469",
+		"_postman_id": "7e77b9e0-e00e-4f28-a00f-5a738c7230b5",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -348,29 +348,92 @@
 					"name": "Load schemas for validation",
 					"item": [
 						{
-							"name": "invoice.json",
+							"name": "Get schemas and setup env variables",
 							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f930ca9d-df31-4572-90c8-63f5243ae30e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"pm.test(\"Module has schemas to load\", function () {\r",
+											"    pm.response.to.be.ok;\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"\r",
+											"    let schemas = pm.response.json();\r",
+											"    pm.expect(schemas).to.not.be.empty;\r",
+											"    traverse(pm.response.json());\r",
+											"});\r",
+											"\r",
+											"function traverse(schemas) {\r",
+											"    const timerId = setTimeout(() => { }, 60000);\r",
+											"\r",
+											"    var promises = schemas.map(path => fetchSchema(path));\r",
+											"    Promise.all(promises)\r",
+											"        .then(result => clearTimeout(timerId))\r",
+											"        .catch((err, req) => {\r",
+											"            clearTimeout(timerId);\r",
+											"            console.log(err);\r",
+											"            console.log(req);\r",
+											"        });\r",
+											"}\r",
+											"\r",
+											"function fetchSchema(path) {\r",
+											"    let getRequest = buildGetSchemaRequest(path);\r",
+											"    return new Promise((resolve, reject) => {\r",
+											"        pm.sendRequest(getRequest, (err, response) => {\r",
+											"            pm.test(\"Schema content loaded: \" + path, () => pm.expect(err).to.equal(null));\r",
+											"\r",
+											"            if (!err) {\r",
+											"                let content = replaceResponseRefWithName(response.text());\r",
+											"                let name = extractName(path);\r",
+											"                setEnvironmentVariable(name, content);\r",
+											"                resolve();\r",
+											"            } else {\r",
+											"                reject(err, getRequest);\r",
+											"            }\r",
+											"        });\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"function setEnvironmentVariable(name, data) {\r",
+											"    pm.environment.set(utils.schemaPrefix + name, data);\r",
+											"}\r",
+											"\r",
+											"function extractName(url) {\r",
+											"    return url.substring(url.lastIndexOf(\"/\") + 1);\r",
+											"}\r",
+											"\r",
+											"function replaceResponseRefWithName(text) {\r",
+											"    return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*(\\.json|\\.schema))/g, \"\\\"$ref\\\":\\\"\" + utils.schemaPrefix);\r",
+											"}\r",
+											"\r",
+											"function buildGetSchemaRequest(path) {\r",
+											"    let getRequest = utils.buildPmRequest(\"/_/jsonSchemas?path=\" + path, \"GET\");\r",
+											"    getRequest.header['X-Okapi-Module-Id'] = pm.variables.get(\"modInvoiceId\");\r",
+											"    return getRequest;\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
 								{
 									"listen": "prerequest",
 									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
+										"id": "789cccc8-2479-48c7-ac26-5e35328874bd",
 										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_invoice\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_invoice_content\", responseBody);"
+											"let utils = eval(globals.loadUtils);\r",
+											"const moduleName = 'mod-invoice';\r",
+											"\r",
+											"utils.sendGetRequest('/_/proxy/tenants/' + pm.variables.get(\"xokapitenant\") + '/interfaces/_jsonSchemas', (err, response) => {\r",
+											"    pm.test(\"jsonSchemas provided by \" + moduleName, function () {\r",
+											"        pm.expect(err).to.equal(null);\r",
+											"        pm.expect(response.text()).to.include(moduleName);\r",
+											"        let moduleId = response.json().map(element => element.id).filter(modId => modId.includes(moduleName))[0];\r",
+											"    \tpm.variables.set('modInvoiceId', moduleId);\r",
+											"    });\r",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -378,202 +441,32 @@
 							],
 							"request": {
 								"method": "GET",
-								"header": [],
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"type": "text",
+										"value": "{{modInvoiceId}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_invoice}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+									"protocol": "{{protocol}}",
 									"host": [
-										"{{schema_loc}}"
+										"{{url}}"
 									],
+									"port": "{{okapiport}}",
 									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_invoice}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "invoice_line.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_invoice_line\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_invoice_line_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_invoice_line}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_invoice_line}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "adjustment.json",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_adjustment\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_adjustment_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{storage_module}}/schemas/{{schema_adjustment}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{storage_module}}",
-										"schemas",
-										"{{schema_adjustment}}"
-									]
-								},
-								"description": "GET schema validation"
-							},
-							"response": []
-						},
-						{
-							"name": "metadata.shcema",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_metadata\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_metadata_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{raml_loc}}/schemas/{{schema_metadata}}",
-									"host": [
-										"{{raml_loc}}"
-									],
-									"path": [
-										"schemas",
-										"{{schema_metadata}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "product_id_type.json",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "8a9792a3-7f93-41cd-8b8f-e00b68d10c0e",
-										"exec": [
-											"pm.test(pm.variables.get(\"schema_productIdType\") + \" GET OK\", function () {",
-											"    pm.response.to.be.ok;",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											"pm.globals.set(\"schema_productIdType_content\", responseBody);"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{schema_loc}}/{{common_folder}}/schemas/{{schema_productIdType}}",
-									"host": [
-										"{{schema_loc}}"
-									],
-									"path": [
-										"{{common_folder}}",
-										"schemas",
-										"{{schema_productIdType}}"
+										"_",
+										"jsonSchemas"
 									]
 								}
 							},
@@ -608,7 +501,207 @@
 		},
 		{
 			"name": "Positive Tests",
-			"item": [],
+			"item": [
+				{
+					"name": "Create invoice",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"let invoice = {};",
+									"",
+									"pm.test(\"Invoice is created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"    invoice = pm.response.json();",
+									"});",
+									"",
+									"pm.test(\"Invoice content is valid\", function() {",
+									"    pm.expect(invoice.id).to.exist;",
+									"    pm.environment.set(\"invoiceId\", invoice.id); ",
+									"",
+									"    utils.validateInvoice(invoice);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/invoice.json\", function (err, res) {",
+									"    let invoice = res.json();",
+									"    delete invoice.id;",
+									"    pm.variables.set(\"invoiceContent\", JSON.stringify(invoice));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{invoiceContent}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"invoice-storage",
+								"invoices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get created  invoice",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"let invoice = {};",
+									"",
+									"pm.test(\"Invoice found\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    invoice = pm.response.json();",
+									"});",
+									"",
+									"pm.test(\"Invoice content is valid\", function() {",
+									"    pm.expect(invoice.id).to.eql(pm.environment.get(\"invoiceId\"));",
+									"    utils.validateInvoice(invoice);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices/{{invoiceId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"invoice-storage",
+								"invoices",
+								"{{invoiceId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete  invoice",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"pm.test(\"Invoice is deleted\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices/{{invoiceId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"invoice-storage",
+								"invoices",
+								"{{invoiceId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
 			"event": [
 				{
 					"listen": "prerequest",
@@ -813,8 +906,10 @@
 					"",
 					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
 					"    let utils = {};",
+					"    ",
+					"    utils.schemaPrefix = \"invoices_schema_\";",
 					"",
-					"     utils.copyJsonObj = function(obj) {",
+					"    utils.copyJsonObj = function(obj) {",
 					"        return JSON.parse(JSON.stringify(obj));",
 					"    };",
 					"",
@@ -946,14 +1041,21 @@
 					"     * Clean up variables",
 					"     */",
 					"    utils.unsetTestVariables = function() {",
+					"        ",
+					"        // Unset schema variables",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
+					"            ",
+					"        pm.environment.unset(\"invoiceId\");",
+					"        pm.environment.unset(\"xokapitoken\");",
+					"        pm.environment.unset(\"mod-invoices-configs\");",
+					"        ",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
-					"        pm.globals.unset(\"schema_adjustment_content\");",
-					"        pm.globals.unset(\"schema_invoice_content\");",
-					"        pm.globals.unset(\"schema_invoice_line_content\");",
-					"        pm.globals.unset(\"schema_metadata_content\");",
-					"        pm.globals.unset(\"schema_productIdType_content\");",
+					"",
 					"    };",
+					"    ",
 					"",
 					"    /**",
 					"     * Internal function to validate object against specified schema",
@@ -966,17 +1068,36 @@
 					"        //make sure no schemas are missing",
 					"        pm.expect(result.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(result.missing));",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils.validateInvoice = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"invoice.json\")));",
+					"    };",
 					"",
 					"    /**",
 					"     * Internal function to load schema defenitions to tv4",
 					"     */",
 					"    utils._addSchemas = function() {",
 					"        //Create and add schemas for validation",
-					"        tv4.addSchema(\"mod-invoice-storage/schemas/adjustment.json\", JSON.parse(globals.schema_adjustment_content));",
-					"        tv4.addSchema(\"mod-invoice-storage/schemas/invoice.json\", JSON.parse(globals.schema_invoice_content));",
-					"        tv4.addSchema(\"mod-invoice-storage/schemas/invoice_line.json\", JSON.parse(globals.schema_invoice_line_content));",
-					"        tv4.addSchema(\"raml-util/schemas/metadata.schema\", JSON.parse(globals.schema_metadata_content));",
-					"        tv4.addSchema(\"common/schemas/product_id_type.json\", JSON.parse(globals.schema_productIdType_content));",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value))); ",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function(path, method) {",
+					"        return {",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"            }",
+					"        };",
 					"    };",
 					"",
 					"    /**",
@@ -1007,63 +1128,9 @@
 	],
 	"variable": [
 		{
-			"id": "dcbffaf1-746c-402b-854a-8b2672bc8bd1",
-			"key": "storage_module",
-			"value": "mod-invoice-storage",
-			"type": "string"
-		},
-		{
-			"id": "69d51dd4-0b61-4e6f-828a-9dc26a4fc46f",
-			"key": "mod-ordersResourcesURL",
-			"value": "https://raw.githubusercontent.com/folio-org/mod-invoices/master/src/test/resources",
-			"type": "string"
-		},
-		{
-			"id": "82ab5bcb-ab34-475c-8d83-ff4098a4c5c9",
-			"key": "schema_loc",
-			"value": "https://raw.githubusercontent.com/folio-org/acq-models/master",
-			"type": "string"
-		},
-		{
-			"id": "0a771d31-da8e-42db-b131-b9d17cb1441f",
-			"key": "schema_adjustment",
-			"value": "adjustment.json",
-			"type": "string"
-		},
-		{
-			"id": "ff6de0e7-7f42-4b9d-8e57-ed91f74ddd35",
-			"key": "schema_invoice",
-			"value": "invoice.json",
-			"type": "string"
-		},
-		{
-			"id": "fcef8a99-bccc-4798-9b31-e2c7685f17c2",
-			"key": "schema_invoice_line",
-			"value": "invoice_line.json",
-			"type": "string"
-		},
-		{
-			"id": "17a26542-1b71-435d-9fc0-e889de5967f4",
-			"key": "schema_metadata",
-			"value": "metadata.schema",
-			"type": "string"
-		},
-		{
-			"id": "40a73c3f-5472-4bc1-b639-e3a612a2dea4",
-			"key": "raml_loc",
-			"value": "https://raw.githubusercontent.com/folio-org/raml/raml1.0",
-			"type": "string"
-		},
-		{
-			"id": "39107cf8-e705-46c2-9eb8-7b4ff2b8bded",
-			"key": "common_folder",
-			"value": "common",
-			"type": "string"
-		},
-		{
-			"id": "54292c81-2eee-4d73-ae0c-c5e4ce713d37",
-			"key": "schema_productIdType",
-			"value": "product_id_type.json",
+			"id": "39f28e74-3fb1-4db2-990e-e5ae36566540",
+			"key": "resourcesUrl",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		}
 	]
