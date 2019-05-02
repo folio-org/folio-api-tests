@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "7e77b9e0-e00e-4f28-a00f-5a738c7230b5",
+		"_postman_id": "62915eea-4e04-4f1e-af23-fa543862306a",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -503,6 +503,87 @@
 			"name": "Positive Tests",
 			"item": [
 				{
+					"name": "Min content invoice",
+					"item": [
+						{
+							"name": "Create invoice with minimal content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let invoice = {};",
+											"",
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    invoice = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Invoice content is valid\", function() {",
+											"    pm.environment.set(\"minInvoiceId\", invoice.id);",
+											"    ",
+											"    utils.validateInvoiceWithMinimalContent(invoice);",
+											"    ",
+											"    utils.validateInvoice(invoice);",
+											"    ",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"",
+											"pm.variables.set(\"invoiceContent\", JSON.stringify(utils.buildInvoiceWithMinContent()));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Create invoice",
 					"event": [
 						{
@@ -520,6 +601,7 @@
 									"",
 									"pm.test(\"Invoice content is valid\", function() {",
 									"    pm.expect(invoice.id).to.exist;",
+									"    pm.expect(invoice.folioInvoiceNo).to.exist;",
 									"    pm.environment.set(\"invoiceId\", invoice.id); ",
 									"",
 									"    utils.validateInvoice(invoice);",
@@ -536,9 +618,12 @@
 								"exec": [
 									"let utils = eval(globals.loadUtils);",
 									"",
-									"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/invoice.json\", function (err, res) {",
+									"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoice.json\", function (err, res) {",
 									"    let invoice = res.json();",
+									"    ",
 									"    delete invoice.id;",
+									"    delete invoice.folioInvoiceNo;",
+									"    ",
 									"    pm.variables.set(\"invoiceContent\", JSON.stringify(invoice));",
 									"});"
 								],
@@ -563,14 +648,14 @@
 							"raw": "{{invoiceContent}}"
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
 							],
 							"port": "{{okapiport}}",
 							"path": [
-								"invoice-storage",
+								"invoice",
 								"invoices"
 							]
 						}
@@ -727,14 +812,156 @@
 		},
 		{
 			"name": "Negative Tests",
-			"item": []
+			"item": [
+				{
+					"name": "Create empty invoice with missing required fields",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Status code is 422\", function () {",
+									"    pm.response.to.have.status(422);",
+									"",
+									"    var jsonData = pm.response.json();",
+									"",
+									"    pm.test(\"Vendor and orderType is missing\", function () {",
+									"     ",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"currency\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"invoiceDate\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"paymentMethod\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"approvalDate\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"status\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"source\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"totalAmount\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"vendorInvoiceNo\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"voucherNumber\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"paymentId\").parameters[0].value).to.equal(\"null\");",
+									"        pm.expect(jsonData.errors.find((error) => error.parameters[0].key === \"vendorId\").parameters[0].value).to.equal(\"null\");",
+									"        ",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"invoice",
+								"invoices"
+							]
+						},
+						"description": "Create an invoice with empty body"
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Cleanup",
 			"item": [
 				{
 					"name": "Delete invoices for positive tests",
-					"item": [],
+					"item": [
+						{
+							"name": "Delete  invoice with minimal content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices/{{minInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoices",
+										"{{minInvoiceId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
 					"event": [
 						{
 							"listen": "prerequest",
@@ -1099,6 +1326,55 @@
 					"            }",
 					"        };",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Validates the invoice is empty except required fields, invoice id and folioInvoiceNo",
+					"     */",
+					"    utils.validateInvoiceWithMinimalContent = function(invoice) {",
+					"        pm.expect(invoice.id, \"Invoice id expected\").to.exist;",
+					"        pm.expect(invoice.currency, \"Invoice currency expected\").to.exist;",
+					"        pm.expect(invoice.invoiceDate, \"invoiceDate expected\").to.exist;",
+					"        pm.expect(invoice.paymentMethod, \"paymentMethod expected\").to.exist;",
+					"        pm.expect(invoice.approvalDate, \"approvalDate expected\").to.exist;",
+					"        pm.expect(invoice.status, \"status expected\").to.exist;",
+					"        pm.expect(invoice.folioInvoiceNo, \"folioInvoiceNo expected\").to.exist;",
+					"        pm.expect(invoice.source, \"source expected\").to.exist;",
+					"        pm.expect(invoice.totalAmount, \"totalAmount expected\").to.exist;",
+					"        pm.expect(invoice.vendorInvoiceNo, \"vendorInvoiceNo expected\").to.exist;",
+					"        pm.expect(invoice.voucherNumber, \"voucherNumber expected\").to.exist;",
+					"        pm.expect(invoice.paymentId, \"paymentId expected\").to.exist;",
+					"        pm.expect(invoice.vendorId, \"vendorId expected\").to.exist;",
+					"        pm.expect(invoice.approvedBy, \"approvedBy not expected\").to.not.exist;",
+					"        pm.expect(invoice.chkSubscriptionOverlap, \"chkSubscriptionOverlap should be empty\").to.not.exist;",
+					"        pm.expect(invoice.note, \"note not expected\").to.not.exist;",
+					"        pm.expect(invoice.owner, \"owner not expected\").to.not.exist;",
+					"        pm.expect(invoice.paymentDue, \"paymentDue not expected\").to.not.exist;",
+					"        pm.expect(invoice.paymentTerms, \"paymentTerms not expected\").to.not.exist;",
+					"        pm.expect(invoice.prorata, \"prorata is true\").to.be.true;",
+					"        pm.expect(invoice.disbursementNumber, \"disbursementNumber not expected\").to.not.exist;",
+					"        pm.expect(invoice.disbursementDate, \"disbursementDate not expected\").to.not.exist;",
+					"        pm.expect(invoice.poNumbers, \"poNumbers should be empty\").to.be.an('array').that.is.empty;",
+					"        pm.expect(invoice.manualPayment, \"manualPayment not exist\").to.not.exist;",
+					"    };",
+					"    ",
+					"     /**",
+					"     * Build invoice with minimal required fields.",
+					"     */",
+					"    utils.buildInvoiceWithMinContent = function() {",
+					"        return {",
+					"            \"approvalDate\": \"2018-07-29T00:00:00.000+0000\",",
+					"            \"currency\": \"USD\",",
+					"            \"invoiceDate\": \"2018-07-20T00:00:00.000+0000\",",
+					"            \"paymentMethod\": \"EFT\",",
+					"            \"status\": \"Open\",",
+					"            \"source\": \"024b6f41-c5c6-4280-858e-33fba452a334\",",
+					"            \"totalAmount\": 5,",
+					"            \"vendorInvoiceNo\": \"YK75851\",",
+					"            \"voucherNumber\": \"478\",",
+					"            \"paymentId\": \"a5065f0d-fb88-4d23-b0c1-57e754fba40e\",",
+					"            \"vendorId\": \"168f8a63-d612-406e-813f-c7527f241ac3\"",
+					"        };",
+					"    };",
 					"",
 					"    /**",
 					"     * Internal function to iterate sub-objects in array and delete ids",
@@ -1128,7 +1404,7 @@
 	],
 	"variable": [
 		{
-			"id": "39f28e74-3fb1-4db2-990e-e5ae36566540",
+			"id": "6d892cb1-4ddc-4efb-a716-2a4fea4e603d",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
