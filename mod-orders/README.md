@@ -19,6 +19,8 @@ Folder | Description
 `- Pending To Open order` | Verifies that order transition from `Pending` to `Open` status can be successful and expected records created in the Inventory.
 `- Open order` | Verifies that an order can be successfully created in `Open` status and expected records created in the Inventory.
 `- Receiving` | Verifies that resources can be successfully received for `Open` orders and item records updated in the Inventory.
+`- Close orders updating payment status of each PO Line` | Update PO Lines' payment statuses of `Open` orders so the system should close the order eventually (see [MODORDERS-218](https://issues.folio.org/browse/MODORDERS-218)).
+`- Check closed orders and re-open` | Contains sets of requests: <br> 1. Get orders and verify that their workflow status is `Closed`. If this is `true`, modify one of PO Line's payment status so the order becomes `Open` eventually.  <br> 2. Roll back one of received piece so the order becomes `Open` eventually. <br> 3. Verify that orders were successfully re-opened by operations described above. <br> <br> See [MODORDERS-218](https://issues.folio.org/browse/MODORDERS-218) for more details.
 `- PO Number` | Verifies PO Number generation/validation
 `- Get Orders` | Verifies that orders can be be retrieved by CQL query
 `Negative Tests` | Contains various requests and tests to verify expected negative cases e.g. validation of the request etc.
@@ -31,33 +33,14 @@ Folder | Description
 
 ### Collection variables
 
-Variable | Description  
- --- | --- 
-`mod-ordersResourcesURL` | Path to mod-orders test resources
-`schema_loc` | Path to acquisitions schemas
-`module` | Sub-Path to indicate where order storage schemas located
-`schema_composite_purchase_order` | File name of the composite purchase order schema
-`schema_adjustment` | File name of the adjustment schema
-`schema_alert` | File name of the alert schema
-`schema_claim` | File name of the claim schema
-`schema_composite_po_line` | File name of the composite purchase order line schema
-`schema_cost` | File name of the cost schema
-`schema_details` | File name of the details schema
-`schema_eresource` | File name of the eresource schema
-`schema_fund_distribution` | File name of the fund distribution schema
-`schema_location` | File name of the location schema
-`schema_physical` | File name of the physical schema
-`schema_renewal` | File name of the renewal schema
-`schema_reporting_code` | File name of the reporting code schema
-`schema_source` | File name of the source schema
-`schema_vendor_detail` | File name of the vendor detail schema
-`schema_metadata` | File name of the metadata schema
-`raml_loc` | Path to RMB schemas
-`poLines-limit` | Purchase Order Lines Limit to be used for configuration update
+Variable | Initial Value | Description  
+ --- | --- | --- 
+`mod-ordersResourcesURL` | https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources | Path to mod-orders test resources
+`poLines-limit` | 10 | Purchase Order Lines Limit to be used for configuration update
 
 ### Collection utility functions
 
-The functions are defined in the Pre-request Scripts section of the collection. The main idea is to create reusable functions to not duplicate data in the tests.
+The functions and request body templates are defined in the `Pre-request Scripts` section of the collection. The main idea is to create reusable functions to not duplicate the same logic in the tests.
 
 ### Issue tracker
 
