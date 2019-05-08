@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "71aef567-6b48-4da3-9e13-8f0a91e2c26d",
+		"_postman_id": "db21fa6d-a698-4ef8-ba8b-5f0732cc6d69",
 		"name": "mod-organizations-storage",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -960,6 +960,325 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Addresses",
+					"item": [
+						{
+							"name": "Create address",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "3fa8d3b7-ec18-4754-b1cb-0fc0c5b5f2ae",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"addressContent\", JSON.stringify(utils.buildAddress()));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "007fd711-06df-44cd-a795-5c0d3d84dee7",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = {};",
+											"",
+											"pm.test(\"Address is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    address = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Address content is valid\", function() {",
+											"    pm.expect(address.id).to.exist;",
+											"    pm.environment.set(\"addressId\", address.id); ",
+											"    ",
+											"    utils.validateAddress(address);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update address with new country",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "19a7b1db-eadf-4a30-bbd6-751a4fc0919e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = JSON.stringify(utils.buildAddress());",
+											"let add = JSON.parse(address);",
+											"let country = \"UUU\" + add.country;",
+											"",
+											"add.country = country;",
+											"pm.variables.set(\"updatedCountry\", country);",
+											"pm.variables.set(\"updatedAddress\", JSON.stringify(add));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5bd9e05e-9e12-4355-83ff-a62fa8bece86",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/organizations-storage/addresses/\" + environment.addressId, (err, res) => {",
+											"        pm.test(\"Verify address updated with new country\", () => pm.expect(res.json().country).to.equal(pm.variables.get(\"updatedCountry\")));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedAddress}}\n"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "3db5a123-9284-4460-a408-9a7d07ba7c6d",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = {};",
+											"",
+											"pm.test(\"Address found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    address = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Addrress content is valid\", function() {",
+											"    pm.expect(address.id).to.eql(pm.environment.get(\"addressId\"));",
+											"    utils.validateAddress(address);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created addresses",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "33bf55b2-5154-40fb-9e00-b687951d6657",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let addresses = [];",
+											"",
+											"pm.test(\"Addresses found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    addresses = pm.response.json().addresses;",
+											"});",
+											"",
+											"pm.test(\"Addresses content is valid\", function() {",
+											"    pm.expect(addresses).to.have.lengthOf(6);",
+											"    addresses.forEach(address => utils.validateAddress(address));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6f182236-2c8b-4dec-927d-b454af176923",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Address is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -987,7 +1306,501 @@
 		},
 		{
 			"name": "Negative Tests",
-			"item": []
+			"item": [
+				{
+					"name": "Addresses",
+					"item": [
+						{
+							"name": "Get address - bad ID 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0d97ca96-4b98-49d2-aa71-5c524905cc80",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address - valid token, invalid tenant - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "de7e87e3-83dd-4c97-9ea4-8b5d310cc605",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"No such Tenant fs12345678\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "fs12345678",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address - bad token format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "7383726d-6b23-483b-9c6b-e6ee2af74213",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "bad-token",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address - invalid token - 401",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bdef6c41-4588-48db-89cc-4339b5c10ac0",
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"Invalid token\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "eyJhbGciOiJIUzUxMiJ999999.eyJzdWIiOiJhZG1pbiIsInVzZXJfaWQiOiJlZjY3NmRiOS1kMjMxLTQ3OWEtYWE5MS1mNjVlYjRiMTc4NzIiLCJ0ZW5hbnQiOiJmczAwMDAwMDAwIn2.KC0RbgafcMmR5Mc3-I7a6SQPKeDSr0SkJlLMcqQz3nwI0lwPTlxw0wJgidxDq-qjCR0wurFRn5ugd9_SVadSxg",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create address with invalid ID",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "18b13f93-34ab-4597-84f0-030e1d5a6f02",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = JSON.stringify(utils.buildAddress());",
+											"let add = JSON.parse(address);",
+											"add.id = \"123-345\"",
+											"",
+											"pm.variables.set(\"addressContent\", JSON.stringify(add));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "cab16de5-7348-40ce-9b12-f34c1f81c199",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update address - bad ID 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5e653a4c-2d7a-4f58-a6f8-0f63c2e6bc7e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.variables.set(\"addressBody\", JSON.stringify(utils.buildAddress()));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "24056b69-f204-4c32-985a-573f81411624",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address - bad ID 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "be8660fd-3caf-4230-afa7-f48f5b6c07b2",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "58b49b0d-631e-4905-a714-14609b278a35",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete already deleted address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "a55e3253-5f71-4674-97ff-7142376e2aea",
+										"exec": [
+											"pm.test(\"Address is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address by random ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "34fcdba4-e7c4-4991-8bbe-8b9b9bd4f627",
+										"exec": [
+											"pm.test(\"Address is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
 		},
 		{
 			"name": "Cleanup",
@@ -1463,7 +2276,7 @@
 					"    },",
 					"    permissions: {",
 					"        \"userId\": \"00000000-1111-5555-9999-999999999999\",",
-					"        \"permissions\": [\"organizations-storage.organizations.all\"]",
+					"        \"permissions\": [\"organizations-storage.organizations.all\", \"organizations-storage.addresses.all\"]",
 					"    }",
 					"});",
 					"",
@@ -1547,6 +2360,13 @@
 					"    utils.validateOrganization = function(jsonData) {",
 					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"organization.json\")));",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils.validateAddress = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"address.json\")));",
+					"    };",
 					"",
 					"    /**",
 					"     * Internal function to validate object against specified schema",
@@ -1558,7 +2378,21 @@
 					"        //make sure no schemas are missing",
 					"        pm.expect(result.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(result.missing));",
 					"    };",
-					"",
+					"    ",
+					"    /**",
+					"     * Internal function to build address",
+					"     */",
+					"    utils.buildAddress = function() {",
+					"        return {",
+					"            \"addressLine1\": \"10 Estes Street\",",
+					"            \"addressLine2\": \"\",",
+					"            \"city\": \"Ipswich\",",
+					"            \"stateRegion\": \"MA\",",
+					"            \"zipCode\": \"01938\",",
+					"            \"country\": \"USA\"",
+					"        };",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Internal function to load schema defenitions to tv4",
 					"     */",
@@ -1588,9 +2422,15 @@
 	],
 	"variable": [
 		{
-			"id": "4e1d53da-a0a8-4edc-b858-44dd9e60b4f9",
+			"id": "ce432458-2067-48a4-b247-33fc48acaef8",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-organizations-storage/master/src/main/resources/data",
+			"type": "string"
+		},
+		{
+			"id": "96de3c41-af34-48d8-bcf7-14ffb357a711",
+			"key": "testResourcesUrl",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-organizations-storage/master/src/test/resources/",
 			"type": "string"
 		}
 	]
