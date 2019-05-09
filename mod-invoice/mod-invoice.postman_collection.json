@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "56764627-081f-46c0-b4a5-9b0512eb0efd",
+		"_postman_id": "152bb2bf-525a-4480-9c4f-575779b30652",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -811,7 +811,7 @@
 					"name": "Invoices",
 					"item": [
 						{
-							"name": "Min content invoice",
+							"name": "Min content invoice and invoice-line",
 							"item": [
 								{
 									"name": "Create invoice with minimal content",
@@ -953,6 +953,154 @@
 												"{{minInvoiceId}}"
 											]
 										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create invoice-line",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice line has required and optional fields\", function(){",
+													"    pm.expect(invoiceLine.id).to.exist;",
+													"    pm.expect(invoiceLine.invoiceId).to.equal(pm.environment.get(\"minInvoiceId\"));",
+													"    utils.validateInvoiceLineWithMinimalContent(invoiceLine);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"minInvoiceId\"));",
+													"",
+													"pm.globals.set(\"minContentInvoiceLine\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{minContentInvoiceLine}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get added line and validate content",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"invoiceLineId\", utils.getLastInvoiceLineId());"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var invoiceLine = {};",
+													" ",
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice Line has minimal content\", function () {",
+													"    pm.expect(invoiceLine.id).to.exist;",
+													"    utils.validateInvoiceLineWithMinimalContent(invoiceLine);",
+													"});",
+													"",
+													"pm.test(\"Validate schema for invoice_line.json\", function () {",
+													"    utils.validateInvoiceline(invoiceLine);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLineId}}"
+											]
+										},
+										"description": "GET /orders/order-lines/id requests that return 200"
 									},
 									"response": []
 								}
@@ -1780,6 +1928,149 @@
 							"response": []
 						},
 						{
+							"name": "Create empty invoice-lines with missing required fields",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"    console.log(jsonData.errors);",
+											"    pm.test(\"Required properties are missing\", function () {",
+											"     ",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"description\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"invoiceLineNumber\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"invoiceLineStatus\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"price\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"quantity\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"doNotReleaseEncumbrance\").parameters[0].value).to.equal(\"null\");",
+											"        pm.expect(jsonData.errors.find((errors) => errors.parameters[0].key === \"invoiceId\").parameters[0].value).to.equal(\"null\");",
+											"        ",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines"
+									]
+								},
+								"description": "Create an invoice with empty body"
+							},
+							"response": []
+						},
+						{
+							"name": "Get Invoice Line - random line id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /invoice/invoice-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
 							"name": "Delete invoice by id with bad format",
 							"event": [
 								{
@@ -1827,6 +2118,60 @@
 									"path": [
 										"invoice",
 										"invoices",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete invoice-line by id with bad format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
 										"bad-id-format"
 									]
 								}
@@ -2616,6 +2961,76 @@
 					"    };",
 					"",
 					"    /**",
+					"     * Adds Invoice line id to `completeInvoicelineIds` array and stores as global variable.",
+					"     */",
+					"     utils.rememberInvoiceLineId = function(invoiceLine) {",
+					"        if (invoiceLine && invoiceLine.id) {",
+					"            let completeInvoicelineIds = pm.globals.get(\"completeInvoicelineIds\") ? JSON.parse(pm.globals.get(\"completeInvoicelineIds\")) : [];",
+					"            completeInvoicelineIds.push(invoiceLine.id);",
+					"            pm.globals.set(\"completeInvoicelineIds\", JSON.stringify(completeInvoicelineIds));",
+					"        }",
+					"    };",
+					"",
+					"    /**",
+					"     * Gets last id from `completeInvoicelineIds` array (global variable).",
+					"     * In case the `withRemoval==true`, the last id is removed from array.",
+					"     * In case the array is empty, `null` is returned",
+					"     */",
+					"    utils.getLastInvoiceLineId = function(withRemoval) {",
+					"        let completeInvoicelineIds = globals.completeInvoicelineIds ? JSON.parse(globals.completeInvoicelineIds) : [];",
+					"        if (completeInvoicelineIds.length > 0) {",
+					"            let lineId = completeInvoicelineIds.pop();",
+					"            if (withRemoval) {",
+					"                pm.globals.set(\"completePolineIds\", JSON.stringify(completeInvoicelineIds));",
+					"            }",
+					"            return lineId;",
+					"        }",
+					"        return null;",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Validates the Invoice line is empty except line and order ids",
+					"    */",
+					"     utils.validateInvoiceLineWithMinimalContent = function(invoiceLine) {",
+					"        pm.expect(invoiceLine.id, \"Invoice line id expected\").to.exist;",
+					"        pm.expect(invoiceLine.description, \"Invoice Line description expected\").to.exist;",
+					"        pm.expect(invoiceLine.poLineIds, \"poLineIds empty array expected\").to.be.an('array').that.is.empty;",
+					"        pm.expect(invoiceLine.invoiceLineNumber, \"invoiceLineNumber expected\").to.exist;",
+					"        pm.expect(invoiceLine.invoiceLineStatus, \"invoiceLineStatus expected\").to.exist;",
+					"        pm.expect(invoiceLine.price, \"price expected\").to.exist;",
+					"        pm.expect(invoiceLine.quantity, \"quantity is expected\").to.exist;",
+					"        pm.expect(invoiceLine.doNotReleaseEncumbrance, \"doNotReleaseEncumbrance expected\").to.exist;",
+					"        pm.expect(invoiceLine.pieceIds, \"pieceIds empty array expected\").to.be.an('array').that.is.empty;",
+					"        pm.expect(invoiceLine.invoiceId, \"invoiceId expected\").to.exist;",
+					"        pm.expect(invoiceLine.fundDistributions, \"fundDistributions expected\").to.exist;",
+					"        pm.expect(invoiceLine.adjustmentsFieldSet, \"adjustmentsFieldSet empty array expected\").to.be.an('array').that.is.empty;",
+					"        pm.expect(invoiceLine.productId, \"productId not expected\").to.not.exist;",
+					"        pm.expect(invoiceLine.productIdType, \"productIdType not expected\").to.not.exist;",
+					"        pm.expect(invoiceLine.reportTax, \"reportTax not expected\").to.not.exist;",
+					"        pm.expect(invoiceLine.subscriptionInfo, \"subscriptionInfo not expected\").to.not.exist;",
+					"        pm.expect(invoiceLine.subscriptionStart, \"subscriptionStart not expected\").to.not.exist;",
+					"        pm.expect(invoiceLine.subscriptionEnd, \"subscriptionEnd not expected\").to.not.exist;",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Build Invoice line with minimal required fields.",
+					"    */",
+					"    utils.buildInvoiceLineWithMinContent = function(invoiceId) {",
+					"        return {",
+					"            \"description\": \"Some description\",",
+					"            \"invoiceLineNumber\": \"123invoicenumber45-1\",",
+					"            \"invoiceLineStatus\": \"Open\",",
+					"            \"price\": 2.2,",
+					"            \"quantity\": 3.0,",
+					"            \"doNotReleaseEncumbrance\": true,",
+					"            \"invoiceId\": invoiceId,",
+					"            \"fundDistributions\": [",
+					"              \"HIST\"",
+					"            ]",
+					"        };",
+					"    };",
+					"    ",
+					"    /**",
 					"     * Verifies if the delete operation succeeded",
 					"     */",
 					"    utils.validateResultOfDeleteRequest = function(code, message) {",
@@ -2723,11 +3138,13 @@
 					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
 					"",
 					"        pm.environment.unset(\"invoiceId\");",
+					"        pm.environment.unset(\"minInvoiceId\");",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"mod-invoices-configs\");",
 					"",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
+					"        pm.globals.unset(\"minContentInvoiceLine\");",
 					"",
 					"    };",
 					"",
@@ -2751,6 +3168,13 @@
 					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"invoice.json\")));",
 					"    };",
 					"",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils.validateInvoiceline = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"invoice_line.json\")));",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Internal function to load schema defenitions to tv4",
 					"     */",
@@ -2853,7 +3277,7 @@
 	],
 	"variable": [
 		{
-			"id": "6d892cb1-4ddc-4efb-a716-2a4fea4e603d",
+			"id": "bba44f73-7b5d-434d-8c97-25c98e1058b7",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
