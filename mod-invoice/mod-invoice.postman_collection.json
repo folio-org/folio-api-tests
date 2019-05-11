@@ -889,6 +889,87 @@
 									"response": []
 								},
 								{
+									"name": "Update invoice with new vendor invoice number",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"minInvoiceId\"), (err, res) => {",
+													"    let invoice  = res.json();",
+													"    let number = \"UPD\" + invoice.vendorInvoiceNo;",
+													"    invoice.vendorInvoiceNo = number;",
+													"    pm.variables.set(\"updatedNumber\", number);",
+													"    pm.variables.set(\"updatedInvoice\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(\"No Content\");",
+													"",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"minInvoiceId\"), (err, res) => {",
+													"        pm.test(\"Verify invoice updated with new vendor invoice number\", () => pm.expect(res.json().vendorInvoiceNo).to.equal(pm.variables.get(\"updatedNumber\")));",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedInvoice}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{minInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{minInvoiceId}}"
+											]
+										},
+										"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+									},
+									"response": []
+								},
+								{
 									"name": "Get invoice by id",
 									"event": [
 										{
@@ -1411,6 +1492,81 @@
 							"response": []
 						},
 						{
+							"name": "Update invoice with minimal content",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"updatedInvoice\", JSON.stringify(utils.buildInvoiceWithMinContent()));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceId\"), (err, res) => {",
+											"        utils.validateInvoiceWithMinimalContent(res.json());",
+											"      ",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedInvoice}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceId}}"
+									]
+								},
+								"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+							},
+							"response": []
+						},
+						{
 							"name": "Delete  invoice",
 							"event": [
 								{
@@ -1925,6 +2081,254 @@
 									]
 								},
 								"description": "Create an invoice with empty body"
+							},
+							"response": []
+						},
+						{
+							"name": "Update invoice by id with empty body",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update invoice by id with bad format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"updatedInvoice\", JSON.stringify(utils.buildInvoiceWithMinContent()));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedInvoice}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update already deleted invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"updatedInvoice\", JSON.stringify(utils.buildInvoiceWithMinContent()));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedInvoice}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update invoice with incorrect lang code format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"updatedInvoice\", JSON.stringify(utils.buildInvoiceWithMinContent()));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedInvoice}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{$guid}}?lang=english",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{$guid}}"
+									],
+									"query": [
+										{
+											"key": "lang",
+											"value": "english"
+										}
+									]
+								}
 							},
 							"response": []
 						},
