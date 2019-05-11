@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "a7a0af26-0939-4492-ae98-dcc77963023c",
+		"_postman_id": "bd94bdab-fba4-4f54-a1cc-a7ab5a744662",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -832,6 +832,7 @@
 													"",
 													"pm.test(\"Invoice content is valid\", function() {",
 													"    pm.environment.set(\"minInvoiceId\", invoice.id);",
+													"    pm.environment.set(\"folioInvoiceNo\", invoice.folioInvoiceNo);",
 													"    ",
 													"    utils.validateInvoiceWithMinimalContent(invoice);",
 													"    ",
@@ -883,6 +884,296 @@
 											"path": [
 												"invoice",
 												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice;",
+													"",
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Validate fields\", function() {",
+													"    // Validate fields",
+													"   pm.response.to.have.jsonBody(\"id\", pm.environment.get(\"minInvoiceId\"));",
+													"   pm.response.to.have.jsonBody(\"folioInvoiceNo\", pm.environment.get(\"folioInvoiceNo\"));",
+													"   // validate against schema",
+													"   utils.validateInvoice(invoice);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{minInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{minInvoiceId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Filter invoices",
+							"item": [
+								{
+									"name": "Create another invoice for filtering",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    pm.environment.set(\"filterInvoiceId\", invoice.id);",
+													"    ",
+													"    utils.validateInvoice(invoice);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+													"    let invoice = res.json().invoices[1];",
+													"",
+													"    delete invoice.id;",
+													"    delete invoice.folioInvoiceNo;",
+													"    invoice.note = \"Invoice to test filtering\";",
+													"",
+													"    pm.variables.set(\"invoiceToFilterContent\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceToFilterContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get created  invoices",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoices = [];",
+													"",
+													"pm.test(\"Invoices found\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    pm.expect(pm.response.json().totalRecords).to.be.above(0);",
+													"    invoices = pm.response.json().invoices;",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    invoices.forEach(invoice => utils.validateInvoice(invoice));",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get created  invoices filter by query param",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoices = [];",
+													"",
+													"pm.test(\"Invoices found\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    pm.expect(pm.response.json().totalRecords).to.be.above(0);",
+													"    invoices = pm.response.json().invoices;",
+													"    console.log(invoices[0].note);",
+													"    pm.expect(invoices[0].note).to.include('API Test');",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    invoices.forEach(invoice => utils.validateInvoice(invoice));",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices?limit=1&query=note=\"API Test\"",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											],
+											"query": [
+												{
+													"key": "limit",
+													"value": "1"
+												},
+												{
+													"key": "query",
+													"value": "note=\"API Test\""
+												}
 											]
 										}
 									},
@@ -972,139 +1263,6 @@
 							"response": []
 						},
 						{
-							"name": "Get created  invoice",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"let invoice = {};",
-											"",
-											"pm.test(\"Invoice found\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    invoice = pm.response.json();",
-											"});",
-											"",
-											"pm.test(\"Invoice content is valid\", function() {",
-											"    pm.expect(invoice.id).to.eql(pm.environment.get(\"invoiceId\"));",
-											"    utils.validateInvoice(invoice);",
-											"});",
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{invoiceId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get created  invoices",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"let invoices = [];",
-											"",
-											"pm.test(\"Invoices found\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    pm.expect(pm.response.json().totalRecords).to.eql(2);",
-											"    invoices = pm.response.json().invoices;",
-											"});",
-											"",
-											"pm.test(\"Invoice content is valid\", function() {",
-											"    invoices.forEach(invoice => utils.validateInvoice(invoice));",
-											"});",
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices?query=note=\"API Test\"",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "note=\"API Test\""
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
 							"name": "Delete  invoice",
 							"event": [
 								{
@@ -1164,56 +1322,6 @@
 				{
 					"name": "Invoice lines",
 					"item": [
-						{
-							"name": "Create invoice-line through invoice-storage",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "de0bfffd-d0cd-414a-bc26-73bdb6101c6b",
-										"exec": [
-											"pm.test(\"Status code is 201\", function () {",
-											"    pm.response.to.have.status(201);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}",
-										"type": "text"
-									},
-									{
-										"key": "Content-Type",
-										"name": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n  \"id\": \"e0d08448-343b-118a-8c2f-4fb50248d672\",\r\n  \"description\": \"Some description\",\r\n  \"poLineIds\": [\r\n    \"c0d08448-347b-418a-8c2f-5fb50248d67e\"\r\n  ],\r\n  \"invoiceLineNumber\": \"123invoicenumber45-1\",\r\n  \"invoiceLineStatus\": \"Open\",\r\n  \"vendorRefNo\": \"1\",\r\n  \"productId\": \"9780764354113\",\r\n  \"productIdType\": \"ISBN\",\r\n  \"invoiceLineTax\": 11.2,\r\n  \"comment\": \"Sample invoice line\",\r\n  \"price\": 2.2,\r\n  \"quantity\": 3,\r\n  \"doNotReleaseEncumbrance\": true,\r\n  \"reportTax\": 3.5,\r\n  \"subscriptionInfo\": \"Subscription information\",\r\n  \"subscriptionStart\": \"2018-08-01T00:00:00.000+0000\",\r\n  \"subscriptionEnd\": \"2019-01-01T00:00:00.000+0000\",\r\n  \"pieceIds\": [\r\n    \"5e317dc2-deeb-4429-b2a1-91e5cd0fd5f7\"\r\n  ],\r\n  \"invoiceId\": \"c0d08448-347b-418a-8c2f-5fb50248d67e\",\r\n  \"fundDistributions\": [\r\n    \"HIST\"\r\n  ],\r\n  \"adjustmentsFieldSet\": [\r\n    {\r\n      \"adjustmentLabel\": \"Adjustment label\",\r\n      \"adjustmentType\": \"Percentage\",\r\n      \"adjustmentValue\": 10.1,\r\n      \"proRateAdjustment\": true\r\n    }\r\n  ],\r\n  \"metadata\": {\r\n    \"createdDate\": \"2018-07-19T00:00:00.000+0000\",\r\n    \"createdByUserId\": \"28d1057c-d137-11e8-a8d5-f2801f1b9fd1\"\r\n  }\r\n}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice-storage",
-										"invoice-lines"
-									]
-								}
-							},
-							"response": []
-						},
 						{
 							"name": "Delete invoice line by id",
 							"event": [
@@ -1592,6 +1700,357 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Get invoice by id - UUID does not exist",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"404 test - UUID does not exists\", function() {",
+											"    pm.response.to.have.status(404);",
+											"    pm.response.to.have.body();",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.environment.set(\"UUIDDoesNotExists\", \"2cf5d43f-d107-4aaa-a8f4-2e6647f4794a\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{UUIDDoesNotExists}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{UUIDDoesNotExists}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get invoice by id - invalid UUID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - invalid UUID on URL\", function() {",
+											"    pm.response.to.have.status(400);",
+											"    pm.response.to.have.body();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/foo",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /invoices?limit=-1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - negative limit\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices?limit=-1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "-1"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /invoices?limit=-2147483649",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - limit less than Integer.MIN_VALUE\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices?limit=-2147483649",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "-2147483649"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /invoices?offset=-1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - negative offset\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices?offset=-1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									],
+									"query": [
+										{
+											"key": "offset",
+											"value": "-1"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /invoices?offset=-2147483649",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - offset less than Integer.MIN_VALUE\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices?offset=-2147483649",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									],
+									"query": [
+										{
+											"key": "offset",
+											"value": "-2147483649"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -1833,6 +2292,60 @@
 										"invoice",
 										"invoices",
 										"{{minInvoiceId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete  filter by invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{filterInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{filterInvoiceId}}"
 									]
 								}
 							},
@@ -2284,7 +2797,7 @@
 					"    },",
 					"    permissions: {",
 					"        \"userId\": \"00000000-1111-5555-9999-999999999999\",",
-					"        \"permissions\": [\"invoice.all\", \"invoice-storage.invoice-lines.item.post\"]",
+					"        \"permissions\": [\"invoice.all\"]",
 					"    }",
 					"};",
 					"",
@@ -2565,7 +3078,7 @@
 	],
 	"variable": [
 		{
-			"id": "41e9ac73-4095-4c02-b066-fd28efa3f0eb",
+			"id": "14cca80a-688c-456a-acf9-62b60cb80392",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
