@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "0b48b5c1-7665-459d-b0e1-55525d820374",
+		"_postman_id": "edef753d-63e0-4e92-a9d1-1426a3c05875",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1630,15 +1630,33 @@
 									"response": []
 								},
 								{
-									"name": "Delete invoice line by id",
+									"name": "Get invoice lines by empty query",
 									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
 										{
 											"listen": "test",
 											"script": {
-												"id": "08a1f33b-b49a-42e6-9da3-31a3043226f7",
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
-													"pm.test(\"Invoice is deleted\", function () {",
-													"    pm.response.to.have.status(204);",
+													"let utils = eval(globals.loadUtils);",
+													"var invoiceLine = {};",
+													" ",
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    invoiceLines = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"At least one line\", function () {",
+													"    pm.expect(invoiceLines.invoiceLines).to.have.lengthOf.above(0);",
 													"});"
 												],
 												"type": "text/javascript"
@@ -1646,8 +1664,16 @@
 										}
 									],
 									"request": {
-										"method": "DELETE",
+										"method": "GET",
 										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
@@ -1658,7 +1684,7 @@
 											"raw": ""
 										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineId}}",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -1666,10 +1692,96 @@
 											"port": "{{okapiport}}",
 											"path": [
 												"invoice",
-												"invoice-lines",
-												"{{invoiceLineId}}"
+												"invoice-lines"
 											]
+										},
+										"description": "GET /invoice/invoice-lines requests that return 200"
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice lines by query",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var resp = {};",
+													" ",
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    resp = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"At least one line\", function () {",
+													"    pm.expect(resp.invoiceLines).to.have.lengthOf.above(0);",
+													"});",
+													"",
+													"pm.test(\"Validate that response contains lines with proper status\", function () {",
+													"    for(var i = 0; i < resp.invoiceLines.length; i++) {",
+													"    \tpm.expect(resp.invoiceLines[i].invoiceLineStatus).to.equal(\"Open\");",
+													"    }",
+													"});"
+												],
+												"type": "text/javascript"
+											}
 										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines?limit=30&query=invoiceLineStatus==Open",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											],
+											"query": [
+												{
+													"key": "limit",
+													"value": "30"
+												},
+												{
+													"key": "query",
+													"value": "invoiceLineStatus==Open"
+												}
+											]
+										},
+										"description": "GET /invoice/invoice-lines requests that return 200"
 									},
 									"response": []
 								}
@@ -2928,120 +3040,6 @@
 										"invoice",
 										"invoice-lines",
 										"bad-id-format"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invoice line with incorrect lang code format",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Error response expected\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{$guid}}?lang=english",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoice-lines",
-										"{{$guid}}"
-									],
-									"query": [
-										{
-											"key": "lang",
-											"value": "english"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete already deleted invoice line",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is not found\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLinesId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoice-lines",
-										"{{invoiceLinesId}}"
 									]
 								}
 							},
