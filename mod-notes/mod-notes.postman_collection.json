@@ -8974,6 +8974,107 @@
 			"name": "limit config",
 			"item": [
 				{
+					"name": "Check if type config exists",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b6a548cd-23a5-4b8c-9bf9-622e404e5f04",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response must be valid and have a body\", function () {",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"if(jsonData.configs.length > 0) {",
+									"    if(jsonData.configs[0].value !== pm.environment.get(\"config-value-three\")){",
+									"        pm.environment.set(\"config-value\", jsonData.configs[0].value);",
+									"        pm.environment.set(\"notes-config-id\", jsonData.configs[0].id);",
+									"        pm.sendRequest({",
+									"        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/configurations/entries/\" + jsonData.configs[0].id,",
+									"        method: 'PUT',",
+									"        header: {",
+									"            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"            'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+									"            'Content-Type': 'application/json'",
+									"        },",
+									"         body: {",
+									"           mode: 'raw',",
+									"            raw:  JSON.stringify({",
+									"                \"module\": \"NOTES\",",
+									"                \"configName\": \"api_access\",",
+									"                \"code\": \"note.types.number.limit\",",
+									"                \"value\": pm.environment.get(\"config-value-three\")",
+									"            })",
+									"        }",
+									"    }, function(err, res) {",
+									"        pm.test(\"Status no content\", function() {",
+									"        pm.expect(res.status).eq(\"No Content\");",
+									"        });",
+									"    });",
+									"    }",
+									"    postman.setNextRequest(\"POST create note-type for tests\");",
+									"}",
+									"",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "d665ae85-57e5-40c5-a197-48a2b098fc0a",
+								"exec": [
+									"pm.environment.set(\"config-value-three\",3)"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==NOTES and configName==api_access and code==note.types.number.limit)",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"configurations",
+								"entries"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "(module==NOTES and configName==api_access and code==note.types.number.limit)"
+								}
+							]
+						},
+						"description": "Check if limit configuration has already been configured for test user.  If so, update existing configuration settings"
+					},
+					"response": []
+				},
+				{
 					"name": "/configurations/entries - POST note types limit to 3",
 					"event": [
 						{
@@ -9122,22 +9223,6 @@
 				},
 				{
 					"name": "/configurations/entries - DELETE config with limit 3",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "55aa0b1a-9dbf-488f-9706-49408285c892",
-								"exec": [
-									"//Check that status is 204",
-									"pm.test(\"Status is 204\", function () {",
-									"    pm.response.to.have.status(204);",
-									"});",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
 					"request": {
 						"method": "DELETE",
 						"header": [
@@ -9158,6 +9243,10 @@
 								"type": "text"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries/{{notes-config-id}}",
 							"protocol": "{{protocol}}",
@@ -9254,6 +9343,102 @@
 								"note-types"
 							]
 						}
+					},
+					"response": []
+				},
+				{
+					"name": "Check if type config exists after changes",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b6a548cd-23a5-4b8c-9bf9-622e404e5f04",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response must be valid and have a body\", function () {",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"if(jsonData.configs.length === 0) {",
+									"        pm.sendRequest({",
+									"        url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/configurations/entries\",",
+									"        method: 'POST',",
+									"        header: {",
+									"            'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+									"            'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+									"            'Content-Type': \"application/json\"",
+									"        },",
+									"        body: {",
+									"           mode: 'raw',",
+									"            raw:  JSON.stringify({",
+									"                \"module\": \"NOTES\",",
+									"                \"configName\": \"api_access\",",
+									"                \"code\": \"note.types.number.limit\",",
+									"                \"value\": pm.environment.get(\"config-value\")",
+									"            })",
+									"        }",
+									"    }, function(err, res) {",
+									"        pm.test(\"Status created\", function() {",
+									"        pm.expect(res.status).eq(\"Created\");",
+									"        });",
+									"    });",
+									"}",
+									"",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "d665ae85-57e5-40c5-a197-48a2b098fc0a",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==NOTES and configName==api_access and code==note.types.number.limit)",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"configurations",
+								"entries"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "(module==NOTES and configName==api_access and code==note.types.number.limit)"
+								}
+							]
+						},
+						"description": "Check if limit config has already been configured for test user.  If not, post new configuration settings with old values"
 					},
 					"response": []
 				}
