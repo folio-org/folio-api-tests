@@ -6346,6 +6346,124 @@
 										}
 									]
 								},
+								"description": "GET /orders/order-lines requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get list of order lines with date range and nested search",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"var moment = require('moment')",
+											"",
+											"pm.globals.set(\"minDate\", moment().format('YYYY-MM-01'));",
+											"pm.globals.set(\"maxDate\", moment().format('YYYY-MM-28'));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var moment = require('moment')",
+											"",
+											"pm.globals.set(\"minDate\", moment().format('YYYY-MM-01'));",
+											"pm.globals.set(\"maxDate\", moment().format('YYYY-MM-28'));",
+											"pm.test(\"PurchaseOrder response status code is 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"let poLines = pm.response.json().poLines;",
+											"",
+											"pm.test(\"Recieved more than 1 Purchase Order Line\", function() {",
+											"    pm.expect(poLines.length).to.not.be.below(1);",
+											"});",
+											"",
+											"pm.test(\"Ensure there are no duplicate rows in the results\", function() {",
+											"    var uniqueIds = [];",
+											"    for (i = 0; i < poLines.length; i++) {",
+											"        if (uniqueIds.indexOf(poLines[i].id) === -1) {",
+											"            uniqueIds.push(poLines[i].id);",
+											"        }",
+											"    }",
+											"    pm.expect(poLines.length).to.be.equal(uniqueIds.length);",
+											"});",
+											"",
+											"pm.test(\"Validate that response contains orders sorted by metadata.createdDate ascending\", function() {",
+											"    let date = new Date('1900-01-01T01:01:01.000+0000');",
+											"    let poLines = pm.response.json().poLines;",
+											"    for (var i = 0; i < poLines.length; i++) {",
+											"        pm.test(\"Check if polines sorted by order metadata.createdDate field\", function() {",
+											"            if (poLines[i].hasOwnProperty('metadata')) {",
+											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.least(date);",
+											"                //check polines date range",
+											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.least(new Date(moment().format('YYYY-MM-01')));",
+											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.most(new Date(moment().format('YYYY-MM-28')));",
+											"                date = new Date(poLines[i].metadata.createdDate);",
+											"            }",
+											"        });",
+											"        utils.sendGetRequest(\"/orders/composite-orders?limit=30&query=physical.createInventory==Instance, Holding, Item AND id==\" + poLines[i].purchaseOrderId, (err, res) => {",
+											"            pm.test(\"Validate that POs with sorting criteria exist\", function() {",
+											"                pm.expect(res).to.have.status(200);",
+											"                pm.expect(res.json().totalRecords).to.not.be.below(1);",
+											"            });",
+											"        });",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines?limit=30&query=physical.createInventory==\"Instance, Holding, Item\" AND metadata.createdDate>{{minDate}} AND metadata.createdDate<{{maxDate}}    sortBy metadata.createdDate/sort.ascending",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "30"
+										},
+										{
+											"key": "query",
+											"value": "physical.createInventory==\"Instance, Holding, Item\" AND metadata.createdDate>{{minDate}} AND metadata.createdDate<{{maxDate}}    sortBy metadata.createdDate/sort.ascending"
+										}
+									]
+								},
 								"description": "GET /orders/composite-orders requests that return 200"
 							},
 							"response": []
