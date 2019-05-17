@@ -50,10 +50,6 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{xokapitenant}}/interfaces/_jsonSchemas",
 							"protocol": "{{protocol}}",
@@ -184,10 +180,6 @@
 								"type": "text"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
 							"protocol": "{{protocol}}",
@@ -315,10 +307,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/bl-users/by-username/{{username}}",
 							"protocol": "{{protocol}}",
@@ -416,10 +404,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{userId}}?indexField=userId",
 							"protocol": "{{protocol}}",
@@ -507,10 +491,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.url)",
 							"protocol": "{{protocol}}",
@@ -668,10 +648,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.customerId)",
 							"protocol": "{{protocol}}",
@@ -830,10 +806,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.apiKey)",
 							"protocol": "{{protocol}}",
@@ -972,10 +944,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.url)",
 							"protocol": "{{protocol}}",
@@ -1022,6 +990,191 @@
 			]
 		},
 		{
+			"name": "setup for tags",
+			"item": [
+				{
+					"name": "Create custom package for tags test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "807c50e4-0fd3-449b-b76f-26701581409c",
+								"exec": [
+									"pm.test(\"success test\", function() {",
+									"    pm.response.to.be.ok;",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"let response = pm.response.json();",
+									"",
+									"//Check that status is 200",
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Validate schema\", function () {",
+									"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_package\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+									"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+									"});",
+									"",
+									"//Check if we get a collection of packages in response",
+									"if(response.data) {",
+									"    pm.environment.set(\"tag-name-for-multiply-adding-a\", response.data.attributes.tags.tagList[0]);",
+									"    pm.environment.set(\"tag-name-for-multiply-adding-b\", response.data.attributes.tags.tagList[1]);",
+									"    if(response.data.id) {",
+									"        pm.environment.set(\"custom-package-created-for-tags-id\", response.data.id);",
+									"    }",
+									"    ",
+									"    //Test that type is packages",
+									"    pm.test('type is packages', function(){",
+									"        pm.expect(response.data.type).eq('packages');",
+									"    });",
+									"    ",
+									"    //Test that data.attributes has expected attributes",
+									"    pm.test('expected data.attributes are present', function() {",
+									"        pm.expect(response.data.attributes).to.be.an('object');",
+									"        pm.expect(response.data.attributes).to.include.all.keys(\"contentType\", \"customCoverage\", \"isCustom\", \"isSelected\", \"name\", \"packageId\", ",
+									"        \"packageType\", \"providerId\", \"providerName\", \"selectedCount\", \"titleCount\", \"visibilityData\", \"allowKbToAddTitles\", \"tags\");",
+									"    });",
+									"        ",
+									"    //Test that contentType matches what was passed in POST request",
+									"    pm.test('content type matches value passed in', function() {",
+									"        pm.expect(response.data.attributes.contentType).to.eq('E-Journal');",
+									"    });",
+									"    ",
+									"    //Check that tagList is not empty",
+									"    pm.test('TagList is not empty', function(){",
+									"    pm.expect(response.data.attributes.tags.tagList.size) !== 0;",
+									"    });",
+									"    ",
+									"    //Check that tag in tagList matches with value",
+									"    pm.test('Creating tagList', function(){",
+									"    pm.expect(response.data.attributes.tags.tagList[0]).eq(\"a-test\");",
+									"    pm.expect(response.data.attributes.tags.tagList[1]).eq(\"b-test\");",
+									"    });",
+									"    ",
+									"    //Test that customCoverage matches what was passed in POST request",
+									"    pm.test('custom coverage matches value passed in', function() {",
+									"        pm.expect(response.data.attributes.customCoverage.beginCoverage).to.eq('2003-01-01');",
+									"        pm.expect(response.data.attributes.customCoverage.endCoverage).to.eq('2003-12-01');",
+									"    });",
+									"    ",
+									"    //Test that isCustom is true",
+									"    pm.test('isCustom is true', function() {",
+									"        pm.expect(response.data.attributes.isCustom).to.be.true;",
+									"    });",
+									"    ",
+									"    //Test that isSelected is true",
+									"    pm.test('isSelected is true', function() {",
+									"        pm.expect(response.data.attributes.isSelected).to.be.true;",
+									"    });",
+									"    ",
+									"    //Test that name matches value passed in",
+									"    pm.test('name matches value passed in', function() {",
+									"        pm.expect(response.data.attributes.name).to.eq('custom-packages-' + pm.variables.get(\"custom-package-tags-uuid\"));",
+									"    });",
+									"    ",
+									"    //Test that package type is custom",
+									"    pm.test('packageType is custom', function() {",
+									"        pm.expect(response.data.attributes.packageType).to.eq('Custom');",
+									"    });",
+									"    ",
+									"    //Test that allowKbToAddTitles is false",
+									"    pm.test('allowKbToAddTitles is false', function() {",
+									"        pm.expect(response.data.attributes.allowKbToAddTitles).to.be.false;",
+									"    });",
+									"} else {",
+									"    console.log('Custom package not created');",
+									"}",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "e1884122-c31a-406d-a50f-acfac0fb3298",
+								"exec": [
+									"var uuid = require('uuid');",
+									"pm.variables.set(\"custom-package-tags-uuid\", uuid.v4());"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"data\": {\n\t\t\"type\": \"packages\",\n\t\t\"attributes\": {\n\t\t\t\"name\": \"custom-packages-{{custom-package-tags-uuid}}\",\n\t\t\t\"contentType\": \"E-Journal\",\n\t\t\t\"customCoverage\": {\n\t\t\t\t\"beginCoverage\": \"2003-01-01\",\n\t\t\t\t\"endCoverage\": \"2003-12-01\"\n\t\t\t},\n\t\t\t \"tags\": {\n    \t\t\t\"tagList\": [\n    \t\t\t\"a-test\",\n    \t\t\t\"b-test\"\n\t\t\t\t]\n\t\t\t}\n\t\t}\n\t}\n}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"eholdings",
+								"packages"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "9af17062-a2b8-4dbd-a75a-0492d740c1a1",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "5f22f794-fce4-4958-8fb7-58a12332c7d2",
+						"type": "text/javascript",
+						"exec": [
+							"    tv4.addSchema(\"schema_package.json\", JSON.parse(pm.variables.get(\"schema_package\")));",
+							"    tv4.addSchema(\"schema_packageCollectionItem.json\", JSON.parse(pm.variables.get(\"schema_packageCollectionItem\")));",
+							"    tv4.addSchema(\"schema_packageDataAttributes.json\", JSON.parse(pm.variables.get(\"schema_packageDataAttributes\")));",
+							"    tv4.addSchema(\"schema_packageRelationships.json\", JSON.parse(pm.variables.get(\"schema_packageRelationships\")));",
+							"    tv4.addSchema(\"schema_contentTypeEnum.json\", JSON.parse(pm.variables.get(\"schema_contentTypeEnum\")));",
+							"    tv4.addSchema(\"schema_coverage.json\", JSON.parse(pm.variables.get(\"schema_coverage\")));",
+							"    tv4.addSchema(\"schema_visibilityData.json\", JSON.parse(pm.variables.get(\"schema_visibilityData\")));",
+							"    tv4.addSchema(\"schema_proxy.json\", JSON.parse(pm.variables.get(\"schema_proxy\")));",
+							"    tv4.addSchema(\"schema_hasManyRelationship.json\", JSON.parse(pm.variables.get(\"schema_hasManyRelationship\")));",
+							"    tv4.addSchema(\"schema_hasOneRelationship.json\", JSON.parse(pm.variables.get(\"schema_hasOneRelationship\")));",
+							"    tv4.addSchema(\"schema_included.json\", JSON.parse(pm.variables.get(\"schema_included\")));",
+							"    tv4.addSchema(\"schema_jsonapi.json\", JSON.parse(pm.variables.get(\"schema_jsonapi\")));",
+							"    tv4.addSchema(\"schema_tags.schema\", JSON.parse(pm.variables.get(\"schema_tags\")));"
+						]
+					}
+				}
+			]
+		},
+		{
 			"name": "setup for packages test",
 			"item": [
 				{
@@ -1051,6 +1204,7 @@
 									"",
 									"//Check if we get a collection of packages in response",
 									"if(response.data) {",
+									"    pm.environment.set(\"tagName\", response.data.attributes.tags.tagList[0]);",
 									"    if(response.data.id) {",
 									"        pm.environment.set(\"custom-package-id-created-in-post\", response.data.id);",
 									"    }",
@@ -1501,10 +1655,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?q={{custid}}",
 							"protocol": "{{protocol}}",
@@ -1665,10 +1815,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=abc",
 							"protocol": "{{protocol}}",
@@ -1967,10 +2113,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[name]=abc",
 							"protocol": "{{protocol}}",
@@ -2047,10 +2189,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles/{{managed-titleid}}?include=resources",
 							"protocol": "{{protocol}}",
@@ -2506,10 +2644,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers",
 											"protocol": "{{protocol}}",
@@ -2588,10 +2722,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?q=Basket",
 											"protocol": "{{protocol}}",
@@ -2674,10 +2804,6 @@
 												"value": "{{xokapitenant}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?count=12",
 											"protocol": "{{protocol}}",
@@ -2765,10 +2891,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?q=Journal&page=1&count=5",
 											"protocol": "{{protocol}}",
@@ -2864,10 +2986,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?q=Journal&sort=name",
 											"protocol": "{{protocol}}",
@@ -2952,10 +3070,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?q=",
 											"protocol": "{{protocol}}",
@@ -3027,10 +3141,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?q=Journal&sort=invalidsort",
 											"protocol": "{{protocol}}",
@@ -3092,10 +3202,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?page=abc",
 											"protocol": "{{protocol}}",
@@ -3167,10 +3273,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers?count=120",
 											"protocol": "{{protocol}}",
@@ -3270,10 +3372,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/18",
 											"protocol": "{{protocol}}",
@@ -3355,10 +3453,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19?include=packages",
 											"protocol": "{{protocol}}",
@@ -3440,10 +3534,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/1",
 											"protocol": "{{protocol}}",
@@ -3500,10 +3590,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/and",
 											"protocol": "{{protocol}}",
@@ -3565,10 +3651,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19?include=",
 											"protocol": "{{protocol}}",
@@ -4294,10 +4376,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages",
 											"protocol": "{{protocol}}",
@@ -4376,10 +4454,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search",
 											"protocol": "{{protocol}}",
@@ -4469,10 +4543,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&count=5",
 											"protocol": "{{protocol}}",
@@ -4566,10 +4636,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&count=5&sort=name",
 											"protocol": "{{protocol}}",
@@ -4668,10 +4734,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&filter[selected]=true",
 											"protocol": "{{protocol}}",
@@ -4772,10 +4834,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&filter[selected]=true&filter[type]=aggregatedfulltext",
 											"protocol": "{{protocol}}",
@@ -4866,10 +4924,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/1/packages",
 											"protocol": "{{protocol}}",
@@ -4922,10 +4976,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/abc/packages",
 											"protocol": "{{protocol}}",
@@ -4995,10 +5045,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=",
 											"protocol": "{{protocol}}",
@@ -5062,10 +5108,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&count=5&page=abc",
 											"protocol": "{{protocol}}",
@@ -5149,10 +5191,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&sort=invalid",
 											"protocol": "{{protocol}}",
@@ -5233,10 +5271,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&filter[selected]=invalid",
 											"protocol": "{{protocol}}",
@@ -5318,10 +5352,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?q=Search&filter[selected]=true&filter[type]=unsupported",
 											"protocol": "{{protocol}}",
@@ -5403,10 +5433,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19/packages?count=120",
 											"protocol": "{{protocol}}",
@@ -5618,10 +5644,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages",
 											"protocol": "{{protocol}}",
@@ -5705,10 +5727,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=ABC-CLIO",
 											"protocol": "{{protocol}}",
@@ -5794,10 +5812,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=ABC-CLIO&count=5",
 											"protocol": "{{protocol}}",
@@ -5893,10 +5907,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?count=7",
 											"protocol": "{{protocol}}",
@@ -5980,10 +5990,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=ABC-CLIO&count=5&page=1",
 											"protocol": "{{protocol}}",
@@ -6070,10 +6076,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=ABC-CLIO&count=5&page=2",
 											"protocol": "{{protocol}}",
@@ -6169,10 +6171,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=American&sort=name",
 											"protocol": "{{protocol}}",
@@ -6268,10 +6266,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=American&filter[selected]=true&count=5",
 											"protocol": "{{protocol}}",
@@ -6295,6 +6289,362 @@
 												{
 													"key": "count",
 													"value": "5"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "valid filter[tags] empty query",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "8840c58b-b441-44dc-bf30-c78a2e0e337f",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Validate response against json api schema",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Check if we get a collection of packages in response",
+													"if(response.data) {",
+													"    let len = response.data.length;",
+													"    if(len > 0){",
+													"        //Test that count is equal to number of records returned in response",
+													"        pm.test('count equals number of records in response', function() {",
+													"            pm.expect(len).to.be.above(0);",
+													"        });",
+													"        //Get the first record",
+													"        let firstRecord = response.data[0];",
+													"        ",
+													"        //Test that type is packages",
+													"        pm.test('type is packages', function(){",
+													"            pm.expect(firstRecord.type).eq('packages');",
+													"        });",
+													"    }",
+													"}",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?filter[tags]=",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": ""
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "valid filter[tags] param",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "8840c58b-b441-44dc-bf30-c78a2e0e337f",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Validate response against json api schema",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Check if we get a collection of packages in response",
+													"if(response.data) {",
+													"    let len = response.data.length;",
+													"    if(len > 0){",
+													"        //Test that count is equal to number of records returned in response",
+													"        pm.test('count equals number of records in response', function() {",
+													"            pm.expect(len).to.be.above(0);",
+													"        });",
+													"        //Get the first record",
+													"        let firstRecord = response.data[0];",
+													"        ",
+													"        //Test that type is packages",
+													"        pm.test('type is packages', function(){",
+													"            pm.expect(firstRecord.type).eq('packages');",
+													"        });",
+													"        ",
+													"        //Test that isSelected is true",
+													"        pm.test('check isSelected', function() {",
+													"            pm.expect(firstRecord.attributes.isSelected).to.be.true;",
+													"        });",
+													"    }",
+													"}",
+													"",
+													"pm.sendRequest({",
+													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/eholdings/packages/\" + response.data[0].id,",
+													"    method: 'GET',",
+													"    header: {",
+													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+													"        'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+													"        'Content-Type': 'application/json'",
+													"    },",
+													"}, function(err, res) {",
+													"    pm.test(\"Check name of tag\", function () {",
+													"        var response = res.json();",
+													"        pm.expect(response.data.attributes.tags.tagList[0]).to.eq(pm.environment.get(\"tagName\"));",
+													"    });",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?filter[tags]={{tagName}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": "{{tagName}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "valid filter[tags] multiply param",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "8840c58b-b441-44dc-bf30-c78a2e0e337f",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Validate response against json api schema",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Check if we get a collection of packages in response",
+													"if(response.data) {",
+													"    let len = response.data.length;",
+													"    if(len > 0){",
+													"        //Test that count is equal to number of records returned in response",
+													"        pm.test('count equals number of records in response', function() {",
+													"            pm.expect(len).to.be.above(0);",
+													"        });",
+													"        //Get the first record",
+													"        let firstRecord = response.data[0];",
+													"        ",
+													"        //Test that type is packages",
+													"        pm.test('type is packages', function(){",
+													"            pm.expect(firstRecord.type).eq('packages');",
+													"        });",
+													"        ",
+													"        //Test that isSelected is true",
+													"        pm.test('check isSelected', function() {",
+													"            pm.expect(firstRecord.attributes.isSelected).to.be.true;",
+													"        });",
+													"    }",
+													"}",
+													"",
+													"pm.sendRequest({",
+													"    url: pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + \"/eholdings/packages/\" + response.data[0].id,",
+													"    method: 'GET',",
+													"    header: {",
+													"        'X-Okapi-Tenant': pm.environment.get(\"xokapitenant\"),",
+													"        'X-Okapi-Token': pm.environment.get(\"xokapitoken\"),",
+													"        'Content-Type': 'application/json'",
+													"    },",
+													"}, function(err, res) {",
+													"    pm.test(\"Check name of tag\", function () {",
+													"        var response = res.json();",
+													"        pm.expect(response.data.attributes.tags.tagList[0]).to.eq(pm.environment.get(\"tag-name-for-multiply-adding-a\"));",
+													"        pm.expect(response.data.attributes.tags.tagList[1]).to.eq(pm.environment.get(\"tag-name-for-multiply-adding-b\"));",
+													"    });",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?filter[tags]={{tag-name-for-multiply-adding-a}},{{tag-name-for-multiply-adding-b}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": "{{tag-name-for-multiply-adding-a}},{{tag-name-for-multiply-adding-b}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "valid filter[tags] with non existing tag",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "8840c58b-b441-44dc-bf30-c78a2e0e337f",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Validate response against json api schema",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "ce6ea304-07ef-49d7-a694-8e534d546b08",
+												"exec": [
+													"pm.variables.set(\"non-existing-tag\", \"nonExisting\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?filter[tags]={{non-existing-tag}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": "{{non-existing-tag}}"
 												}
 											]
 										}
@@ -6371,10 +6721,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=American&filter[type]=abstractandindex&count=5",
 											"protocol": "{{protocol}}",
@@ -6471,10 +6817,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=package&filter[custom]=true",
 											"protocol": "{{protocol}}",
@@ -6559,10 +6901,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=",
 											"protocol": "{{protocol}}",
@@ -6618,10 +6956,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=ABC-CLIO&page=abc",
 											"protocol": "{{protocol}}",
@@ -6697,10 +7031,6 @@
 												"value": "{{xokapitenant}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=American&sort=invalid",
 											"protocol": "{{protocol}}",
@@ -6776,10 +7106,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=American&filter[selected]=invalid&count=5",
 											"protocol": "{{protocol}}",
@@ -6859,10 +7185,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=American&filter[type]=invalid&count=5",
 											"protocol": "{{protocol}}",
@@ -6943,10 +7265,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?filter[custom]=invalid&count=2",
 											"protocol": "{{protocol}}",
@@ -7023,10 +7341,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?q=package&filter[custom]=false&count=2",
 											"protocol": "{{protocol}}",
@@ -7090,10 +7404,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages?count=abc",
 											"protocol": "{{protocol}}",
@@ -7693,10 +8003,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{packageId}}",
 											"protocol": "{{protocol}}",
@@ -7783,10 +8089,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{packageId}}?include=provider",
 											"protocol": "{{protocol}}",
@@ -7874,10 +8176,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{packageId}}?include=resources",
 											"protocol": "{{protocol}}",
@@ -7959,10 +8257,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/583-1",
 											"protocol": "{{protocol}}",
@@ -8032,10 +8326,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/1",
 											"protocol": "{{protocol}}",
@@ -8097,10 +8387,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{packageId}}?include=",
 											"protocol": "{{protocol}}",
@@ -8177,10 +8463,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/abc",
 											"protocol": "{{protocol}}",
@@ -8250,10 +8532,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/abc-abc",
 											"protocol": "{{protocol}}",
@@ -10679,10 +10957,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{managed-resourceid}}",
 											"protocol": "{{protocol}}",
@@ -10780,10 +11054,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{custom-resourceid}}",
 											"protocol": "{{protocol}}",
@@ -10904,10 +11174,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{managed-resourceid}}?include=provider",
 											"protocol": "{{protocol}}",
@@ -11034,10 +11300,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{managed-resourceid}}?include=package",
 											"protocol": "{{protocol}}",
@@ -11164,10 +11426,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{managed-resourceid}}?include=title",
 											"protocol": "{{protocol}}",
@@ -11337,10 +11595,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{managed-resourceid}}?include=provider,package,title",
 											"protocol": "{{protocol}}",
@@ -11458,10 +11712,6 @@
 												"type": "text"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{custom-resourceid-with-tags}}",
 											"protocol": "{{protocol}}",
@@ -11549,10 +11799,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/1",
 											"protocol": "{{protocol}}",
@@ -11645,10 +11891,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{managed-resourceid}}?include=invalid",
 											"protocol": "{{protocol}}",
@@ -13939,10 +14181,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{packageId}}/resources",
 											"protocol": "{{protocol}}",
@@ -14019,10 +14257,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/583-1/resources",
 											"protocol": "{{protocol}}",
@@ -14093,10 +14327,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/abc/resources",
 											"protocol": "{{protocol}}",
@@ -14168,10 +14398,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/abc-abc/resources",
 											"protocol": "{{protocol}}",
@@ -14356,10 +14582,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[name]=american",
 											"protocol": "{{protocol}}",
@@ -14472,10 +14694,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[name]=american&sort=name",
 											"protocol": "{{protocol}}",
@@ -14594,10 +14812,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[name]=american&sort=relevance",
 											"protocol": "{{protocol}}",
@@ -14713,10 +14927,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[name]=american",
 											"protocol": "{{protocol}}",
@@ -14827,10 +15037,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[publisher]=academic",
 											"protocol": "{{protocol}}",
@@ -14954,10 +15160,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[subject]=history",
 											"protocol": "{{protocol}}",
@@ -15075,10 +15277,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[isxn]=99",
 											"protocol": "{{protocol}}",
@@ -15194,10 +15392,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[type]=database&filter[name]=academic",
 											"protocol": "{{protocol}}",
@@ -15317,10 +15511,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[type]=database&filter[name]=academic",
 											"protocol": "{{protocol}}",
@@ -15442,10 +15632,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?page=2&filter[name]=american&sort=name",
 											"protocol": "{{protocol}}",
@@ -15544,10 +15730,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles",
 											"protocol": "{{protocol}}",
@@ -15628,10 +15810,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[name]=",
 											"protocol": "{{protocol}}",
@@ -15715,10 +15893,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?sort=name",
 											"protocol": "{{protocol}}",
@@ -15805,10 +15979,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?filter[isxn]=99&filter[name]=american",
 											"protocol": "{{protocol}}",
@@ -15873,10 +16043,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?page=2147483648&filter[name]=american&sort=name",
 											"protocol": "{{protocol}}",
@@ -15972,10 +16138,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?page=-1&filter[name]=academic",
 											"protocol": "{{protocol}}",
@@ -16040,10 +16202,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles?page=a&filter[name]=academic",
 											"protocol": "{{protocol}}",
@@ -16167,10 +16325,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles/{{name-sort-id1}}",
 											"protocol": "{{protocol}}",
@@ -16290,10 +16444,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles/{{name-sort-id1}}?include=resources",
 											"protocol": "{{protocol}}",
@@ -16411,10 +16561,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles/{{name-sort-id1}}?include=badValue",
 											"protocol": "{{protocol}}",
@@ -16507,10 +16653,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/titles/1",
 											"protocol": "{{protocol}}",
@@ -20176,10 +20318,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.url)",
 											"protocol": "{{protocol}}",
@@ -20249,10 +20387,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.customerId)",
 											"protocol": "{{protocol}}",
@@ -20322,10 +20456,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.apiKey)",
 											"protocol": "{{protocol}}",
@@ -21014,10 +21144,6 @@
 												"type": "text"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/status",
 											"protocol": "{{protocol}}",
@@ -21200,10 +21326,6 @@
 												"value": "application/json"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/status",
 											"protocol": "{{protocol}}",
@@ -21460,10 +21582,6 @@
 												"value": "application/json"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/status",
 											"protocol": "{{protocol}}",
@@ -21720,10 +21838,6 @@
 												"value": "application/json"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/status",
 											"protocol": "{{protocol}}",
@@ -21934,10 +22048,6 @@
 										"type": "text"
 									}
 								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/proxy-types",
 									"protocol": "{{protocol}}",
@@ -22063,10 +22173,6 @@
 										"type": "text"
 									}
 								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/root-proxy",
 									"protocol": "{{protocol}}",
@@ -22713,10 +22819,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags",
 											"protocol": "{{protocol}}",
@@ -22811,10 +22913,6 @@
 												"value": "{{xokapitenant}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[rectype]=provider&filter[rectype]=package&filter[rectype]=title&filter[rectype]=resource",
 											"protocol": "{{protocol}}",
@@ -22915,10 +23013,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[rectype]=provider",
 											"protocol": "{{protocol}}",
@@ -23007,10 +23101,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[rectype]=package",
 											"protocol": "{{protocol}}",
@@ -23099,10 +23189,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[rectype]=title",
 											"protocol": "{{protocol}}",
@@ -23191,10 +23277,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[rectype]=resource",
 											"protocol": "{{protocol}}",
@@ -23295,10 +23377,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[r=provider",
 											"protocol": "{{protocol}}",
@@ -23377,10 +23455,6 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": ""
-										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/tags?filter[rectype]=providers",
 											"protocol": "{{protocol}}",
@@ -23755,6 +23829,65 @@
 								"{{custom-titleid}}"
 							]
 						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete custom package created for tags test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "967dd204-5352-4475-940d-0d16f2b81eee",
+								"exec": [
+									"pm.test(\"Status is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "67c6fa5e-953a-4222-bc89-1e86fb2900f4",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{custom-package-created-for-tags-id}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"eholdings",
+								"packages",
+								"{{custom-package-created-for-tags-id}}"
+							]
+						},
+						"description": "Delete custom package created in post."
 					},
 					"response": []
 				}
@@ -24289,10 +24422,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.url)",
 							"protocol": "{{protocol}}",
@@ -24434,10 +24563,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.customerId)",
 							"protocol": "{{protocol}}",
@@ -24579,10 +24704,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==EKB and configName==api_access and code==kb.ebsco.apiKey)",
 							"protocol": "{{protocol}}",
@@ -24754,10 +24875,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=(module==KB_EBSCO and configName==api_credentials and code==kb.ebsco.credentials)",
 							"protocol": "{{protocol}}",
@@ -24881,10 +24998,6 @@
 								"value": "{{xokapitoken}}"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{userId}}?indexField=userId",
 							"protocol": "{{protocol}}",
