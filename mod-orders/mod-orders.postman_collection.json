@@ -6120,13 +6120,20 @@
 											"    ",
 											"pm.test(\"Recieved more than 1 Purchase Order\", function () {",
 											"    pm.expect(purchaseOrders.length).to.not.be.below(1);",
-											"});",
-											"",
-											"pm.test(\"Validate that response contains orders sorted by dateOrdered ascending\", function () {",
+											"    pm.test(\"Ensure there are no duplicate rows in the results\", function() {",
+											"    var uniqueIds = [];",
+											"    for (i = 0; i < purchaseOrders.length; i++) {",
+											"        if (uniqueIds.indexOf(purchaseOrders[i].id) === -1) {",
+											"            uniqueIds.push(purchaseOrders[i].id);",
+											"        }",
+											"    }",
+											"    pm.expect(purchaseOrders.length).to.be.equal(uniqueIds.length);",
+											"    ",
+											"    pm.test(\"Validate that response contains orders sorted by dateOrdered ascending\", function () {",
 											"    let date = new Date('0000-01-01T00:00:00.000+0000');",
 											"    let purchaseOrders = pm.response.json().purchaseOrders;",
 											"    for(var i = 0; i < purchaseOrders.length; i++) {",
-											"    \tpm.expect(new Date(purchaseOrders[i].dateOrdered)).to.not.most(date);",
+											"    \tpm.expect(new Date(purchaseOrders[i].dateOrdered)).to.least(date);",
 											"    \tdate = new Date(purchaseOrders[i].dateOrdered);",
 											"    \t    utils.sendGetRequest(\"/orders/order-lines?limit=30&query=orderFormat==Electronic Resource AND purchaseOrderId==\" + purchaseOrders[i].id, (err, res) => {",
 											"    \t    pm.test(\"Validate that PoLines with sorting criteria exist\", function () {",
@@ -6134,8 +6141,12 @@
 											"                pm.expect(res.json().totalRecords).to.not.be.below(1);",
 											"            });",
 											"        });",
-											"    }",
+											"    }});",
 											"});",
+											"});",
+											"",
+											"",
+											"",
 											"",
 											"",
 											"    ",
@@ -6219,9 +6230,16 @@
 											"",
 											"pm.test(\"Recieved more than 1 Purchase Order\", function () {",
 											"    pm.expect(purchaseOrders.length).to.not.be.below(1);",
-											"});",
-											"",
-											"pm.test(\"Response contains orders sorted by dateOrdered ascending\", function () {",
+											"    pm.test(\"Ensure there are no duplicate rows in the results\", function() {",
+											"    var uniqueIds = [];",
+											"    for (i = 0; i < purchaseOrders.length; i++) {",
+											"        if (uniqueIds.indexOf(purchaseOrders[i].id) === -1) {",
+											"            uniqueIds.push(purchaseOrders[i].id);",
+											"        }",
+											"    }",
+											"    pm.expect(purchaseOrders.length).to.be.equal(uniqueIds.length);",
+											"    ",
+											"    pm.test(\"Response contains orders sorted by dateOrdered descending\", function () {",
 											"    let date = new Date('9999-12-12T00:00:00.000+0000');",
 											"    for(var i = 0; i < purchaseOrders.length; i++) {",
 											"    \tpm.expect(new Date(purchaseOrders[i].dateOrdered)).to.most(date);",
@@ -6232,8 +6250,12 @@
 											"                pm.expect(res.json().totalRecords).to.not.be.below(1);",
 											"            });",
 											"        });",
-											"    }",
+											"    }});",
 											"});",
+											"});",
+											"",
+											"",
+											"",
 											""
 										],
 										"type": "text/javascript"
@@ -6279,6 +6301,110 @@
 										{
 											"key": "query",
 											"value": "workflowStatus==Open AND orderFormat==Electronic Resource sortBy dateOrdered/sort.descending"
+										}
+									]
+								},
+								"description": "GET /orders/composite-orders requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get list of Open orders with date range and nested field sorting",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"var moment = require('moment')",
+											"",
+											"pm.globals.set(\"minDate\", moment().format('YYYY-MM-01'));",
+											"pm.globals.set(\"maxDate\", moment().format('YYYY-MM-28'));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var moment = require('moment');",
+											" ",
+											"pm.test(\"PurchaseOrder response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"let purchaseOrders = pm.response.json().purchaseOrders;",
+											"",
+											"pm.test(\"Recieved more than 1 Purchase Order with metadata.createdDate\", function () {",
+											"    let numOfOrdersWithMetadata = 0;",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"        if (purchaseOrders[i].hasOwnProperty('metadata') && purchaseOrders[i].metadata.hasOwnProperty('createdDate')) {",
+											"            numOfOrdersWithMetadata++;",
+											"        }",
+											"    }",
+											"    pm.expect(purchaseOrders.length).to.not.be.below(2);",
+											"    pm.expect(numOfOrdersWithMetadata).to.not.be.below(2);",
+											"    ",
+											"    pm.test(\"Response contains orders sorted by metadata.createdDate ascending\", function () {",
+											"    let date = new Date('0000-01-01T00:00:00.000+0000');",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"        pm.expect(new Date(purchaseOrders[i].metadata.createdDate)).to.least(date);",
+											"    \tdate = new Date(purchaseOrders[i].metadata.createdDate);",
+											"    }});",
+											"    pm.test(\"Response contains orders in the fixed date range\", function () {",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"        pm.expect(new Date(purchaseOrders[i].metadata.createdDate)).to.least(new Date(moment().format('YYYY-MM-01')));",
+											"        pm.expect(new Date(purchaseOrders[i].metadata.createdDate)).to.most(new Date(moment().format('YYYY-MM-28')));",
+											"    }});",
+											"});",
+											"",
+											"",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?limit=30&query=workflowStatus==Open AND orderFormat==Electronic Resource AND metadata.createdDate>{{minDate}} AND metadata.createdDate<{{maxDate}}    sortBy metadata.createdDate/sort.ascending",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "30"
+										},
+										{
+											"key": "query",
+											"value": "workflowStatus==Open AND orderFormat==Electronic Resource AND metadata.createdDate>{{minDate}} AND metadata.createdDate<{{maxDate}}    sortBy metadata.createdDate/sort.ascending"
 										}
 									]
 								},
