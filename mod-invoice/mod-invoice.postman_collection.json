@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "9a50cdc5-3ff0-477b-9711-677bc4797e70",
+		"_postman_id": "3f25f99a-bd46-4b43-8e7f-ed40af3cda79",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -731,7 +731,8 @@
 										"perms",
 										"users"
 									]
-								}
+								},
+								"description": "Adding all mod-invoice permissions and as vouchers do not have POST endpoints, adding \"voucher-storage.vouchers.item.post\" and \"voucher-storage.vouchers.item.delete\" permission to test voucher GET endpoint and cleanup"
 							},
 							"response": []
 						},
@@ -1281,8 +1282,8 @@
 											"pm.test(\"Invoice content is valid\", function() {",
 											"    pm.expect(invoice.id).to.exist;",
 											"    pm.expect(invoice.folioInvoiceNo).to.exist;",
-											"    pm.environment.set(\"invoiceId\", invoice.id); ",
-											"",
+											"    pm.environment.set(\"invoiceId\", invoice.id);",
+											"    ",
 											"    utils.validateInvoice(invoice);",
 											"});",
 											""
@@ -1786,6 +1787,84 @@
 									"response": []
 								},
 								{
+									"name": "Update invoice-line",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice Line is updated\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoice-lines/\" + pm.variables.get(\"invoiceLineId\"), function (err, res) {",
+													"    pm.expect(err).to.equal(null);",
+													"    let invoiceLine  = res.json();",
+													"    pm.test(\"Verify updated fields\", function () {",
+													"       pm.expect(res.json().description).to.equal(pm.variables.get(\"invLineDescription\"));",
+													"       pm.expect(res.json().quantity).to.equal(pm.variables.get(\"invLineQuantity\"));",
+													"    });",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"invoiceLineId\", utils.getLastInvoiceLineId());",
+													"",
+													"var invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"minInvoiceId\"));",
+													"invoiceLine.description = \"Updating given description\"",
+													"invoiceLine.quantity = 4;",
+													"pm.variables.set(\"invoiceLine\", JSON.stringify(invoiceLine));",
+													"pm.variables.set(\"invLineDescription\",invoiceLine.description);",
+													"pm.variables.set(\"invLineQuantity\",invoiceLine.quantity);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLine}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLineId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Delete invoice line by id",
 									"event": [
 										{
@@ -1831,6 +1910,97 @@
 								}
 							],
 							"_postman_isSubFolder": true
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "vouchers",
+					"item": [
+						{
+							"name": "Get voucher by id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let invoice = {};",
+											"",
+											"pm.test(\"Successfully get Voucher\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    voucher = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Voucher content is valid\", function() {",
+											"    utils.validateVoucher(voucher);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/vouchers/vouchers.json\", function (err, res) {",
+											"    let voucher = res.json().vouchers[0];",
+											"",
+											"    delete voucher.id;",
+											"    delete voucher.metadata;",
+											"    ",
+											"  utils.postRequest(\"/voucher-storage/vouchers\", voucher, function(err,response){",
+											"      pm.test(\"voucher is created in storage\", function(){",
+											"          pm.expect(err).to.equal(null);",
+											"          pm.environment.set(\"voucherId\", response.json().id);",
+											"      });",
+											"    });",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/vouchers/{{voucherId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher",
+										"vouchers",
+										"{{voucherId}}"
+									]
+								},
+								"description": "The test creates a voucher in the storage using the storage API and then executes GET"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -2919,6 +3089,194 @@
 							"response": []
 						},
 						{
+							"name": "Update invoice-line- bad ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Status code is 400 - Bad Request\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"var invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"minInvoiceId\"));",
+											"pm.variables.set(\"invoiceLine\", JSON.stringify(invoiceLine));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceLine}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update invoice-line- bad content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"var invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"minInvoiceId\"));",
+											"invoiceLine.invalidProperty = \"invalid\";",
+											"pm.variables.set(\"invoiceLine\", JSON.stringify(invoiceLine));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceLine}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update invoice line by id with empty body",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Get Invoice Line - random line id - 404",
 							"event": [
 								{
@@ -3205,6 +3563,129 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "vouchers",
+					"item": [
+						{
+							"name": "Get voucher by Id - random Id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/vouchers/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher",
+										"vouchers",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /invoice/invoice-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Get voucher by id - bad ID - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "823db5da-29d8-40cd-9e3a-64e832e15184",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/vouchers/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher",
+										"vouchers",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -3376,6 +3857,70 @@
 									""
 								]
 							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete Vouchers",
+					"item": [
+						{
+							"name": "Delete  Voucher from storage",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Voucher is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/vouchers/{{voucherId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher-storage",
+										"vouchers",
+										"{{voucherId}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -3774,7 +4319,7 @@
 					"    },",
 					"    permissions: {",
 					"        \"userId\": \"00000000-1111-5555-9999-999999999999\",",
-					"        \"permissions\": [\"invoice.all\"]",
+					"        \"permissions\": [\"invoice.all\",\"voucher-storage.vouchers.item.post\",\"voucher-storage.vouchers.item.delete\"]",
 					"    }",
 					"};",
 					"",
@@ -4000,6 +4545,7 @@
 					"        pm.environment.unset(\"completeInvoicelineIds\");",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"mod-invoices-configs\");",
+					"        pm.environment.unset(\"voucherId\");",
 					"",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
@@ -4031,6 +4577,13 @@
 					"     */",
 					"    utils.validateInvoiceLine = function(jsonData) {",
 					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"invoice_line.json\")));",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Validates voucher against schema",
+					"     */",
+					"    utils.validateVoucher = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"voucher.json\")));",
 					"    };",
 					"",
 					"    /**",
@@ -4115,6 +4668,22 @@
 					"            data.forEach(obj => delete obj.id);",
 					"        }",
 					"    };",
+					"    ",
+					"    utils.postRequest = function (path, postBody, handler) {",
+					"        pm.sendRequest({",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: 'POST',",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\"),",
+					"                \"Content-type\": \"application/json\"",
+					"            },",
+					"            body: {",
+					"                mode: 'raw',",
+					"                raw: JSON.stringify(postBody)",
+					"            }",
+					"        }, handler);",
+					"    };",
 					"",
 					"    return utils;",
 					"",
@@ -4135,7 +4704,7 @@
 	],
 	"variable": [
 		{
-			"id": "1a5816d0-e20b-4dfc-a6ef-649942ca0ca0",
+			"id": "d5df0166-ccb2-4be4-8821-b7340a8204e6",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
