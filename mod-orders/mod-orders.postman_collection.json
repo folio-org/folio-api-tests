@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "42827316-cd11-4c8c-a277-6fb24253e5b2",
+		"_postman_id": "59c167a5-67a5-404f-bc55-72c6666c9b46",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -498,7 +498,7 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Prepare vendors",
+					"name": "Prepare sample data",
 					"item": [
 						{
 							"name": "Post active vendor",
@@ -625,6 +625,72 @@
 									"path": [
 										"organizations-storage",
 										"organizations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Post location",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Storing active vendor\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"});",
+											"let newLocationId = pm.response.json().id;",
+											"pm.environment.set(\"newLocationId\", newLocationId);",
+											"",
+											"globals.testData.receiving.bodyTemplate.toBeReceived[0].receivedItems[0].locationId = newLocationId;"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Basement\",\n    \"code\": \"FUS/ROH/DAH\",\n    \"isActive\": true,\n    \"institutionId\": \"40ee00ca-a518-4b49-be01-0638d0a4ac57\",\n    \"campusId\": \"62cf76b7-cca5-4d33-9217-edf42ce1a848\",\n    \"libraryId\": \"5d78803e-ca04-4b4a-aeae-2c63b924518b\",\n    \"primaryServicePoint\": \"3a40852d-49fd-4df2-a1f9-6e2641a6e91f\",\n    \"servicePointIds\": [\n        \"3a40852d-49fd-4df2-a1f9-6e2641a6e91f\"\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/locations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"locations"
 									]
 								}
 							},
@@ -14685,6 +14751,68 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Delete location",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Location has been successfully deleted\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Okapi-Tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/locations/{{newLocationId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"locations",
+								"{{newLocationId}}"
+							]
+						},
+						"description": "GET /orders/composite-orders/id requests that return 204"
+					},
+					"response": []
+				},
+				{
 					"name": "Delete and verify test vendors deletion",
 					"event": [
 						{
@@ -14946,7 +15074,7 @@
 					"                    \"comment\": \"Very important note\",",
 					"                    \"caption\": \"Vol. 1\",",
 					"                    \"itemStatus\": \"Received\",",
-					"                    \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",",
+					"                    \"locationId\": \"fcd64ce1-6995-48f0-840e-89ffa2288371\",",
 					"                    \"pieceId\": \"\"",
 					"                }]",
 					"            }],",
@@ -15470,6 +15598,11 @@
 					"            for (let i = 0; i < pieceIds.length; i++) {",
 					"                let receivedItem = utils.copyJsonObj(receivedItemTemplate);",
 					"                receivedItem.pieceId = pieceIds[i];",
+					"                //set new location ids for the half of the pieces",
+					"                if (i%2 == 0){",
+					"                    receivedItem.locationId = pm.environment.get(\"newLocationId\");    ",
+					"                }",
+					"                ",
 					"                if (!isRevertCase) {",
 					"                    // Inventory requires unique barcodes",
 					"                    receivedItem.barcode = ++barcode;",
@@ -16423,13 +16556,13 @@
 	],
 	"variable": [
 		{
-			"id": "972de4a8-ef9c-4237-abd7-0131e398bf38",
+			"id": "ab6199b4-889c-40d4-8cb4-247e769f1c37",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "1730bb60-910e-4733-987a-2145d8eded44",
+			"id": "f1bb9c51-c54f-4793-8236-9bd238a9e7bf",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
