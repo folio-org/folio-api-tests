@@ -12,7 +12,9 @@ Folder | Description
 `- Auth` | Authorize user
 `- Verify required modules enabled` | Validate that required modules enabled i.e. mod-orders, mod-configuration etc.
 `- Update configs` | Update PO Lines limit (based on variable with default value 10);
-`- Load schemas for validation` | Loads various schemas for validation
+`- Load all schemas for validation` | Loads various schemas for validation
+`- Prepare vendors` | Prepares active and inactive vendors
+`- Prepare inventory types` | Prepares inventory types to not rely on reference data presence
 `Positive Tests` | Contains various requests and tests to verify success cases
 `- Empty Order` | Verifies that an order can be created and deleted without order lines
 `- Pending Order` | Verifies that an order in `Pending` status can be created. Verifies that existing PO Lines can be updated/deleted; new PO Lines can be added/updated/deleted.
@@ -23,6 +25,11 @@ Folder | Description
 `- Check closed orders and re-open` | Contains sets of requests: <br> 1. Get orders and verify that their workflow status is `Closed`. If this is `true`, modify one of PO Line's payment status so the order becomes `Open` eventually.  <br> 2. Roll back one of received piece so the order becomes `Open` eventually. <br> 3. Verify that orders were successfully re-opened by operations described above. <br> <br> See [MODORDERS-218](https://issues.folio.org/browse/MODORDERS-218) for more details.
 `- PO Number` | Verifies PO Number generation/validation
 `- Get Orders` | Verifies that orders can be be retrieved by CQL query
+`- Get Order Lines` | Verifies that order lines can be be retrieved by CQL query
+`- Pieces Creation` | Verifies that piece records can be created for check-in flow
+`- Receiving History` | Verifies receiving history endpoint
+`- Create Inventory` | Various tests to verify order creation in `Open` status with different tenant configs
+`- Check-in` | Verifies that resources can be successfully checked-in for `Open` orders and item records updated in the Inventory.
 `Negative Tests` | Contains various requests and tests to verify expected negative cases e.g. validation of the request etc.
 `- Create Order for tests` | Create order and PO line with content required for negative tests
 `- Order` | Various requests and tests to verify expected negative cases for endpoints managing order 
@@ -37,6 +44,9 @@ Variable | Initial Value | Description
  --- | --- | --- 
 `mod-ordersResourcesURL` | https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources | Path to mod-orders test resources
 `poLines-limit` | 10 | Purchase Order Lines Limit to be used for configuration update
+`inventory-instanceTypeCode` | ordersApiTestsInstanceTypeCode | Inventory instance type code which is going to be used for instance creation when order transits to `Open` status
+`inventory-instanceStatusCode` | ordersApiTestsInstanceStatusCode | Inventory instance status code which is going to be used for instance creation when order transits to `Open` status
+`inventory-loanTypeName` | ordersApiTestsLoanTypeName | Inventory loan type name which is going to be used for item creation when order transits to `Open` status
 
 ### Collection utility functions
 
