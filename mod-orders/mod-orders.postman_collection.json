@@ -259,9 +259,14 @@
 											"        bodyTemplate.configName = configName;",
 											"        bodyTemplate.value = value;",
 											"        utils.createConfig(bodyTemplate);",
+											"",
+											"        // store new config",
+											"        configs.push(utils.copyJsonObj(bodyTemplate));",
 											"    }",
 											"}",
-											""
+											"",
+											"// Store current version of configs",
+											"pm.environment.set(\"current-orders-configs\", configs);"
 										],
 										"type": "text/javascript"
 									}
@@ -684,26 +689,164 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Get Prerequisite Data",
+					"name": "Prepare inventory types",
 					"item": [
 						{
-							"name": "Get Material Types",
+							"name": "Get or create Identifier Type",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
 										"exec": [
-											"pm.test(\"Successfully retrieved Material types\", function () {",
-											"    pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    jsonData = pm.response.json();",
-											"});",
+											"pm.test(\"GET identifier types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.identifierTypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.identifierTypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
 											"});  ",
 											"",
-											"pm.test(\"PO Lines and corresponding Inventory entities exist\", function () {",
-											"    pm.globals.set(\"materialType\", jsonData.mtypes[0].id); ",
-											"});"
+											"function useAlreadyExistingType(identifierType) {",
+											"    pm.test(\"Identifier Type already exists\", function () {",
+											"        pm.expect(identifierType.id).to.exist;",
+											"        rememberId(identifierType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const type = {",
+											"        \"id\": \"6d6f642d-1000-1111-aaaa-6f7264657273\",",
+											"        \"name\": pm.variables.get(\"identifierTypeName\")",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/identifier-types\", type, (err, res) => {",
+											"        pm.test(\"Identifier Type created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            rememberId(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function rememberId(id) {",
+											"    pm.environment.set(\"identifierTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											"pm.environment.set(\"identifierTypeName\", \"Vendor Title Number\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/identifier-types?query=name=={{identifierTypeName}}&limit=1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"identifier-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name=={{identifierTypeName}}"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Get or create Instance Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"GET Instance types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.instanceTypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.instanceTypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
+											"});  ",
+											"",
+											"function useAlreadyExistingType(instanceType) {",
+											"    pm.test(\"Instance Type already exists\", function () {",
+											"        pm.expect(instanceType.id).to.exist;",
+											"        rememberId(instanceType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const type = {",
+											"        \"id\": \"6d6f642d-0000-1111-aaaa-6f7264657273\",",
+											"        \"code\": pm.variables.get(\"inventory-instanceTypeCode\"),",
+											"        \"name\": pm.variables.get(\"inventory-instanceTypeCode\"),",
+											"        \"source\": \"apiTests\"",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/instance-types\", type, (err, res) => {",
+											"        pm.test(\"Instance Type created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            rememberId(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function rememberId(id) {",
+											"    pm.environment.set(\"instanceTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
 										],
 										"type": "text/javascript"
 									}
@@ -714,53 +857,104 @@
 								"header": [
 									{
 										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}",
-										"type": "text"
+										"type": "text",
+										"value": "{{xokapitenant}}"
 									},
 									{
 										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
+										"type": "text",
+										"value": "application/json"
 									},
 									{
 										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}",
-										"type": "text"
+										"type": "text",
+										"value": "{{xokapitoken}}"
 									}
 								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/material-types",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-types?query=code=={{inventory-instanceTypeCode}}&limit=1",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
 									],
 									"port": "{{okapiport}}",
 									"path": [
-										"material-types"
+										"instance-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "code=={{inventory-instanceTypeCode}}"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
 									]
 								},
-								"description": "Get material types to be used accross the orders while interaction with inventory"
+								"description": "Gets or creates if not yet exists test instance type to be used accross the orders while interaction with inventory"
 							},
 							"response": []
 						},
 						{
-							"name": "Get Loan type",
+							"name": "Get or create Instance Status",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
 										"exec": [
-											"pm.test(\"Successfully retrieved default loan type\", function () {",
-											"    pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    jsonData = pm.response.json();",
-											"});",
+											"pm.test(\"GET Instance statuses response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.instanceStatuses.length == 1) {",
+											"        useAlreadyExistingType(jsonData.instanceStatuses[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
 											"});  ",
 											"",
-											"pm.test(\"Get the default loan type\", function () {",
-											"    pm.globals.set(\"loanType\", jsonData.loantypes[0].id); ",
-											"});"
+											"function useAlreadyExistingType(status) {",
+											"    pm.test(\"Instance Status already exists\", function () {",
+											"        pm.expect(status.id).to.exist;",
+											"        rememberId(status.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const type = {",
+											"        \"id\": \"6d6f642d-0001-1111-aaaa-6f7264657273\",",
+											"        \"code\": pm.variables.get(\"inventory-instanceStatusCode\"),",
+											"        \"name\": pm.variables.get(\"inventory-instanceStatusCode\"),",
+											"        \"source\": \"apiTests\"",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/instance-statuses\", type, (err, res) => {",
+											"        pm.test(\"Instance Status created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            rememberId(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function rememberId(id) {",
+											"    pm.environment.set(\"instanceStatusId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
 										],
 										"type": "text/javascript"
 									}
@@ -786,7 +980,109 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/loan-types?query=name==\"Can Circulate\"",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-statuses?query=code=={{inventory-instanceStatusCode}}&limit=1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-statuses"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "code=={{inventory-instanceStatusCode}}"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "Gets or creates if not yet exists test instance status to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Get or create Loan Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"GET Loan Types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.loantypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.loantypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
+											"});  ",
+											"",
+											"function useAlreadyExistingType(loanType) {",
+											"    pm.test(\"Loan Type already exists\", function () {",
+											"        pm.expect(loanType.id).to.exist;",
+											"        rememberId(loanType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const type = {",
+											"        \"id\": \"6d6f642d-0002-1111-aaaa-6f7264657273\",",
+											"        \"name\": pm.variables.get(\"inventory-loanTypeName\")",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/loan-types\", type, (err, res) => {",
+											"        pm.test(\"Instance Status created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            rememberId(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function rememberId(id) {",
+											"    pm.environment.set(\"loanTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/loan-types?query=name=={{inventory-loanTypeName}}&limit=1",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -798,11 +1094,121 @@
 									"query": [
 										{
 											"key": "query",
-											"value": "name==\"Can Circulate\""
+											"value": "name=={{inventory-loanTypeName}}"
+										},
+										{
+											"key": "limit",
+											"value": "1"
 										}
 									]
 								},
-								"description": "Get material types to be used accross the orders while interaction with inventory"
+								"description": "Gets or creates if not yet exists test loan type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Get or create Material Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"GET Material types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.mtypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.mtypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
+											"});  ",
+											"",
+											"function useAlreadyExistingType(materialType) {",
+											"    pm.test(\"Material Type already exists\", function () {",
+											"        pm.expect(materialType.id).to.exist;",
+											"        setIdAsGlobalVariable(materialType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const mtype = {",
+											"        \"id\": \"6d6f642d-0003-1111-aaaa-6f7264657273\",",
+											"        \"name\": pm.variables.get(\"materialTypeName\")",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/material-types\", mtype, (err, res) => {",
+											"        pm.test(\"Material Type created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            setIdAsGlobalVariable(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function setIdAsGlobalVariable(id) {",
+											"    pm.environment.set(\"materialTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											"pm.variables.set(\"materialTypeName\", \"Orders API Tests type\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/material-types?query=name=={{materialTypeName}}&limit=1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"material-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name=={{materialTypeName}}"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "Gets or creates if not yet exists test meterial type to be used accross the orders while interaction with inventory"
 							},
 							"response": []
 						}
@@ -2539,7 +2945,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"owner\": \"{{orderOwner}}\",\n  \"poNumber\": \"268758test2\",\n  \"reEncumber\": false,\n  \"vendor\": \"d0fb5aa0-cdf1-11e8-a8d5-f2801f1b9fd1\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"id\": \"{{poLineId}}\",\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listUnitPrice\": {{listUnitPriceUpdate}},\n        \"discount\": {{discountUpdate}},\n        \"discountType\": \"{{discountTypeUpdate}}\",\n        \"quantityPhysical\": {{quantityPhysicalUpdate}},\n        \"currency\": \"{{currencyUpdate}}\"\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"ISBN\"\n          }\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityElectronic\": 0,\n        \"quantityPhysical\": {{quantityPhysicalUpdate}}\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\",\n        \"materialType\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
+											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"owner\": \"{{orderOwner}}\",\n  \"poNumber\": \"268758test2\",\n  \"reEncumber\": false,\n  \"vendor\": \"d0fb5aa0-cdf1-11e8-a8d5-f2801f1b9fd1\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"id\": \"{{poLineId}}\",\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listUnitPrice\": {{listUnitPriceUpdate}},\n        \"discount\": {{discountUpdate}},\n        \"discountType\": \"{{discountTypeUpdate}}\",\n        \"quantityPhysical\": {{quantityPhysicalUpdate}},\n        \"currency\": \"{{currencyUpdate}}\"\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"{{identifierTypeName}}\"\n          }\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityElectronic\": 0,\n        \"quantityPhysical\": {{quantityPhysicalUpdate}}\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\",\n        \"materialType\": \"{{materialTypeId}}\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
@@ -2648,7 +3054,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"poNumber\": {{completeOrderPoNumber}},\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 100.99,\n  \"vendor\": \"d0fb5aa0-cdf1-11e8-a8d5-f2801f1b9fd1\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listUnitPrice\": {{listUnitPriceUpdate}},\n        \"additionalCost\": {{additionalCostUpdate}},\n        \"discount\": {{discountUpdate}},\n        \"discountType\": \"{{discountTypeUpdate}}\",\n        \"quantityPhysical\": {{quantityPhysicalUpdate}},\n        \"currency\": \"USD\"\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"ISBN\"\n          }\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityPhysical\": {{quantityPhysicalUpdate}}\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\",\n        \"materialType\": \"1a54b431-2e4f-452d-9cae-9cee66c9a892\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
+											"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"orderType\": \"One-Time\",\n  \"poNumber\": {{completeOrderPoNumber}},\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 100.99,\n  \"vendor\": \"d0fb5aa0-cdf1-11e8-a8d5-f2801f1b9fd1\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"alerts\": [\n        {\n          \"alert\": \"Receipt overdue\"\n        }\n      ],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000Z\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n        }\n      ],\n      \"cost\": {\n        \"listUnitPrice\": {{listUnitPriceUpdate}},\n        \"additionalCost\": {{additionalCostUpdate}},\n        \"discount\": {{discountUpdate}},\n        \"discountType\": \"{{discountTypeUpdate}}\",\n        \"quantityPhysical\": {{quantityPhysicalUpdate}},\n        \"currency\": \"USD\"\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"9780764354113\",\n            \"productIdType\": \"{{identifierTypeName}}\"\n          }\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000Z\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000Z\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"percentage\": 80.0,\n          \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\"\n        },\n        {\n          \"code\": \"GENRL\",\n          \"percentage\": 20.0,\n          \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\"\n        }\n      ],\n      \"locations\": [{\n        \"locationId\": \"eb2d063a-5b4c-4cab-8db1-5fc5c5941df6\",\n        \"quantityPhysical\": {{quantityPhysicalUpdate}}\n      }],\n      \"orderFormat\": \"Physical Resource\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"volumes\": [\"1\"],\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000Z\",\n        \"materialType\": \"{{materialTypeId}}\"\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"268758-03\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"receiptDate\": \"2018-10-09T00:00:00.000Z\",\n      \"receiptStatus\": \"Awaiting Receipt\", \n      \"reportingCodes\": [\n        {\n          \"code\": \"CODE1\",\n          \"description\": \"ABCDEF\"\n        },\n        {\n          \"code\": \"CODE2\",\n          \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n        },\n        {\n          \"code\": \"CODE3\",\n          \"description\": \"ABCDE\"\n        }\n      ],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": {\n        \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n        \"description\": \"ABCDEFGHIJKLMNO\"\n      },\n      \"tags\": [\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFG\",\n        \"ABCDEFGHIJKLMNOPQRSTU\",\n        \"ABCDEFGHIJKLMNO\"\n      ],\n      \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      }\n    }\n  ]\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
@@ -3313,11 +3719,8 @@
 											"    order.compositePoLines[0].orderFormat = \"Physical Resource\";",
 											"    setPhysicalInfo(order.compositePoLines[0]);",
 											"    order.compositePoLines[1].orderFormat = \"Other\";",
-											"    //using a new product Id for Other , because it can have create Inventory different based on the environment",
-											"    order.compositePoLines[1].details.productIds[0].productId = \"768768768768\";",
 											"    setPhysicalInfo(order.compositePoLines[1]);",
 											"    ",
-											"    pendingOrder.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 											"    // add 2 new PO lines",
 											"    pendingOrder.compositePoLines = pendingOrder.compositePoLines.concat(order.compositePoLines);",
 											"    // Set Open status",
@@ -3342,10 +3745,8 @@
 											"    line.cost.listUnitPrice = 10.5;",
 											"    if (!line.hasOwnProperty(\"physical\")) {",
 											"        line.physical = {",
-											"            \"materialType\": pm.globals.get(\"materialType\")",
+											"            \"materialType\": pm.environment.get(\"materialTypeId\")",
 											"        };",
-											"    }else{",
-											"         line.physical.materialType = pm.globals.get(\"materialType\");",
 											"    }",
 											"}"
 										],
@@ -3458,18 +3859,9 @@
 											"    let order  = utils.prepareOrder(res.json());",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"1MIX1EL\";",
-											"    // Prepare for vendor validation",
-											"    order.vendor = \"{{activeVendorId}}\";",
-											"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding\";",
-											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding\";",
-											"    order.compositePoLines[0].eresource.accessProvider = \"{{activeVendorId}}\";",
-											"    order.compositePoLines[1].eresource.accessProvider = \"{{activeVendorId}}\";",
-											"    // Set new product ids to be sure that new instances will be created",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541133\";",
-											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541134\";",
+                                            "    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding\";",
+                                            "    order.compositePoLines[0].physical.createInventory = \"Instance, Holding\";",
 											"    order.compositePoLines.forEach(poLine => poLine.paymentStatus = \"Partially Paid\");",
-											"    //set proper material Type",
-											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(order));",
 											"});"
 										],
@@ -3562,8 +3954,6 @@
 											"",
 											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_one_physical_one_electronic_lines.json\", (err, res) => {",
 											"    let order = utils.prepareOrder(res.json());",
-											"     order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
-											"     order.compositePoLines[1].eresource.materialType = pm.globals.get(\"materialType\");",
 											"    pm.variables.set(\"po_one_physical_one_electronic_lines\", JSON.stringify(order));",
 											"});",
 											"",
@@ -3754,8 +4144,6 @@
 											"    order.compositePoLines[0].checkinItems = false;",
 											"    order.compositePoLines[1].checkinItems = false;",
 											"    order = utils.deletePoNumber(order);",
-											"    //set proper material Type ",
-											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 											"    pm.variables.set(\"poListedPrintMonographForReceivingHistory\", JSON.stringify(utils.prepareOrder(order)));",
 											"});"
 										],
@@ -3842,13 +4230,6 @@
 											"    // Set checkingItems flag",
 											"    order.compositePoLines[0].checkinItems = false;",
 											"    order.compositePoLines[1].checkinItems = true;",
-											"",
-											"    // Set new product ids to be sure that new instances will be created",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541131\";",
-											"    order.compositePoLines[1].details.productIds[0].productId = \"97807643541132\";",
-											"    ",
-											"    //set proper material Type",
-											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 											"    ",
 											"    pm.variables.set(\"poListedPrintMonographForPartialCheckIn\", JSON.stringify(utils.prepareOrder(order)));",
 											"});"
@@ -3951,14 +4332,8 @@
 											"    // Set new product ids to be sure that new instances will be created",
 											"    order.compositePoLines[0].details.productIds.pop();",
 											"    ",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"11311321131132\";",
-											"    order.compositePoLines[1].details.productIds[0].productId = \"11321331132133\";",
-											"    ",
 											"    order.compositePoLines[0].title = \"Hey! Just API testing checkin\"",
 											"    order.compositePoLines[1].title = \"Hey! Just API testing checkin with no items\"",
-											"    ",
-											"    //set proper material Type",
-											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 											"    ",
 											"    //set create Inventory so that no item interaction is necessary",
 											"    order.compositePoLines[1].eresource.createInventory = \"Instance, Holding\";",
@@ -6045,6 +6420,328 @@
 								"description": "GET /orders/composite-orders requests that return 200"
 							},
 							"response": []
+						},
+						{
+							"name": "Get list of Open orders sorted by ascending",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var purchaseOrdersData = {};",
+											" ",
+											"pm.test(\"PurchaseOrder response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    purchaseOrdersData = pm.response.json();",
+											"});",
+											"",
+											"let purchaseOrders = pm.response.json().purchaseOrders;",
+											"    ",
+											"pm.test(\"Recieved more than 1 Purchase Order\", function () {",
+											"    pm.expect(purchaseOrders.length).to.not.be.below(1);",
+											"    pm.test(\"Ensure there are no duplicate rows in the results\", function() {",
+											"    var uniqueIds = [];",
+											"    for (i = 0; i < purchaseOrders.length; i++) {",
+											"        if (uniqueIds.indexOf(purchaseOrders[i].id) === -1) {",
+											"            uniqueIds.push(purchaseOrders[i].id);",
+											"        }",
+											"    }",
+											"    pm.expect(purchaseOrders.length).to.be.equal(uniqueIds.length);",
+											"    ",
+											"    pm.test(\"Validate that response contains orders sorted by dateOrdered ascending\", function () {",
+											"    let date = new Date('0000-01-01T00:00:00.000+0000');",
+											"    let purchaseOrders = pm.response.json().purchaseOrders;",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"    \tpm.expect(new Date(purchaseOrders[i].dateOrdered)).to.least(date);",
+											"    \tdate = new Date(purchaseOrders[i].dateOrdered);",
+											"    \t    utils.sendGetRequest(\"/orders/order-lines?limit=30&query=orderFormat==Electronic Resource AND purchaseOrderId==\" + purchaseOrders[i].id, (err, res) => {",
+											"    \t    pm.test(\"Validate that PoLines with sorting criteria exist\", function () {",
+											"                pm.expect(res).to.have.status(200);",
+											"                pm.expect(res.json().totalRecords).to.not.be.below(1);",
+											"            });",
+											"        });",
+											"    }});",
+											"});",
+											"});",
+											"",
+											"",
+											"",
+											"",
+											"",
+											"    ",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?limit=30&query=workflowStatus==Open AND orderFormat==Electronic Resource sortBy dateOrdered/sort.ascending",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "30"
+										},
+										{
+											"key": "query",
+											"value": "workflowStatus==Open AND orderFormat==Electronic Resource sortBy dateOrdered/sort.ascending"
+										}
+									]
+								},
+								"description": "GET /orders/composite-orders requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get list of Open orders sorted by descending",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											" ",
+											"pm.test(\"PurchaseOrder response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"let purchaseOrders = pm.response.json().purchaseOrders;",
+											"",
+											"pm.test(\"Recieved more than 1 Purchase Order\", function () {",
+											"    pm.expect(purchaseOrders.length).to.not.be.below(1);",
+											"    pm.test(\"Ensure there are no duplicate rows in the results\", function() {",
+											"    var uniqueIds = [];",
+											"    for (i = 0; i < purchaseOrders.length; i++) {",
+											"        if (uniqueIds.indexOf(purchaseOrders[i].id) === -1) {",
+											"            uniqueIds.push(purchaseOrders[i].id);",
+											"        }",
+											"    }",
+											"    pm.expect(purchaseOrders.length).to.be.equal(uniqueIds.length);",
+											"    ",
+											"    pm.test(\"Response contains orders sorted by dateOrdered descending\", function () {",
+											"    let date = new Date('9999-12-12T00:00:00.000+0000');",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"    \tpm.expect(new Date(purchaseOrders[i].dateOrdered)).to.most(date);",
+											"    \tdate = new Date(purchaseOrders[i].dateOrdered);",
+											"    \t    utils.sendGetRequest(\"/orders/order-lines?limit=30&query=orderFormat==Electronic Resource AND purchaseOrderId==\" + purchaseOrders[i].id, (err, res) => {",
+											"    \t    pm.test(\"PoLines with sorting criteria exist\", function () {",
+											"                pm.expect(res).to.have.status(200);",
+											"                pm.expect(res.json().totalRecords).to.not.be.below(1);",
+											"            });",
+											"        });",
+											"    }});",
+											"});",
+											"});",
+											"",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?limit=30&query=workflowStatus==Open AND orderFormat==Electronic Resource sortBy dateOrdered/sort.descending",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "30"
+										},
+										{
+											"key": "query",
+											"value": "workflowStatus==Open AND orderFormat==Electronic Resource sortBy dateOrdered/sort.descending"
+										}
+									]
+								},
+								"description": "GET /orders/composite-orders requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get list of Open orders with date range and nested field sorting",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"var moment = require('moment');",
+											"",
+											"pm.variables.set(\"minDate\", moment().utc().subtract(5, 'minutes').format('YYYY-MM-DDTHH:mm:ss[Z]'));",
+											"pm.variables.set(\"maxDate\", moment().utc().format('YYYY-MM-DDTHH:mm:ss[Z]'));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var moment = require('moment');",
+											" ",
+											"pm.test(\"PurchaseOrder response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"let purchaseOrders = pm.response.json().purchaseOrders;",
+											"",
+											"pm.test(\"Recieved more than 1 Purchase Order with metadata.createdDate\", function () {",
+											"    let numOfOrdersWithMetadata = 0;",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"        if (purchaseOrders[i].hasOwnProperty('metadata') && purchaseOrders[i].metadata.hasOwnProperty('createdDate')) {",
+											"            numOfOrdersWithMetadata++;",
+											"        }",
+											"    }",
+											"    pm.expect(purchaseOrders.length).to.not.be.below(2);",
+											"    pm.expect(numOfOrdersWithMetadata).to.not.be.below(2);",
+											"    ",
+											"    pm.test(\"Response contains orders sorted by metadata.createdDate ascending\", function () {",
+											"    let date = new Date('0000-01-01T00:00:00.000+0000');",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"        pm.expect(new Date(purchaseOrders[i].metadata.createdDate)).to.least(date);",
+											"    \tdate = new Date(purchaseOrders[i].metadata.createdDate);",
+											"    }});",
+											"    pm.test(\"Response contains orders in the fixed date range\", function () {",
+											"    for(var i = 0; i < purchaseOrders.length; i++) {",
+											"        pm.expect(new Date(purchaseOrders[i].metadata.createdDate)).to.least(new Date(pm.variables.get(\"minDate\")));",
+											"        pm.expect(new Date(purchaseOrders[i].metadata.createdDate)).to.most(new Date(pm.variables.get(\"maxDate\")));",
+											"    }});",
+											"});",
+											"",
+											"",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?limit=30&query=workflowStatus==Open AND orderFormat==Electronic Resource AND metadata.createdDate>{{minDate}} AND metadata.createdDate<{{maxDate}}    sortBy metadata.createdDate/sort.ascending",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "30"
+										},
+										{
+											"key": "query",
+											"value": "workflowStatus==Open AND orderFormat==Electronic Resource AND metadata.createdDate>{{minDate}} AND metadata.createdDate<{{maxDate}}    sortBy metadata.createdDate/sort.ascending"
+										}
+									]
+								},
+								"description": "GET /orders/composite-orders requests that return 200"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -6302,10 +6999,10 @@
 									"script": {
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
-											"var moment = require('moment')",
+											"var moment = require('moment');",
 											"",
-											"pm.globals.set(\"minDate\", moment().format('YYYY-MM-01'));",
-											"pm.globals.set(\"maxDate\", moment().format('YYYY-MM-28'));"
+											"pm.variables.set(\"minDate\", moment().utc().subtract(5, 'minutes').format('YYYY-MM-DDTHH:mm:ss[Z]'));",
+											"pm.variables.set(\"maxDate\", moment().utc().format('YYYY-MM-DDTHH:mm:ss[Z]'));"
 										],
 										"type": "text/javascript"
 									}
@@ -6348,8 +7045,8 @@
 											"            if (poLines[i].hasOwnProperty('metadata')) {",
 											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.least(date);",
 											"                //check polines date range",
-											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.least(new Date(moment().format('YYYY-MM-01')));",
-											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.most(new Date(moment().format('YYYY-MM-28')));",
+											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.least(new Date(pm.variables.get(\"minDate\")));",
+											"                pm.expect(new Date(poLines[i].metadata.createdDate)).to.most(new Date(pm.variables.get(\"maxDate\")));",
 											"                date = new Date(poLines[i].metadata.createdDate);",
 											"            }",
 											"        });",
@@ -6558,11 +7255,6 @@
 													"    let order  = res.json();",
 													"    order.workflowStatus = \"Pending\";",
 													"    order.compositePoLines[0].orderFormat = \"P/E Mix\";",
-													"    ",
-													"    //put proper material type",
-													"    order.compositePoLines[0].eresource.materialType = pm.globals.get(\"materialType\");",
-													"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
-													"    order.compositePoLines[1].eresource.materialType = pm.globals.get(\"materialType\");",
 													"    ",
 													"    order = utils.deletePoNumber(order);",
 													"    // Set retrieved content for further requests",
@@ -7281,7 +7973,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n    \"id\": \"{{randomUUId}}\",\n    \"approved\": true,\n    \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n    \"notes\": [\n        \"ABCDEFGHIJKLMNO\",\n        \"ABCDEFGHIJKLMNOPQRST\",\n        \"ABCDEFGHIJKLMNOPQRSTUV\"\n    ],\n    \"poNumber\": \"PIECE100674545\",\n    \"orderType\": \"One-Time\",\n    \"reEncumber\": false,\n    \"totalEstimatedPrice\": 152.63,\n    \"totalItems\": 6,\n    \"workflowStatus\": \"Pending\",\n    \"vendor\": \"{{activeVendorId}}\",\n    \"compositePoLines\": [\n        {\n            \"id\": \"4186d931-3965-4794-bfbf-a398944127c2\",\n            \"acquisitionMethod\": \"Purchase At Vendor System\",\n            \"alerts\": [\n                {\n                    \"id\": \"a8129c90-208d-4a0d-aba1-71faa188fe84\",\n                    \"alert\": \"Receipt overdue\"\n                }\n            ],\n            \"cancellationRestriction\": false,\n            \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n            \"claims\": [\n                {\n                    \"claimed\": false,\n                    \"sent\": \"2018-10-09T00:00:00.000+0000\",\n                    \"grace\": 30\n                }\n            ],\n            \"collection\": false,\n            \"contributors\": [\n                {\n                    \"contributor\": \"Ed Mashburn\",\n                    \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n                }\n            ],\n            \"cost\": {\n                \"listUnitPrice\": 24.99,\n                \"currency\": \"USD\",\n                \"additionalCost\": 10,\n                \"discount\": 5,\n                \"discountType\": \"percentage\",\n                \"quantityPhysical\": 3,\n                \"quantityElectronic\": 0,\n                \"poLineEstimatedPrice\": 81.22\n            },\n            \"description\": \"ABCDEFGH\",\n            \"details\": {\n                \"receivingNote\": \"ABCDEFGHIJKL\",\n                \"productIds\": [\n                    {\n                        \"productId\": \"9780764354113\",\n                        \"productIdType\": \"ISBN\"\n                    }\n                ],\n                \"subscriptionFrom\": \"2018-10-09T00:00:00.000+0000\",\n                \"subscriptionInterval\": 824,\n                \"subscriptionTo\": \"2020-10-09T00:00:00.000+0000\"\n            },\n            \"donor\": \"ABCDEFGHIJKLM\",\n            \"fundDistribution\": [\n                {\n                    \"code\": \"HIST\",\n                    \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\",\n                    \"percentage\": 80\n                },\n                {\n                    \"code\": \"GENRL\",\n                    \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\",\n                    \"percentage\": 20\n                }\n            ],\n            \"locations\": [\n                {\n                    \"locationId\": \"fcd64ce1-6995-48f0-840e-89ffa2288371\",\n                    \"quantity\": 1,\n                    \"quantityElectronic\": 0,\n                    \"quantityPhysical\": 1\n                },\n                {\n                    \"locationId\": \"f34d27c6-a8eb-461b-acd6-5dea81771e70\",\n                    \"quantity\": 2,\n                    \"quantityElectronic\": 0,\n                    \"quantityPhysical\": 2\n                }\n            ],\n            \"orderFormat\": \"Physical Resource\",\n            \"paymentStatus\": \"Awaiting Payment\",\n            \"physical\": {\n                \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n                \"receiptDue\": \"2018-10-10T00:00:00.000+0000\",\n                \"volumes\": [\n                    \"vol.1\"\n                ],\n                \"materialType\": \"{{materialType}}\"\n            },\n            \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n            \"publicationDate\": \"2017\",\n            \"publisher\": \"Schiffer Publishing\",\n            \"purchaseOrderId\": \"8b854f27-06cf-41ed-a7cb-d00d5d8fe5e4\",\n            \"receiptStatus\": \"Pending\",\n            \"reportingCodes\": [\n                {\n                    \"id\": \"9f49a9b0-5868-45ac-a2ec-c5a405311f4a\",\n                    \"code\": \"CODE1\",\n                    \"description\": \"ABCDEF\"\n                },\n                {\n                    \"id\": \"4bf527d2-0a01-41ec-bb56-eb660f970248\",\n                    \"code\": \"CODE2\",\n                    \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n                },\n                {\n                    \"id\": \"8fd796e5-6b8d-4f60-9302-4071e9e844da\",\n                    \"code\": \"CODE3\",\n                    \"description\": \"ABCDE\"\n                }\n            ],\n            \"requester\": \"Leo Bulero\",\n            \"rush\": true,\n            \"selector\": \"ABCD\",\n            \"source\": {\n                \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n                \"description\": \"ABCDEFGHIJKLMNO\"\n            },\n            \"tags\": [\n                \"ABCDEFGHIJKLMNOPQRSTU\",\n                \"ABCDEFG\",\n                \"ABCDEFGHIJKLMNOPQRSTU\",\n                \"ABCDEFGHIJKLMNO\"\n            ],\n            \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n            \"vendorDetail\": {\n                \"instructions\": \"ABCDEFG\",\n                \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n                \"refNumber\": \"123456-78\",\n                \"refNumberType\": \"Supplier's unique order line reference number\",\n                \"vendorAccount\": \"8910-10\"\n            },\n            \"metadata\": {\n                \"createdDate\": \"2010-10-08T03:53:00.000+0000\",\n                \"createdByUserId\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\"\n            }\n        }\n    ]\n}"
+											"raw": "{\n    \"id\": \"{{randomUUId}}\",\n    \"approved\": true,\n    \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n    \"notes\": [\n        \"ABCDEFGHIJKLMNO\",\n        \"ABCDEFGHIJKLMNOPQRST\",\n        \"ABCDEFGHIJKLMNOPQRSTUV\"\n    ],\n    \"poNumber\": \"PIECE100674545\",\n    \"orderType\": \"One-Time\",\n    \"reEncumber\": false,\n    \"totalEstimatedPrice\": 152.63,\n    \"totalItems\": 6,\n    \"workflowStatus\": \"Pending\",\n    \"vendor\": \"{{activeVendorId}}\",\n    \"compositePoLines\": [\n        {\n            \"id\": \"4186d931-3965-4794-bfbf-a398944127c2\",\n            \"acquisitionMethod\": \"Purchase At Vendor System\",\n            \"alerts\": [\n                {\n                    \"id\": \"a8129c90-208d-4a0d-aba1-71faa188fe84\",\n                    \"alert\": \"Receipt overdue\"\n                }\n            ],\n            \"cancellationRestriction\": false,\n            \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n            \"claims\": [\n                {\n                    \"claimed\": false,\n                    \"sent\": \"2018-10-09T00:00:00.000+0000\",\n                    \"grace\": 30\n                }\n            ],\n            \"collection\": false,\n            \"contributors\": [\n                {\n                    \"contributor\": \"Ed Mashburn\",\n                    \"contributorType\": \"fbdd42a8-e47d-4694-b448-cc571d1b44c3\"\n                }\n            ],\n            \"cost\": {\n                \"listUnitPrice\": 24.99,\n                \"currency\": \"USD\",\n                \"additionalCost\": 10,\n                \"discount\": 5,\n                \"discountType\": \"percentage\",\n                \"quantityPhysical\": 3,\n                \"quantityElectronic\": 0,\n                \"poLineEstimatedPrice\": 81.22\n            },\n            \"description\": \"ABCDEFGH\",\n            \"details\": {\n                \"receivingNote\": \"ABCDEFGHIJKL\",\n                \"productIds\": [\n                    {\n                        \"productId\": \"9780764354113\",\n                        \"productIdType\": \"{{identifierTypeName}}\"\n                    }\n                ],\n                \"subscriptionFrom\": \"2018-10-09T00:00:00.000+0000\",\n                \"subscriptionInterval\": 824,\n                \"subscriptionTo\": \"2020-10-09T00:00:00.000+0000\"\n            },\n            \"donor\": \"ABCDEFGHIJKLM\",\n            \"fundDistribution\": [\n                {\n                    \"code\": \"HIST\",\n                    \"encumbrance\": \"eb506834-6c70-4239-8d1a-6414a5b08ac3\",\n                    \"percentage\": 80\n                },\n                {\n                    \"code\": \"GENRL\",\n                    \"encumbrance\": \"0466cb77-0344-43c6-85eb-0a64aa2934e5\",\n                    \"percentage\": 20\n                }\n            ],\n            \"locations\": [\n                {\n                    \"locationId\": \"fcd64ce1-6995-48f0-840e-89ffa2288371\",\n                    \"quantity\": 1,\n                    \"quantityElectronic\": 0,\n                    \"quantityPhysical\": 1\n                },\n                {\n                    \"locationId\": \"f34d27c6-a8eb-461b-acd6-5dea81771e70\",\n                    \"quantity\": 2,\n                    \"quantityElectronic\": 0,\n                    \"quantityPhysical\": 2\n                }\n            ],\n            \"orderFormat\": \"Physical Resource\",\n            \"paymentStatus\": \"Awaiting Payment\",\n            \"physical\": {\n                \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n                \"receiptDue\": \"2018-10-10T00:00:00.000+0000\",\n                \"volumes\": [\n                    \"vol.1\"\n                ],\n                \"materialType\": \"{{materialTypeId}}\"\n            },\n            \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n            \"publicationDate\": \"2017\",\n            \"publisher\": \"Schiffer Publishing\",\n            \"purchaseOrderId\": \"8b854f27-06cf-41ed-a7cb-d00d5d8fe5e4\",\n            \"receiptStatus\": \"Pending\",\n            \"reportingCodes\": [\n                {\n                    \"id\": \"9f49a9b0-5868-45ac-a2ec-c5a405311f4a\",\n                    \"code\": \"CODE1\",\n                    \"description\": \"ABCDEF\"\n                },\n                {\n                    \"id\": \"4bf527d2-0a01-41ec-bb56-eb660f970248\",\n                    \"code\": \"CODE2\",\n                    \"description\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n                },\n                {\n                    \"id\": \"8fd796e5-6b8d-4f60-9302-4071e9e844da\",\n                    \"code\": \"CODE3\",\n                    \"description\": \"ABCDE\"\n                }\n            ],\n            \"requester\": \"Leo Bulero\",\n            \"rush\": true,\n            \"selector\": \"ABCD\",\n            \"source\": {\n                \"code\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZABC\",\n                \"description\": \"ABCDEFGHIJKLMNO\"\n            },\n            \"tags\": [\n                \"ABCDEFGHIJKLMNOPQRSTU\",\n                \"ABCDEFG\",\n                \"ABCDEFGHIJKLMNOPQRSTU\",\n                \"ABCDEFGHIJKLMNO\"\n            ],\n            \"title\": \"Kayak Fishing in the Northern Gulf Coast\",\n            \"vendorDetail\": {\n                \"instructions\": \"ABCDEFG\",\n                \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n                \"refNumber\": \"123456-78\",\n                \"refNumberType\": \"Supplier's unique order line reference number\",\n                \"vendorAccount\": \"8910-10\"\n            },\n            \"metadata\": {\n                \"createdDate\": \"2010-10-08T03:53:00.000+0000\",\n                \"createdByUserId\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\"\n            }\n        }\n    ]\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -8045,8 +8737,7 @@
 													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
 													"",
 													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
-													"    let configName = \"createInventory\";",
-													"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
+													"    let originalConfig = utils.getConfigByName(originalConfigs, \"createInventory\");",
 													"    if (originalConfig) {",
 													"        console.log(originalConfig);",
 													"        utils.deleteConfig(originalConfig.id);",
@@ -8054,14 +8745,10 @@
 													"    let order = res.json();",
 													"    order.workflowStatus = \"Open\";",
 													"    order.poNumber = \"CR34TE1NV5\";",
-													"    // Set new product ids to be sure that new instances will be tried to create",
-													"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541160\";",
 													"",
 													"    //remove createInventory value",
 													"    delete order.compositePoLines[0].eresource.createInventory;",
 													"    delete order.compositePoLines[0].physical.createInventory;",
-													"    ",
-													"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 													"",
 													"    pm.variables.set(\"orderWithCreateInventoryNull1\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -8150,8 +8837,6 @@
 													"    let order = res.json();",
 													"    order.workflowStatus = \"Open\";",
 													"    order.poNumber = \"CR34TE1NV6\";",
-													"    // Set new product ids to be sure that new instances will be tried to create",
-													"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541161\";",
 													"",
 													"    //remove createInventory value",
 													"    delete order.compositePoLines[0].eresource.createInventory;",
@@ -8230,18 +8915,18 @@
 												"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"let testConfigs = globals.testData.configs;",
 													"",
-													"let currentConfigs;",
-													"pm.test(\"Storing current configs\", function() {",
+													"pm.test(\"Removing all current configs\", function() {",
 													"    pm.response.to.be.ok;",
 													"",
-													"    currentConfigs = pm.response.json().configs;",
+													"    let currentConfigs = pm.response.json().configs;",
 													"    console.log(\"Current configs: \", currentConfigs);",
 													"    for (var i = 0; i < currentConfigs.length; i++) {",
 													"        let configId = currentConfigs[i].id;",
 													"        utils.deleteConfig(configId);",
 													"    }",
+													"",
+													"    pm.environment.unset(\"current-orders-configs\");",
 													"});",
 													""
 												],
@@ -8299,20 +8984,15 @@
 												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
 													"",
 													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/print_monograph_for_create_inventory_test.json\", (err, res) => {",
 													"    let order = res.json();",
 													"    order.workflowStatus = \"Open\";",
 													"    order.poNumber = \"CR34TE1NV7\";",
-													"    // Set new product ids to be sure that new instances will be tried to create",
-													"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541162\";",
 													"",
 													"    // remove createInventory value",
 													"    delete order.compositePoLines[0].eresource.createInventory;",
 													"    delete order.compositePoLines[0].physical.createInventory;",
-													"",
-													"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 													"",
 													"    pm.variables.set(\"orderWithCreateInventoryNull3\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -8337,39 +9017,7 @@
 													"",
 													"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function() {",
 													"    utils.validatePoLines(order, 1, true);",
-													"});",
-													"",
-													"//// Restore Configs",
-													"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
-													"let testConfigs = globals.testData.configs;",
-													"let testConfigsNames = globals.testData.configs.configNames;",
-													"",
-													"// restore original configs",
-													"for (var i = 0; i < originalConfigs.length; i++) {",
-													"    let config = originalConfigs[i];",
-													"    ",
-													"    // skip restoring original config if test config exists",
-													"    let testConfig = testConfigsNames.filter(value => value === config.configName);",
-													"",
-													"    if (testConfig.length === 0) {",
-													"        delete config.id;",
-													"        delete config.metadata;",
-													"        utils.createConfig(config);",
-													"    }",
-													"}",
-													"",
-													"// restore testConfigs (for negative tests)",
-													"let configNamesToProcess = testConfigs.configNames;",
-													"console.log(\"Config codes to process: \" + configNamesToProcess);",
-													"",
-													"let bodyTemplate = testConfigs.bodyTemplate;",
-													"for (var i = 0; i < configNamesToProcess.length; i++) {",
-													"    let configName = configNamesToProcess[i];",
-													"    let value = pm.variables.get(configName);",
-													"    bodyTemplate.configName = configName;",
-													"    bodyTemplate.value = value;",
-													"    utils.createConfig(bodyTemplate);",
-													"}"
+													"});"
 												],
 												"type": "text/javascript"
 											}
@@ -8450,8 +9098,6 @@
 											"    let order  = res.json();",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"CR34TE1NV1\";",
-											"    // Set new product ids to be sure that new instances will be tried to create",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541150\";",
 											"    ",
 											"    //set createInventory value",
 											"    order.compositePoLines[0].eresource.createInventory = \"None\";",
@@ -8540,8 +9186,6 @@
 											"    let order  = res.json();",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"CR34TE1NV2\";",
-											"    // Set new product ids to be sure that new instances will be tried to create",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541151\";",
 											"    ",
 											"    //set createInventory value",
 											"    order.compositePoLines[0].eresource.createInventory = \"Instance\";",
@@ -8626,8 +9270,6 @@
 											"    let order  = res.json();",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"CR34TE1NV3\";",
-											"    // Set new product ids to be sure that new instances will be tried to create",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541152\";",
 											"    ",
 											"    //set createInventory value",
 											"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding\";",
@@ -8712,16 +9354,10 @@
 											"    let order  = res.json();",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"CR34TE1NV4\";",
-											"    // Set new product ids to be sure that new instances will be tried to create",
-											"    order.compositePoLines[0].details.productIds[0].productId = \"97807643541153\";",
 											"    ",
 											"    //set createInventory value",
 											"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
-											"    ",
-											"    //put proper material type",
-											"    order.compositePoLines[0].eresource.materialType = pm.globals.get(\"materialType\");",
-											"    order.compositePoLines[0].physical.materialType = pm.globals.get(\"materialType\");",
 											"    ",
 											"    pm.variables.set(\"orderWithCreateInventoryInstanceHoldingItem\", JSON.stringify(utils.prepareOrder(order)));",
 											"});"
@@ -8785,6 +9421,97 @@
 									]
 								},
 								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						},
+						{
+							"name": "Get current configs and restore test values",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let testConfigs = globals.testData.configs;",
+											"let configNamesToProcess = testConfigs.configNames;",
+											"",
+											"let configs = [];",
+											"pm.test(\"Get configs response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    configs = pm.response.json().configs;",
+											"});",
+											"",
+											"console.log(\"Config codes to restore test values: \" + configNamesToProcess);",
+											"",
+											"let bodyTemplate = testConfigs.bodyTemplate;",
+											"for (var i = 0; i < configNamesToProcess.length; i++) {",
+											"    let configName = configNamesToProcess[i];",
+											"    let value = pm.variables.get(configName);",
+											"",
+											"    // Just in case check if the config available (should not be the case because all configs were deleted recently)",
+											"    let existingConfig = utils.getConfigByName(configs, configName);",
+											"    if (existingConfig) {",
+											"        existingConfig.value = value;",
+											"        utils.updateConfig(existingConfig);",
+											"    } else {",
+											"        bodyTemplate.configName = configName;",
+											"        bodyTemplate.value = value;",
+											"        utils.createConfig(bodyTemplate);",
+											"",
+											"        // store new config",
+											"        configs.push(utils.copyJsonObj(bodyTemplate));",
+											"    }",
+											"}",
+											"",
+											"// Store current version of configs",
+											"pm.environment.set(\"current-orders-configs\", configs);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "module==ORDERS"
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -10585,6 +11312,71 @@
 								}
 							],
 							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Get list of Open order - bad sorting query",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Response status code is 400\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?query=sortBy metadata.createdDate/sort.ascending",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "sortBy metadata.createdDate/sort.ascending"
+										}
+									]
+								},
+								"description": "GET /orders/composite-orders requests that return 400"
+							},
+							"response": []
 						},
 						{
 							"name": "Create empty order with missing required fields",
@@ -14532,6 +15324,277 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Inventory types",
+					"item": [
+						{
+							"name": "Delete identifier type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Identifier type deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/identifier-types/{{identifierTypeId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"identifier-types",
+										"{{identifierTypeId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete instance type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Instance type deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-types/{{instanceTypeId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-types",
+										"{{instanceTypeId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete instance status",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Instance status deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-statuses/{{instanceStatusId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-statuses",
+										"{{instanceStatusId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete loan type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Loan type deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/loan-types/{{loanTypeId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"loan-types",
+										"{{loanTypeId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete material type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Material type deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/material-types/{{materialTypeId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"material-types",
+										"{{materialTypeId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Delete location",
 					"event": [
 						{
@@ -14827,7 +15890,7 @@
 					"let testData = {",
 					"    // mod-configuration",
 					"    configs: {",
-					"        configNames: [\"poLines-limit\"],",
+					"        configNames: [\"poLines-limit\", \"inventory-instanceTypeCode\", \"inventory-instanceStatusCode\", \"inventory-loanTypeName\"],",
 					"        bodyTemplate: {",
 					"            \"module\": \"ORDERS\",",
 					"            \"configName\": \"Test Config\",",
@@ -14892,8 +15955,8 @@
 					"    item: {",
 					"        bodyTemplate: {",
 					"                 \"holdingsRecordId\": \"\",",
-					"                 \"permanentLoanTypeId\": pm.variables.get(\"loanType\"),",
-					"                 \"materialTypeId\": pm.variables.get(\"materialType\"),",
+					"                 \"permanentLoanTypeId\": pm.variables.get(\"loanTypeId\"),",
+					"                 \"materialTypeId\": pm.variables.get(\"materialTypeId\"),",
 					"                 \"status\": {",
 					"                        \"name\": \"On Order\"",
 					"                    },",
@@ -14962,18 +16025,38 @@
 					"     * Updates sub-objects of the PO Line removing ids and adding missing data.",
 					"     */",
 					"    utils.preparePoLine = function(poLine) {",
-					"        if (poLine.eresource) {",
+					"        if (poLine.hasOwnProperty(\"eresource\")) {",
 					"            poLine.eresource.accessProvider = pm.environment.get(\"activeVendorId\");",
+					"            poLine.eresource.materialType = pm.environment.get(\"materialTypeId\");",
 					"        }",
-					"        if (poLine.cost) {",
+					"        if (poLine.hasOwnProperty(\"physical\")) {",
+					"            poLine.physical.materialType = pm.environment.get(\"materialTypeId\");",
+					"        }",
+					"        if (poLine.hasOwnProperty(\"cost\")) {",
 					"            delete poLine.cost.poLineEstimatedPrice;",
 					"        }",
+					"        if (poLine.hasOwnProperty(\"details\") && poLine.details.hasOwnProperty(\"productIds\")) {",
+					"            poLine.details.productIds.forEach(prod => utils.makeProductIdUnique(prod));",
+					"        }",
+					"",
 					"        delete poLine.id;",
 					"        delete poLine.purchaseOrderId;",
 					"        delete poLine.receiptDate;",
 					"        utils._deleteSubObjectsIds(poLine.alerts);",
 					"        utils._deleteSubObjectsIds(poLine.reportingCodes);",
 					"        return poLine;",
+					"    };",
+					"",
+					"    /**",
+					"     * Sets new unique product ID.",
+					"     */",
+					"    utils.makeProductIdUnique = function(productId) {",
+					"        let newProductId = pm.environment.has(\"uniqueProductId\") ? pm.environment.get(\"uniqueProductId\") : 10000000000;",
+					"        pm.environment.set(\"uniqueProductId\", ++newProductId);",
+					"",
+					"        // Update productId with new values",
+					"        productId.productId = newProductId;",
+					"        productId.productIdType = pm.environment.get(\"identifierTypeName\");",
 					"    };",
 					"",
 					"    /**",
@@ -15056,13 +16139,17 @@
 					"        if (!utils.inventoryUpdateNotRequired(poLine)) {",
 					"            pm.expect(poLine.instanceId, \"Instance id is expected\").to.exist;",
 					"            utils.sendGetRequest(\"/instance-storage/instances/\" + poLine.instanceId, (err, res) => {",
-					"                pm.test(\"Instance Record exist for PO Line with number=\" + poLine.poLineNumber, function() {",
-					"                    pm.expect(res.json()).to.exist;",
-					"                    pm.expect(res.json().id).to.equal(poLine.instanceId);",
+					"                pm.test(\"Instance Record exist for PO Line with number=\" + poLine.poLineNumber, () => {",
+					"                    let instance = res.json();",
+					"                    pm.expect(instance).to.exist;",
+					"",
 					"                    //Check if holdings record is created",
 					"                    utils.validateHoldingsRecord(poLine);",
 					"                    // Now check items",
 					"                    utils.validateInventoryItems(poLine);",
+					"",
+					"                    // Now validate expected instance's content",
+					"                    utils.validateInstanceContent(instance, poLine);",
 					"                });",
 					"            });",
 					"        } else {",
@@ -15071,12 +16158,30 @@
 					"        }",
 					"    };",
 					"",
+					"    utils.validateInstanceContent = function(instance, poLine) {",
+					"        pm.expect(instance.title, \"Instance's title is not the same as PO Line's\").to.equal(poLine.title);",
+					"",
+					"        let ordersConfigs = pm.environment.has(\"current-orders-configs\") ? pm.environment.get(\"current-orders-configs\") : [];",
+					"",
+					"        // In case there is no config, system default value will be used",
+					"        if (utils.getConfigByName(ordersConfigs, \"inventory-instanceStatusCode\") !== null) {",
+					"            pm.expect(instance.statusId, \"Instance's status id is not the same as created for API tests\").to.equal(pm.variables.get(\"instanceStatusId\"));",
+					"        } else {",
+					"            pm.expect(instance.statusId, \"Instance's status id must not be the same as created for API tests\").to.not.equal(pm.variables.get(\"instanceStatusId\"));",
+					"        }",
+					"        if (utils.getConfigByName(ordersConfigs, \"inventory-instanceTypeCode\") !== null) {",
+					"            pm.expect(instance.instanceTypeId, \"Instance's type id is not the same as created for API tests\").to.equal(pm.variables.get(\"instanceTypeId\"));",
+					"        } else {",
+					"            pm.expect(instance.statusId, \"Instance's type id must not be the same as created for API tests\").to.not.equal(pm.variables.get(\"instanceTypeId\"));",
+					"        }",
+					"    };",
+					"",
 					"    /**",
 					"     * Validates that expected items created  in the inventory (MODORDERS-67)",
 					"     */",
 					"    utils.validateInventoryItems = function(line) {",
 					"        let expectedCount = utils.calculateExpectedItemsQuantity(line);",
-					"        utils.getItemsByPoLineId(line.id, 0, (err, res) => {",
+					"        utils.getItemsByPoLineId(line.id, expectedCount, (err, res) => {",
 					"            pm.test(expectedCount + \" Item Records exist for PO Line with number=\" + line.poLineNumber, function() {",
 					"                let body = res.json();",
 					"                pm.expect(body, \"GET Items response is not in json format\").to.exist;",
@@ -15084,12 +16189,27 @@
 					"                //items are not created for checkin while opening the order, but can be created later",
 					"                if (utils.isItemsUpdateRequired(line) && !isCheckin) {",
 					"                    pm.expect(body.totalRecords, \"Quantity of items created for PO Line should be \" + expectedCount).to.equal(expectedCount);",
+					"                    body.items.forEach(item => utils.validateItemContent(item));",
 					"                } else {",
 					"                    pm.expect(body.totalRecords, \"Quantity of items should be zero\").to.equal(0);",
 					"                }",
 					"            });",
 					"        });",
 					"    };",
+					"",
+					"    utils.validateItemContent = function(item) {",
+					"        let ordersConfigs = pm.environment.has(\"current-orders-configs\") ? pm.environment.get(\"current-orders-configs\") : [];",
+					"",
+					"        // In case there is no config, system default value will be used",
+					"        if (utils.getConfigByName(ordersConfigs, \"inventory-loanTypeName\") !== null) {",
+					"            pm.expect(item.permanentLoanTypeId, \"Item's loan type id is not the same as created for API tests\").to.equal(pm.variables.get(\"loanTypeId\"));",
+					"        } else {",
+					"            pm.expect(item.permanentLoanTypeId, \"Item's loan type id must not be the same as created for API tests\").to.not.equal(pm.variables.get(\"loanTypeId\"));",
+					"        }",
+					"",
+					"        pm.expect(item.status.name, \"Item's status name is incorrect\").to.equal(\"On order\");",
+					"        pm.expect(item.materialTypeId, \"Item's material type id is not the same as created for API tests\").to.equal(pm.variables.get(\"materialTypeId\"));",
+					"    }",
 					"",
 					"    /**",
 					"     * Validates that expected items created  in the inventory (MODORDERS-67)",
@@ -16279,14 +17399,19 @@
 					"        pm.globals.unset(\"orderWithCreateInventoryInstanceHoldingItemId\");",
 					"        pm.globals.unset(\"newEmptyPoLine\");",
 					"        pm.globals.unset(\"poNumber\");",
-					"        pm.globals.unset(\"loanType\");",
-					"        pm.globals.unset(\"materialType\");",
 					"",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
 					"        pm.environment.unset(\"receivingItemBarcode\");",
 					"        pm.environment.unset(\"activeVendorId\");",
 					"        pm.environment.unset(\"inactiveVendorId\");",
+					"        pm.environment.unset(\"identifierTypeId\");",
+					"        pm.environment.unset(\"identifierTypeName\");",
+					"        pm.environment.unset(\"instanceTypeId\");",
+					"        pm.environment.unset(\"instanceStatusId\");",
+					"        pm.environment.unset(\"loanTypeId\");",
+					"        pm.environment.unset(\"materialTypeId\");",
+					"        pm.environment.unset(\"uniqueProductId\");",
 					"    };",
 					"",
 					"    /**",
@@ -16363,6 +17488,24 @@
 			"id": "f2a21d2d-5a72-4129-acbb-ddcdd432490e",
 			"key": "poLines-limit",
 			"value": "10",
+			"type": "string"
+		},
+		{
+			"id": "48782206-715f-4587-9a39-568b16817d78",
+			"key": "inventory-instanceTypeCode",
+			"value": "ordersApiTestsInstanceTypeCode",
+			"type": "string"
+		},
+		{
+			"id": "468b05ea-04d9-44ed-aa51-62ad4a4d6fc9",
+			"key": "inventory-instanceStatusCode",
+			"value": "ordersApiTestsInstanceStatusCode",
+			"type": "string"
+		},
+		{
+			"id": "fdc8d9cd-d6e4-4fce-a74c-88b678589b80",
+			"key": "inventory-loanTypeName",
+			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		}
 	]
