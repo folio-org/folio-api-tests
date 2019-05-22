@@ -15,6 +15,7 @@ Folder | Description
 `- Load all schemas for validation` | Loads various schemas for validation
 `- Prepare vendors` | Prepares active and inactive vendors
 `- Prepare inventory types` | Prepares inventory types to not rely on reference data presence
+`- Setup new tenant` | Create new tenant to verify tenant-specific logic
 `Positive Tests` | Contains various requests and tests to verify success cases
 `- Empty Order` | Verifies that an order can be created and deleted without order lines
 `- Pending Order` | Verifies that an order in `Pending` status can be created. Verifies that existing PO Lines can be updated/deleted; new PO Lines can be added/updated/deleted.
