@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "9e5189cf-72ab-4b9a-9d7e-0e975ed7ceff",
+		"_postman_id": "42827316-cd11-4c8c-a277-6fb24253e5b2",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -96,6 +96,7 @@
 											"    // In case there is no module no sense to run further requests",
 											"    postman.setNextRequest(null);",
 											"    pm.expect(jsonData).to.have.lengthOf.at.least(1);",
+											"    pm.environment.set(\"modOrdersId\", jsonData[0].id);",
 											"    postman.setNextRequest();",
 											"});"
 										],
@@ -1211,6 +1212,239 @@
 								"description": "Gets or creates if not yet exists test meterial type to be used accross the orders while interaction with inventory"
 							},
 							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Setup new tenant",
+					"item": [
+						{
+							"name": "Create tenant and enable orders and orders storage for it",
+							"item": [
+								{
+									"name": "Create new tenant",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "458e788d-f4f1-4a2e-bf7f-dce99511f09a",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/_/proxy/tenants/\" + globals.testData.tenant.id, (err, res) => {",
+													"    pm.test(\"Check if tenant for API Tests already exists\", () => {",
+													"        pm.expect(err).to.equal(null);",
+													"        pm.expect(res.code).to.be.oneOf([200, 404]);",
+													"        // If tenant already exists, check if this is for API Tests and delete it",
+													"        if (res.code === 200 && res.json().name) {",
+													"            utils.sendDeleteRequest(\"/_/proxy/tenants/\" + globals.testData.tenant.id, (err, res) => {",
+													"                pm.test(\"Tenant '\" + res.json().name + \"' deleted\", () => {",
+													"                    pm.expect(res.code).to.eql(204);",
+													"                });",
+													"            });",
+													"        }",
+													"    });",
+													"});",
+													"",
+													"pm.variables.set(\"tenantData\", JSON.stringify(globals.testData.tenant));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "9b46996e-04ac-475d-8d3a-fe8947e8db87",
+												"exec": [
+													"// In case the tenant was not created no sense to run further requests",
+													"postman.setNextRequest(null);",
+													"",
+													"pm.test(\"Tenant created - Expected Created (201)\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.globals.set(\"testTenant\", pm.response.json().id)",
+													"    // All is okay so running further requests",
+													"    postman.setNextRequest();",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{tenantData}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"_",
+												"proxy",
+												"tenants"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Enable mod-orders for new tenant",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Enabled mod-orders with dependencies\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    pm.response.to.be.withBody;",
+													"});",
+													"",
+													"pm.globals.set(\"enabledModules\", pm.response.json());"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "[\n\t{\n\t\t\"id\" : \"{{modOrdersId}}\",\n\t\t\"action\": \"enable\"\n\t}\n]"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"_",
+												"proxy",
+												"tenants",
+												"{{testTenant}}",
+												"install"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Prepare vendor",
+							"item": [
+								{
+									"name": "Post active vendor",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Storing active vendor\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    pm.response.to.be.withBody;",
+													"});",
+													"",
+													"pm.globals.set(\"testTenantActiveVendorId\", pm.response.json().id);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{testTenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n\t\"name\": \"Test active vendor\",\n\t\"code\": \"TAV\",\n\t\"isVendor\": true,\n\t\"status\" : \"Active\"\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/organizations",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"organizations-storage",
+												"organizations"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
 						}
 					],
 					"_postman_isSubFolder": true
@@ -13919,6 +14153,81 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Create order for new tenant",
+					"item": [
+						{
+							"name": "Create Open order for new tenant, missingInstanceType error",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let order = utils.buildOrderWithMinContent();",
+											"order.workflowStatus = \"Open\";",
+											"order.notes = [\"Open Order for Negative API Tests\"];",
+											"",
+											"let line = utils.buildPoLineWithMinContent(null);",
+											"line.physical.createInventory = \"Instance\";",
+											"order.compositePoLines = [line];",
+											"order.vendor = pm.globals.get(\"testTenantActiveVendorId\");",
+											"pm.variables.set(\"orderBody\", JSON.stringify(order));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 500 and one error\", function () {",
+											"    pm.response.to.have.status(500);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -15595,6 +15904,148 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Cleanup test tenant",
+					"item": [
+						{
+							"name": "Purge and disable all module for created tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
+										"exec": [
+											"let modulesToDisable = pm.globals.get(\"enabledModules\");",
+											"console.log(modulesToDisable);",
+											"for (let i=0; i < modulesToDisable.length; i++) {",
+											"    console.log(modulesToDisable[i]);",
+											"    modulesToDisable[i].action = \"disable\";",
+											"}",
+											"console.log(modulesToDisable);",
+											"pm.variables.set(\"modulesToDisable\", JSON.stringify(modulesToDisable));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Disable all modules for test tenant\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    pm.response.to.be.withBody;",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modulesToDisable}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install?purge=true",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}",
+										"install"
+									],
+									"query": [
+										{
+											"key": "purge",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete test tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "458e788d-f4f1-4a2e-bf7f-dce99511f09a",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "9b46996e-04ac-475d-8d3a-fe8947e8db87",
+										"exec": [
+											"pm.test(\"Tenant deleted - Expected Created (204)\", () => {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Delete location",
 					"event": [
 						{
@@ -15962,6 +16413,11 @@
 					"                    },",
 					"                 \"purchaseOrderLineIdentifier\":\"\"",
 					"            }",
+					"    },",
+					"    tenant: {",
+					"        \"id\": \"orders_test_tenant\",",
+					"        \"name\": \"Test orders tenant\",",
+					"        \"description\": \"Tenant for test purpose\"",
 					"    }",
 					"",
 					"};",
@@ -17399,7 +17855,12 @@
 					"        pm.globals.unset(\"orderWithCreateInventoryInstanceHoldingItemId\");",
 					"        pm.globals.unset(\"newEmptyPoLine\");",
 					"        pm.globals.unset(\"poNumber\");",
-					"",
+					"        pm.globals.unset(\"loanType\");",
+					"        pm.globals.unset(\"materialType\");",
+					"        pm.globals.unset(\"testTenant\");",
+					"        pm.globals.unset(\"enabledModules\");",
+					"        pm.globals.unset(\"testTenantActiveVendorId\");",
+					"        ",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
 					"        pm.environment.unset(\"receivingItemBarcode\");",
@@ -17479,13 +17940,13 @@
 	],
 	"variable": [
 		{
-			"id": "2253010e-dc77-4dff-9de5-93391d12de22",
+			"id": "8f934152-3bd4-45b5-8d1b-43cf0484aa40",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "f2a21d2d-5a72-4129-acbb-ddcdd432490e",
+			"id": "46cdea95-d38b-402a-ad5c-fe47e9c1aed6",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
