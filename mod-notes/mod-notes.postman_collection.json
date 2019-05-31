@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "d888e42f-6ebd-4cf9-bfba-d37a93f340bc",
+		"_postman_id": "db8b9aab-d88e-44e8-be1f-3363734fd16d",
 		"name": "mod-notes",
 		"description": "Tests for the endpoints:\n/notes\n/note-types\n\nTests include:\n* /notes (CR)\n* /notes/_self (CR)\n* /notes/{id} (RUD)\n* /note-types (CR)\n* /note-types/{id} (RUD)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -8198,11 +8198,20 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
-													"    pm.expect(response.notes[0].links.length).eq(2);",
-													"    pm.expect(response.notes[0].links[1].id).eq(pm.environment.get(\"linkId\"));",
-													"     pm.expect(response.notes[0].links[1].type).eq(pm.environment.get(\"typeLink\"));",
+													"    ",
+													"    allNotesHaveLink = response.notes.every((note) => ",
+													"    containsLink(note, pm.environment.get(\"linkId\"), pm.environment.get(\"typeLink\")));",
+													"    ",
+													"    pm.expect(allNotesHaveLink).eq(true)",
 													"});",
-													""
+													"",
+													"function containsLink(note, linkId, linkType){",
+													"    return note.links.filter(link => ",
+													"        link.id === pm.environment.get(\"linkId\") && ",
+													"        link.type === pm.environment.get(\"typeLink\")",
+													"        )",
+													"        .length > 0;",
+													"}"
 												],
 												"type": "text/javascript"
 											}
@@ -8280,9 +8289,20 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
-													"    pm.expect(response.notes[0].links.length).eq(1);",
+													"    ",
+													"    anyNoteHasLink = response.notes.any((note) => ",
+													"    containsLink(note, pm.environment.get(\"linkId\"), pm.environment.get(\"typeLink\")));",
+													"    ",
+													"    pm.expect(anyNoteHasLink).eq(false)",
 													"});",
-													""
+													"",
+													"function containsLink(note, linkId, linkType){",
+													"    return note.links.filter(link => ",
+													"        link.id === pm.environment.get(\"linkId\") && ",
+													"        link.type === pm.environment.get(\"typeLink\")",
+													"        )",
+													"        .length > 0;",
+													"}"
 												],
 												"type": "text/javascript"
 											}
@@ -8361,8 +8381,20 @@
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
 													"    pm.expect(response.notes[0].links.length).to.be.at.least(2);",
+													"    ",
+													"    let firstNote = response.notes[0];",
+													"    let lastNote = response.notes[response.notes.length - 1];",
+													"    pm.expect(containsLink(firstNote, pm.environment.get(\"linkId\"), pm.environment.get(\"typeLink\"))).eq(true);",
+													"    pm.expect(containsLink(lastNote, pm.environment.get(\"linkId\"), pm.environment.get(\"typeLink\"))).eq(false);",
 													"});",
-													""
+													"",
+													"function containsLink(note, linkId, linkType){",
+													"    return note.links.filter(link => ",
+													"        link.id === pm.environment.get(\"linkId\") && ",
+													"        link.type === pm.environment.get(\"typeLink\")",
+													"        )",
+													"        .length > 0;",
+													"}"
 												],
 												"type": "text/javascript"
 											}
@@ -8393,7 +8425,7 @@
 											}
 										],
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?order=asc",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?status=ALL&order=asc&orderBy=status",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -8410,8 +8442,16 @@
 											],
 											"query": [
 												{
+													"key": "status",
+													"value": "ALL"
+												},
+												{
 													"key": "order",
 													"value": "asc"
+												},
+												{
+													"key": "orderBy",
+													"value": "status"
 												}
 											]
 										}
@@ -8440,9 +8480,20 @@
 													"",
 													"pm.test(\"validate data\", function() {",
 													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
-													"    pm.expect(response.notes[0].links.length).eq(1);",
+													"    ",
+													"    let firstNote = response.notes[0];",
+													"    let lastNote = response.notes[response.notes.length - 1];",
+													"    pm.expect(containsLink(firstNote, pm.environment.get(\"linkId\"), pm.environment.get(\"typeLink\"))).eq(false);",
+													"    pm.expect(containsLink(lastNote, pm.environment.get(\"linkId\"), pm.environment.get(\"typeLink\"))).eq(true);",
 													"});",
-													""
+													"",
+													"function containsLink(note, linkId, linkType){",
+													"    return note.links.filter(link => ",
+													"        link.id === pm.environment.get(\"linkId\") && ",
+													"        link.type === pm.environment.get(\"typeLink\")",
+													"        )",
+													"        .length > 0;",
+													"}"
 												],
 												"type": "text/javascript"
 											}
@@ -8492,6 +8543,260 @@
 												{
 													"key": "order",
 													"value": "desc"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 200 orderBy title",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "622cc0ba-4d80-46db-b117-5347020eff64",
+												"exec": [
+													"pm.test(\"success test - 200 and JSON body\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"var response = pm.response.json();",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_noteCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"pm.test(\"validate data\", function() {",
+													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
+													"    ",
+													"    let firstNote = response.notes[0];",
+													"    let lastNote = response.notes[response.notes.length - 1];",
+													"    ",
+													"    pm.expect(firstNote.title < lastNote.title).eq(true);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "1c5a6b64-ff61-41da-91c3-38178c61036e",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?orderBy=title&order=asc",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"note-links",
+												"domain",
+												"eholdings",
+												"type",
+												"{{typeLink}}",
+												"id",
+												"{{linkId}}"
+											],
+											"query": [
+												{
+													"key": "orderBy",
+													"value": "title"
+												},
+												{
+													"key": "order",
+													"value": "asc"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 200 orderBy title",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "622cc0ba-4d80-46db-b117-5347020eff64",
+												"exec": [
+													"pm.test(\"success test - 200 and JSON body\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"var response = pm.response.json();",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_noteCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"pm.test(\"validate data\", function() {",
+													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
+													"    ",
+													"    let firstNote = response.notes[0];",
+													"    let lastNote = response.notes[response.notes.length - 1];",
+													"    ",
+													"    pm.expect(firstNote.title > lastNote.title).eq(true);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "1c5a6b64-ff61-41da-91c3-38178c61036e",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?orderBy=title&order=desc",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"note-links",
+												"domain",
+												"eholdings",
+												"type",
+												"{{typeLink}}",
+												"id",
+												"{{linkId}}"
+											],
+											"query": [
+												{
+													"key": "orderBy",
+													"value": "title"
+												},
+												{
+													"key": "order",
+													"value": "desc"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 200 search title",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "622cc0ba-4d80-46db-b117-5347020eff64",
+												"exec": [
+													"pm.test(\"success test - 200 and JSON body\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"var response = pm.response.json();",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_noteCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"pm.test(\"validate data\", function() {",
+													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
+													"    ",
+													"    pm.expect(response.notes[0].title.includes(\"Title\")).eq(true);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "1c5a6b64-ff61-41da-91c3-38178c61036e",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?title=Title ",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"note-links",
+												"domain",
+												"eholdings",
+												"type",
+												"{{typeLink}}",
+												"id",
+												"{{linkId}}"
+											],
+											"query": [
+												{
+													"key": "title",
+													"value": "Title "
 												}
 											]
 										}
@@ -8651,80 +8956,6 @@
 												"{{typeLink}}",
 												"id",
 												"{{nonExistingId}}"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 200 incorrect id",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "622cc0ba-4d80-46db-b117-5347020eff64",
-												"exec": [
-													"pm.test(\"success test - 200 and JSON body\", function() {",
-													"    pm.response.to.be.ok;",
-													"    pm.response.to.be.json;",
-													"});",
-													"",
-													"var response = pm.response.json();",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_noteCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"pm.test(\"validate data\", function() {",
-													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
-													"    pm.expect(response.notes.length).to.be.at.most(10);",
-													"});",
-													""
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "1c5a6b64-ff61-41da-91c3-38178c61036e",
-												"exec": [
-													"pm.environment.set(\"incorrect\", \"5\");"
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "x-okapi-tenant",
-												"type": "text",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "x-okapi-token",
-												"type": "text",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{incorrectId}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"note-links",
-												"domain",
-												"eholdings",
-												"type",
-												"{{typeLink}}",
-												"id",
-												"{{incorrectId}}"
 											]
 										}
 									},
