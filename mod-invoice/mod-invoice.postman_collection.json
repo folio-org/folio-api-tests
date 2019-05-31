@@ -2169,6 +2169,156 @@
 					"name": "Invoices",
 					"item": [
 						{
+							"name": "Protected Fields Modification",
+							"item": [
+								{
+									"name": "Create invoice with protected fields",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "3f4b21e8-9911-4c39-8757-1d69b0f99051",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let json = utils.buildInvoiceWithMinContent();",
+													"json.status = \"Approved\";",
+													"",
+													"pm.variables.set(\"approvedInvoice\", JSON.stringify(json));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "7bfa1e35-0c0b-4def-8439-e400734ec857",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    let invoice = pm.response.json();",
+													"    pm.environment.set(\"approvedInvoiceId\", invoice.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{approvedInvoice}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update Invoice with protected fields",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"approvedInvoiceId\"), (err, res) => {",
+													"    let invoice  = res.json();",
+													"    invoice.currency = \"TUGRIK\";",
+													"    pm.variables.set(\"updatedApprovedInvoiceBody\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 400\", function () {",
+													"    pm.response.to.have.status(400);",
+													"    pm.expect(pm.response.text()).to.include(\"Field can't be modified\");",
+													"    pm.expect(pm.response.text()).to.include(\"protectedFieldChanging\");",
+													"    pm.expect(pm.response.text()).to.include(\"currency\");",
+													"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedApprovedInvoiceBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{approvedInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{approvedInvoiceId}}"
+											]
+										},
+										"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
 							"name": "Get invoice by id - UUID does not exist",
 							"event": [
 								{
@@ -3054,6 +3204,148 @@
 				{
 					"name": "Invoice lines",
 					"item": [
+						{
+							"name": "Protected Fields Modification",
+							"item": [
+								{
+									"name": "Create invoice-line",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"    pm.environment.set(\"approvedInvoiceInvoiceLineId\", invoiceLine.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"approvedInvoiceId\"));",
+													"",
+													"pm.variables.set(\"approvedInvoiceInvoiceLine\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{approvedInvoiceInvoiceLine}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update Invoice-Line with protected fields",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoice-lines/\" + pm.environment.get(\"approvedInvoiceInvoiceLineId\"), (err, res) => {",
+													"    let invoiceLine  = res.json();",
+													"    invoiceLine.quantity = 10;",
+													"    pm.variables.set(\"updatedApprovedInvoiceInvoiceLine\", JSON.stringify(invoiceLine));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Status code is 400\", function () {",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedApprovedInvoiceInvoiceLine}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{approvedInvoiceInvoiceLineId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{approvedInvoiceInvoiceLineId}}"
+											]
+										},
+										"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Create empty invoice-lines with missing required fields",
 							"event": [
