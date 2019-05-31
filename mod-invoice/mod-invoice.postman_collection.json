@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "9aded472-a366-4d59-b656-9eff2a25b7b9",
+		"_postman_id": "1329af6c-a631-428d-a5c6-834623f610d6",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -223,7 +223,7 @@
 					"name": "Update configs",
 					"item": [
 						{
-							"name": "Check configs and update",
+							"name": "Check invoice configs and update",
 							"event": [
 								{
 									"listen": "test",
@@ -300,6 +300,91 @@
 										{
 											"key": "query",
 											"value": "module==INVOICES"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Check orders configs and update",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let testConfigs = globals.testData.ordersConfigs;",
+											"",
+											"let configs = [];",
+											"pm.test(\"Storing current configs\", function () {",
+											"    pm.response.to.be.ok;",
+											"",
+											"    configs = pm.response.json().configs;",
+											"    console.log(\"Original configs: \" + configs);",
+											"    pm.environment.set(\"mod-orders-configs\", JSON.stringify(configs));",
+											"});",
+											"",
+											"let configNamesToProcess = testConfigs.configNames;",
+											"console.log(\"Config codes to process: \" + configNamesToProcess);",
+											"",
+											"let bodyTemplate = testConfigs.bodyTemplate;",
+											"for (var i = 0; i < configNamesToProcess.length; i++) {",
+											"    let configName = configNamesToProcess[i];",
+											"    let value = pm.variables.get(configName);",
+											"",
+											"    let existingConfig = utils.getConfigByName(configs, configName);",
+											"    if (existingConfig) {",
+											"        existingConfig.value = value;",
+											"        utils.updateConfig(existingConfig);",
+											"    } else {",
+											"        bodyTemplate.configName = configName;",
+											"        bodyTemplate.value = value;",
+											"        utils.createConfig(bodyTemplate);",
+											"    }",
+											"}",
+											"// Store current version of configs",
+											"pm.environment.set(\"current-orders-configs\", configs);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "module==ORDERS"
 										}
 									]
 								}
@@ -476,6 +561,96 @@
 									""
 								]
 							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Prepare orders",
+					"item": [
+						{
+							"name": "Create Pending order with 2 lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Pending\";",
+											"    delete order.poNumber;",
+											"    order.compositePoLines[0].paymentStatus = \"Awaiting Payment\";",
+											"    order.compositePoLines[1].paymentStatus = \"Awaiting Payment\";",
+											"    // Set retrieved content for further requests",
+											"    pm.variables.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var order = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    order = pm.response.json();",
+											"    pm.expect(order.id).to.exist;",
+											"    pm.globals.set(\"completeOrderId\", order.id); ",
+											"    pm.globals.set(\"poLine1Id\",  order.compositePoLines[0].id);",
+											"    pm.globals.set(\"poLine2Id\",  order.compositePoLines[1].id);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -736,8 +911,9 @@
 											"    // All is okay so running further requests",
 											"    postman.setNextRequest();",
 											"});",
-											"",
-											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+											"let dikuAdminToken = pm.environment.get(\"xokapitoken\");",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));",
+											"pm.environment.set(\"admintoken\", dikuAdminToken);"
 										],
 										"type": "text/javascript"
 									}
@@ -1233,6 +1409,254 @@
 												}
 											]
 										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Transition to Paid",
+							"item": [
+								{
+									"name": "Create approved invoice",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    pm.environment.set(\"approvedToPaidInvoice\", invoice.id);",
+													"    ",
+													"    utils.validateInvoice(invoice);",
+													"});",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", function (err, res) {",
+													"    let invoiceLine = res.json();",
+													"    invoiceLine.invoiceId = pm.environment.get(\"approvedToPaidInvoice\");",
+													"    delete invoiceLine.id;",
+													"    delete invoiceLine.metadata;",
+													"    ",
+													"    for(let i = 1; i < 5; i++) {",
+													"        invoiceLine.poLineId = i % 2 === 0 ? pm.globals.get(\"poLine1Id\") : pm.globals.get(\"poLine2Id\");",
+													"        invoiceLine.releaseEncumbrance = i % 4 === 0;",
+													"        ",
+													"        utils.postRequest(\"/invoice/invoice-lines\", invoiceLine, function(err,response){",
+													"            pm.test(\"Invoice line is created in storage\", function(){",
+													"              pm.expect(err).to.equal(null);",
+													"            });",
+													"        });",
+													"    }",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+													"    let invoice = res.json().invoices[1];",
+													"",
+													"    delete invoice.id;",
+													"    delete invoice.folioInvoiceNo;",
+													"    invoice.note = \"Invoice to test transition to Paid\";",
+													"    invoice.status = \"Approved\";",
+													"",
+													"    pm.globals.set(\"approvedToPaidInvoiceContent\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{approvedToPaidInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update invoice with status Paid",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let invoice = JSON.parse(globals.approvedToPaidInvoiceContent);",
+													"invoice.status = \"Paid\";",
+													"pm.globals.set(\"approvedToPaidInvoiceContent\", JSON.stringify(invoice));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(\"No Content\");",
+													"",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"approvedToPaidInvoice\"), (err, res) => {",
+													"        pm.expect(res.json().status).to.equal(\"Paid\");",
+													"      ",
+													"    });",
+													"});",
+													"",
+													"pm.globals.unset(\"approvedToPaidInvoiceContent\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{approvedToPaidInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{approvedToPaidInvoice}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{approvedToPaidInvoice}}"
+											]
+										},
+										"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+									},
+									"response": []
+								},
+								{
+									"name": "Get empty order by order id and validate totalItems",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let order = {}; ",
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Validate PO Lines paymentStatus\", function () {",
+													"    order = pm.response.json();",
+													"    let poLines = order.compositePoLines;",
+													"    for(let i = 0; i < poLines.length; i++) {",
+													"        if (poLines[i].id === globals.poLine1Id) {",
+													"            pm.expect(poLines[i].paymentStatus).to.equal(\"Fully Paid\");",
+													"        } else {",
+													"            pm.expect(poLines[i].paymentStatus).to.equal(\"Partially Paid\");",
+													"        }",
+													"    }",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{admintoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{completeOrderId}}"
+											]
+										},
+										"description": "GET /orders/composite-orders/id requests that return 200"
 									},
 									"response": []
 								}
@@ -1913,7 +2337,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/vouchers/vouchers.json\", function (err, res) {",
 											"    let voucher = res.json().vouchers[0];",
-											"",
+											"    voucher.invoiceId = pm.environment.get(\"minInvoiceId\");",
 											"    delete voucher.id;",
 											"    delete voucher.metadata;",
 											"    ",
@@ -1986,6 +2410,7 @@
 													"let utils = eval(globals.loadUtils);",
 													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/voucherLines/voucher_lines.json\", function (err, res) {",
 													"    let voucherLine = res.json().voucherLines[0];",
+													"    voucherLine.voucherId = pm.environment.get(\"voucherId\");",
 													"    delete voucherLine.id;",
 													"    ",
 													"  utils.postRequest(\"/voucher-storage/voucher-lines\", voucherLine, function(err,response){",
@@ -2168,6 +2593,106 @@
 				{
 					"name": "Invoices",
 					"item": [
+						{
+							"name": "Create invoices for negative tests",
+							"item": [
+								{
+									"name": "Create approved invoice",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    pm.environment.set(\"negativeApprovedToPaidInvoice\", invoice.id);",
+													"    ",
+													"    utils.validateInvoice(invoice);",
+													"});",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", function (err, res) {",
+													"    let invoiceLine = res.json();",
+													"    invoiceLine.invoiceId = pm.environment.get(\"negativeApprovedToPaidInvoice\");",
+													"    delete invoiceLine.id;",
+													"    delete invoiceLine.metadata;",
+													"    var uuid = require('uuid');",
+													"    invoiceLine.poLineId = uuid.v4();",
+													"    ",
+													"    utils.postRequest(\"/invoice/invoice-lines\", invoiceLine, function(err,response){",
+													"        pm.test(\"Invoice line is created in storage\", function(){",
+													"          pm.expect(err).to.equal(null);",
+													"        });",
+													"    });",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+													"    let invoice = res.json().invoices[1];",
+													"",
+													"    delete invoice.id;",
+													"    delete invoice.folioInvoiceNo;",
+													"    invoice.note = \"Invoice to test transition to Paid\";",
+													"    invoice.status = \"Approved\";",
+													"",
+													"    pm.globals.set(\"negativeApprovedToPaidInvoiceContent\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeApprovedToPaidInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Get invoice by id - UUID does not exist",
 							"event": [
@@ -2823,6 +3348,83 @@
 										}
 									]
 								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update invoice with status Piad, and missing poLine",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let invoice = JSON.parse(globals.negativeApprovedToPaidInvoiceContent);",
+											"invoice.status = \"Paid\";",
+											"pm.globals.set(\"negativeApprovedToPaidInvoiceContent\", JSON.stringify(invoice));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 500\", function () {",
+											"    pm.response.to.have.status(500);",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativeApprovedToPaidInvoice\"), (err, res) => {",
+											"        pm.expect(res.json().status).to.equal(\"Approved\");",
+											"      ",
+											"    });",
+											"});",
+											"",
+											"pm.globals.unset(\"negativeApprovedToPaidInvoiceContent\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{negativeApprovedToPaidInvoiceContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeApprovedToPaidInvoice}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{negativeApprovedToPaidInvoice}}"
+									]
+								},
+								"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
 							},
 							"response": []
 						},
@@ -3984,303 +4586,6 @@
 			"name": "Cleanup",
 			"item": [
 				{
-					"name": "Delete invoices for positive tests",
-					"item": [
-						{
-							"name": "Delete  invoice with minimal content",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{minInvoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{minInvoiceId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete  filter by invoice",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{filterInvoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{filterInvoiceId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "3576b999-c386-481e-8364-6f3c0b5523f2",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "83dafb48-cc84-4d0b-abdb-8c5457beba28",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Delete invoices for negative tests",
-					"item": [],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "aab5a49c-aca9-49a0-9d82-a849ee144f9f",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "cd78a8af-536b-403b-8dda-d1f2a64c70c7",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Delete Vouchers",
-					"item": [
-						{
-							"name": "Delete  Voucher from storage",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Voucher is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/vouchers/{{voucherId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"voucher-storage",
-										"vouchers",
-										"{{voucherId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Verify no Voucher left in storage",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Get any remaining Vouchers\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Verify that no vouchers found\", function () {",
-											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"protocolProfileBehavior": {
-								"disableBodyPruning": true
-							},
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/vouchers",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"voucher-storage",
-										"vouchers"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
 					"name": "Delete Voucher Line",
 					"item": [
 						{
@@ -4421,6 +4726,498 @@
 							"listen": "test",
 							"script": {
 								"id": "dbcc12fb-0cc8-4852-8217-1d84933fd023",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete Vouchers",
+					"item": [
+						{
+							"name": "Delete  Voucher from storage",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Voucher is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/vouchers/{{voucherId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher-storage",
+										"vouchers",
+										"{{voucherId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify no Voucher left in storage",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Get any remaining Vouchers\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Verify that no vouchers found\", function () {",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/vouchers",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher-storage",
+										"vouchers"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete invoice lines",
+					"item": [
+						{
+							"name": "Get and delelte invoice lines",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var invoiceLines = {};",
+											" ",
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    invoiceLines = pm.response.json().invoiceLines;",
+											"});",
+											"",
+											"pm.test(\"At least one line\", function () {",
+											"    pm.expect(invoiceLines).to.have.lengthOf.above(0);",
+											"});",
+											"",
+											"for (let i = 0; i < invoiceLines.length; i++) {",
+											"    utils.deleteRecord(\"/invoice/invoice-lines/\" + invoiceLines[i].id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines?limit=30&query=invoiceId=={{approvedToPaidInvoice}} or invoiceId=={{negativeApprovedToPaidInvoice}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "30"
+										},
+										{
+											"key": "query",
+											"value": "invoiceId=={{approvedToPaidInvoice}} or invoiceId=={{negativeApprovedToPaidInvoice}}"
+										}
+									]
+								},
+								"description": "GET /invoice/invoice-lines requests that return 200"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete invoices for positive tests",
+					"item": [
+						{
+							"name": "Delete  invoice with minimal content",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{minInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{minInvoiceId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete  filter by invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{filterInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{filterInvoiceId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Approved to Paid invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{approvedToPaidInvoice}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{approvedToPaidInvoice}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "3576b999-c386-481e-8364-6f3c0b5523f2",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "83dafb48-cc84-4d0b-abdb-8c5457beba28",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete invoices for negative tests",
+					"item": [
+						{
+							"name": "Delete Approved to Paid invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeApprovedToPaidInvoice}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{negativeApprovedToPaidInvoice}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "aab5a49c-aca9-49a0-9d82-a849ee144f9f",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "cd78a8af-536b-403b-8dda-d1f2a64c70c7",
 								"type": "text/javascript",
 								"exec": [
 									""
@@ -4696,8 +5493,157 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Delete orders",
+					"item": [
+						{
+							"name": "Delete Pending order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{completeOrderId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Revert configs",
 					"item": [
+						{
+							"name": "Get orders configs and revert",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let currentConfigs;",
+											"pm.test(\"Storing current configs\", function() {",
+											"    pm.response.to.be.ok;",
+											"",
+											"    currentConfigs = pm.response.json().configs;",
+											"    console.log(\"Current configs: \", currentConfigs);",
+											"});",
+											"",
+											"let configsToProcess = globals.testData.ordersConfigs.configNames;",
+											"",
+											"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
+											"for (var i = 0; i < configsToProcess.length; i++) {",
+											"    let configName = configsToProcess[i];",
+											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
+											"",
+											"    if (originalConfig) {",
+											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
+											"        utils.updateConfig(originalConfig);",
+											"    } else if (currentConfigs.length > 0) {",
+											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
+											"        utils.deleteConfig(configId);",
+											"    } else {",
+											"        console.log(\"The config cannot be reverted. Config name =\" + configName);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "module==ORDERS"
+										}
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get configs and revert",
 							"event": [
@@ -4804,6 +5750,17 @@
 					"            \"value\": \"\"",
 					"        }",
 					"    },",
+					"    ordersConfigs: {",
+					"        configNames: [\"poLines-limit\"],",
+					"        bodyTemplate: {",
+					"            \"module\": \"ORDERS\",",
+					"            \"configName\": \"Test Config\",",
+					"            \"description\": \"Config for API Tests\",",
+					"            \"default\": true,",
+					"            \"enabled\": true,",
+					"            \"value\": \"\"",
+					"        }",
+					"    },",
 					"    // User template with hardcoded id",
 					"    user: {",
 					"        \"id\": \"00000000-1111-5555-9999-999999999999\",",
@@ -4861,6 +5818,32 @@
 					"                resolve(response.code);",
 					"            });",
 					"        });",
+					"    };",
+					"    ",
+					"     /**",
+					"     * Updates PO json removing ids and updating PO lines.",
+					"     */",
+					"    utils.prepareOrder = function(order) {",
+					"        delete order.id;",
+					"        delete order.totalItems;",
+					"  ",
+					"        for (var i = 0; i < order.compositePoLines.length; i++) {",
+					"            utils.preparePoLine(order.compositePoLines[i]);",
+					"        }",
+					"",
+					"        return order;",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Updates sub-objects of the PO Line removing ids and adding missing data.",
+					"     */",
+					"    utils.preparePoLine = function(poLine) {",
+					"        delete poLine.id;",
+					"        delete poLine.purchaseOrderId;",
+					"        delete poLine.receiptDate;",
+					"        delete poLine.alerts;",
+					"        delete poLine.reportingCodes;",
+					"        return poLine;",
 					"    };",
 					"",
 					"    /**",
@@ -5026,6 +6009,17 @@
 					"                clearTimeout(timerId);",
 					"            });",
 					"    };",
+					"    ",
+					"    utils.deleteRecord = function(path) {",
+					"        const timerId = setTimeout(() => {}, 60000);",
+					"        utils.processDeleteRequest(path)",
+					"            .then(code => utils.validateResultOfDeleteRequest(code))",
+					"            .then(result => clearTimeout(timerId))",
+					"            .catch(err => {",
+					"                console.log(\"Error happened on Inventory Records deletion:\", err);",
+					"                clearTimeout(timerId);",
+					"            });",
+					"    };",
 					"    /* END - Functions to work with mod-configuration */",
 					"",
 					"    /**",
@@ -5079,8 +6073,15 @@
 					"        pm.environment.unset(\"mod-invoices-configs\");",
 					"        pm.environment.unset(\"voucherId\");",
 					"        pm.environment.unset(\"voucherLineId\");",
+					"        pm.environment.unset(\"negativeApprovedToPaidInvoice\");",
+					"        pm.environment.unset(\"approvedToPaidInvoice\");",
+					"        pm.environment.unset(\"mod-orders-configs\");",
+					"        pm.environment.unset(\"current-orders-configs\");",
 					"",
 					"        pm.globals.unset(\"testData\");",
+					"        pm.globals.unset(\"completeOrderId\");",
+					"        pm.globals.unset(\"poLine2Id\");",
+					"        pm.globals.unset(\"poLine1Id\");",
 					"        pm.globals.unset(\"loadUtils\");",
 					"",
 					"    };",
@@ -5271,9 +6272,21 @@
 	],
 	"variable": [
 		{
-			"id": "b4cf0b28-684d-4b17-a909-8b25e84e9d53",
+			"id": "dd694c87-90b9-49a9-9f96-9ed248c3a1b0",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
+			"type": "string"
+		},
+		{
+			"id": "c78b502e-4718-4ec0-99e4-59fbac4b9a67",
+			"key": "poLines-limit",
+			"value": "10",
+			"type": "string"
+		},
+		{
+			"id": "72edb136-bf48-4376-90f7-5e9f0f308871",
+			"key": "mod-ordersResourcesURL",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		}
 	]
