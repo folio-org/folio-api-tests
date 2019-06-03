@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "1e5c0887-681f-4fa4-8895-9b96654ee286",
+		"_postman_id": "fe963839-456b-430a-a31e-9ba6ac5fe24c",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -251,8 +251,7 @@
 											"for (var i = 0; i < configNamesToProcess.length; i++) {",
 											"    let configName = configNamesToProcess[i];",
 											"    let value = pm.variables.get(configName);",
-											"   // let existingConfig = utils.getConfigByName(configs, configName);",
-											"    utils.updateOrCreateConfig(configs, configName, value);",
+											"    utils.updateOrCreateOrdersConfig(configs, configName, value);",
 											"}",
 											"",
 											"// Store current version of configs",
@@ -296,6 +295,85 @@
 										{
 											"key": "query",
 											"value": "module==ORDERS"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Check TENANT configs and update",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let testTenantConfigs = globals.testData.tenantConfig;",
+											"let bodyTemplate = globals.testData.tenantConfig.bodyTemplate;",
+											"",
+											"let configs = [];",
+											"pm.test(\"Storing current tenant configs\", function () {",
+											"    pm.response.to.be.ok;",
+											"",
+											"    configs = pm.response.json().configs;",
+											"    console.log(\"Original configs: \", configs);",
+											"    pm.environment.set(\"mod-tenant-configs\", JSON.stringify(configs));",
+											"});",
+											"",
+											"let configNamesToProcess = testTenantConfigs.configNames;",
+											"console.log(\"Config codes to process: \" + configNamesToProcess);",
+											"",
+											"for (var i = 0; i < configNamesToProcess.length; i++) {",
+											"    let configName = configNamesToProcess[i];",
+											"    let value = pm.variables.get(configName);",
+											"",
+											"    console.log(configName + \": \" + value);",
+											"    utils.updateOrCreateConfig(configs, configName, value, bodyTemplate);",
+											"}",
+											"",
+											"// Store current version of configs",
+											"pm.environment.set(\"current-tenant-configs\", configs);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==TENANT",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "module==TENANT"
 										}
 									]
 								}
@@ -4132,13 +4210,18 @@
 											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function(err, res) {",
 											"    let order = res.json();",
 											"    order.workflowStatus = \"Pending\";",
-											"    // Setting create inventory to false for PO Line with P/E Mix format",
+											"    // Setting create inventory to None for PO Line with P/E Mix format",
 											"    order.compositePoLines[0].eresource.createInventory = \"None\";",
-											"   // order.compositePoLines[1].physical = order.compositePoLines[0].physical;",
-											"   ",
 											"    order.poNumber = \"1MIX1EL1PHYS1OTH\";",
 											"",
-											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
+											"    // add billTo an shipTo properties",
+											"    utils.sendGetRequest(\"/configurations/entries?query=module==TENANT and code==\" + globals.testData.tenantConfig.bodyTemplate.code, (congifErr, configRes) => {",
+											"        let addressConfId = configRes.json().configs[0].id;",
+											"        order.billTo = addressConfId;",
+											"        order.shipTo = addressConfId;",
+											"        pm.variables.set(\"tenantAddressConfigId\", addressConfId);",
+											"        pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(order)));",
+											"    });",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4173,6 +4256,17 @@
 											"    pm.expect(jsonData.totalEstimatedPrice).to.be.above(0);",
 											"    pm.expect(jsonData.vendor).to.exist;",
 											"});",
+											"",
+											"",
+											"pm.test(\"Test billTo and shipTo properties existance\", function() {",
+											"    pm.expect(jsonData.billTo).to.exist;",
+											"    pm.expect(jsonData.shipTo).to.exist;",
+											"    ",
+											"    pm.expect(jsonData.billTo).to.equal(pm.variables.get(\"tenantAddressConfigId\"));",
+											"    pm.expect(jsonData.shipTo).to.equal(pm.variables.get(\"tenantAddressConfigId\"));",
+											"});",
+											"",
+											"",
 											""
 										],
 										"type": "text/javascript"
@@ -4378,8 +4472,8 @@
 											"    let order  = utils.prepareOrder(res.json());",
 											"    order.workflowStatus = \"Open\";",
 											"    order.poNumber = \"1MIX1EL\";",
-                                            "    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding\";",
-                                            "    order.compositePoLines[0].physical.createInventory = \"Instance, Holding\";",
+											"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding\";",
+											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding\";",
 											"    order.compositePoLines.forEach(poLine => poLine.paymentStatus = \"Partially Paid\");",
 											"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(order));",
 											"});"
@@ -9973,7 +10067,7 @@
 											"    let configName = configNamesToProcess[i];",
 											"    let value = pm.variables.get(configName);",
 											"",
-											"    utils.updateOrCreateConfig(configs, configName, value);",
+											"    utils.updateOrCreateOrdersConfig(configs, configName, value);",
 											"}",
 											"",
 											"// Store current version of configs",
@@ -12399,7 +12493,7 @@
 													"let configName = \"inventory-instanceTypeCode\";",
 													"let value = \"missing-type\";",
 													"",
-													"utils.updateOrCreateConfig(configs, configName, value);",
+													"utils.updateOrCreateOrdersConfig(configs, configName, value);",
 													"",
 													"// Store current version of configs",
 													"pm.environment.set(\"current-orders-configs\", configs);",
@@ -12557,7 +12651,7 @@
 													"let configName = \"inventory-instanceStatusCode\";",
 													"let value = \"missing-status\";",
 													"",
-													"utils.updateOrCreateConfig(configs, configName, value);",
+													"utils.updateOrCreateOrdersConfig(configs, configName, value);",
 													"",
 													"",
 													"// Store current version of configs",
@@ -12712,7 +12806,7 @@
 													"let configName = \"inventory-loanTypeName\";",
 													"let value = \"missing-type\";",
 													"",
-													"utils.updateOrCreateConfig(configs, configName, value);",
+													"utils.updateOrCreateOrdersConfig(configs, configName, value);",
 													"",
 													"// Store current version of configs",
 													"pm.environment.set(\"current-orders-configs\", configs);",
@@ -17342,6 +17436,90 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Get TENANT configs and revert",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let currentConfigs;",
+											"pm.test(\"Storing current tenant configs\", function() {",
+											"    pm.response.to.be.ok;",
+											"",
+											"    currentConfigs = pm.response.json().configs;",
+											"    console.log(\"Current configs: \", currentConfigs);",
+											"});",
+											"",
+											"let configsToProcess = globals.testData.tenantConfig.configNames;",
+											"",
+											"let originalConfigs = pm.environment.get(\"mod-tenant-configs\") ? JSON.parse(pm.environment.get(\"mod-tenant-configs\")) : [];",
+											"for (var i = 0; i < configsToProcess.length; i++) {",
+											"    let configName = configsToProcess[i];",
+											"    // Get configs existed before API tests by name",
+											"    let originalFilteredConfigs = utils.getConfigsByName(originalConfigs, configName);",
+											"    let currentFilteredConfigs = utils.getConfigsByName(currentConfigs, configName);",
+											"    if (originalFilteredConfigs.length > 0) {",
+											"        currentConfigs.forEach(currentConf => {",
+											"            let originalConfig = originalFilteredConfigs.find(conf => currentConf.id === conf.id);",
+											"            if (originalConfig) {",
+											"                utils.updateConfig(originalConfig);",
+											"            } else {",
+											"                utils.deleteConfig(currentConf.id);",
+											"            }",
+											"        });",
+											"    } else {",
+											"        currentFilteredConfigs.forEach(conf => utils.deleteConfig(conf.id));",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==TENANT",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "module==TENANT"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -18209,7 +18387,19 @@
 					"        \"id\": \"orders_test_tenant\",",
 					"        \"name\": \"Test orders tenant\",",
 					"        \"description\": \"Tenant for test purpose\"",
-					"    }",
+					"    },",
+					"    tenantConfig: {",
+					"        configNames: [\"tenant.addresses\"],",
+					"        bodyTemplate: {",
+					"            \"module\": \"TENANT\",",
+					"            \"code\": \"ADRESSES_123\",",
+					"            \"configName\": \"Test TENANT Config\",",
+					"            \"description\": \"Tenant config for API Tests\",",
+					"            \"default\": true,",
+					"            \"enabled\": true,",
+					"            \"value\": \"\"",
+					"        }",
+					"    }    ",
 					"",
 					"};",
 					"",
@@ -19620,27 +19810,41 @@
 					"    };",
 					"",
 					"    /* BEGIN - Functions to work with mod-configuration */",
-					"    utils.getConfigByName = function(configs, configName) {",
-					"        let config = configs.filter(value => value.configName === configName);",
-					"        return config.length > 0 ? config[0] : null;",
+					"    utils.getConfigsByName = function(configs, configName) {",
+					"        return configs.filter(config => config.configName === configName);",
 					"    };",
 					"",
+					"    utils.getConfigByName = function(configs, configName) {",
+					"        return utils.getConfigByNameAndCode(configs, configName);",
+					"    };",
 					"",
-					"    utils.updateOrCreateConfig = function(configs, configName, value) {",
-					"        // Just in case check if the config available (should not be the case because all configs were deleted recently)",
-					"        let existingConfig = utils.getConfigByName(configs, configName);",
+					"    utils.getConfigByNameAndCode = function(configs, configName, configCode) {",
+					"        let filteredConfigs = utils.getConfigsByName(configs, configName);",
+					"        if (configCode) {",
+					"            filteredConfigs = filteredConfigs.filter(config => config.code === configCode);",
+					"        }",
+					"        return filteredConfigs.length > 0 ? filteredConfigs[0] : null;",
+					"    };",
+					"",
+					"    utils.updateOrCreateConfig = function(configs, configName, value, bodyTemplate) {",
+					"        let existingConfig = utils.getConfigByNameAndCode(configs, configName, bodyTemplate.code);",
 					"        if (existingConfig) {",
 					"            existingConfig.value = value;",
 					"            utils.updateConfig(existingConfig);",
 					"        } else {",
-					"            let bodyTemplate = utils.copyJsonObj(globals.testData.configs.bodyTemplate);",
-					"            bodyTemplate.configName = configName;",
-					"            bodyTemplate.value = value;",
-					"            utils.createConfig(bodyTemplate);",
-					"",
+					"            let body = utils.copyJsonObj(bodyTemplate);",
+					"            body.configName = configName;",
+					"            body.value = value;",
+					"            utils.createConfig(body);",
+					"        ",
 					"            // store new config",
-					"            configs.push(bodyTemplate);",
+					"            configs.push(body);",
 					"        }",
+					"    };",
+					"",
+					"    utils.updateOrCreateOrdersConfig = function(configs, configName, value) {",
+					"        let bodyTemplate = globals.testData.configs.bodyTemplate;",
+					"        utils.updateOrCreateConfig(configs, configName, value, bodyTemplate);",
 					"    };",
 					"",
 					"    utils.createConfig = function(body) {",
@@ -19852,6 +20056,12 @@
 			"id": "9c3510b1-dac7-493b-bb90-72835d8d43e2",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
+			"type": "string"
+		},
+		{
+			"id": "fd3883d3-9e30-4547-92f4-9a1014af60a2",
+			"key": "tenant.addresses",
+			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		}
 	]
