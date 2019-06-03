@@ -13,7 +13,7 @@
 					"name": "Auth",
 					"item": [
 						{
-							"name": "/authn/login",
+							"name": "Login by admin",
 							"event": [
 								{
 									"listen": "test",
@@ -24,7 +24,8 @@
 											"    pm.response.to.have.status(201);",
 											"});",
 											"",
-											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));",
+											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));"
 										],
 										"type": "text/javascript"
 									}
@@ -1421,6 +1422,312 @@
 								}
 							],
 							"_postman_isSubFolder": true
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Create user",
+					"item": [
+						{
+							"name": "Create new user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
+											"    pm.test(\"Check if user for API Tests already exists\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
+											"        // If user already exists, check if this is for API Tests and delete it",
+											"        if (res.code === 200 && res.json().username) {",
+											"            utils.sendDeleteRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
+											"                pm.test(\"User '\" + globals.testData.user.username + \"' deleted\", () => {",
+											"                    pm.expect(res.code).to.eql(204);",
+											"                });",
+											"            });",
+											"        }",
+											"    });",
+											"});",
+											"",
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create credentials for new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5542417e-4b64-431c-8b07-7f5b5e9179ff",
+										"exec": [
+											"pm.test(globals.testData.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "de3203a8-0abe-4599-aee0-b34306d051de",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has credentials and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        utils.sendDeleteRequest(\"/authn/credentials/\" + res.json().credentials[0].id, (err, res) => {",
+											"            pm.test(globals.testData.user.username + \" user's credentials deleted\", () => {",
+											"                pm.expect(res.code).to.eql(204);",
+											"            });",
+											"        });",
+											"    }",
+											"});",
+											"",
+											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add only mod-orders permissions",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
+										"exec": [
+											"pm.test(globals.testData.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "dded3598-c238-487d-b06c-721c60509cf4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has permissions and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        utils.sendDeleteRequest(\"/perms/users/\" + res.json().permissionUsers[0].id, (err, res) => {",
+											"            pm.test(globals.testData.user.username + \" user's permissions deleted\", () => {",
+											"                pm.expect(res.code).to.eql(204);",
+											"            });",
+											"        });",
+											"    }",
+											"});",
+											"",
+											"pm.variables.set(\"orgsUserPermissions\", JSON.stringify(globals.testData.permissions));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orgsUserPermissions}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login by new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"// In case the new user cannot be logged in no sense to run further tests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a59f5097-d5cb-4e46-8bf6-3bddff268e65",
+										"exec": [
+											"pm.variables.set(\"modInvoiceUserCreds\", JSON.stringify(globals.testData.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modInvoiceUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -7806,7 +8113,7 @@
 											},
 											{
 												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -8456,7 +8763,7 @@
 											},
 											{
 												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -8696,7 +9003,7 @@
 											},
 											{
 												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -9152,7 +9459,7 @@
 											{
 												"key": "x-okapi-token",
 												"type": "text",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -9676,7 +9983,7 @@
 									{
 										"key": "x-okapi-token",
 										"type": "text",
-										"value": "{{xokapitoken}}"
+										"value": "{{xokapitoken-admin}}"
 									}
 								],
 								"url": {
@@ -9784,7 +10091,7 @@
 									"raw": "{{checkinBody}}"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/check-in?",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/check-in",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -9793,13 +10100,6 @@
 									"path": [
 										"orders",
 										"check-in"
-									],
-									"query": [
-										{
-											"key": "",
-											"value": "",
-											"disabled": true
-										}
 									]
 								},
 								"description": "creates a piece without any items in inventory and performs check-in. \nTests to see if the piece status is changed.\nThe order used for checkin is created in the request \"Create order all po lines checkin\""
@@ -11546,7 +11846,7 @@
 											{
 												"key": "x-okapi-token",
 												"type": "text",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -11705,7 +12005,7 @@
 											{
 												"key": "x-okapi-token",
 												"type": "text",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -11859,7 +12159,7 @@
 											{
 												"key": "x-okapi-token",
 												"type": "text",
-												"value": "{{xokapitoken}}"
+												"value": "{{xokapitoken-admin}}"
 											}
 										],
 										"url": {
@@ -14661,92 +14961,6 @@
 			"name": "Cleanup",
 			"item": [
 				{
-					"name": "Revert configs",
-					"item": [
-						{
-							"name": "Get configs and revert",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"let currentConfigs;",
-											"pm.test(\"Storing current configs\", function() {",
-											"    pm.response.to.be.ok;",
-											"",
-											"    currentConfigs = pm.response.json().configs;",
-											"    console.log(\"Current configs: \", currentConfigs);",
-											"});",
-											"",
-											"let configsToProcess = globals.testData.configs.configNames;",
-											"",
-											"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
-											"for (var i = 0; i < configsToProcess.length; i++) {",
-											"    let configName = configsToProcess[i];",
-											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
-											"",
-											"    if (originalConfig) {",
-											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
-											"        utils.updateConfig(originalConfig);",
-											"    } else if (currentConfigs.length > 0) {",
-											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
-											"        utils.deleteConfig(configId);",
-											"    } else {",
-											"        console.log(\"The config cannot be reverted. Config name =\" + configName);",
-											"    }",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"configurations",
-										"entries"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "module==ORDERS"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
 					"name": "Delete orders for positive tests",
 					"item": [
 						{
@@ -16059,6 +16273,309 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Delete user with mod-orders permissions only",
+					"item": [
+						{
+							"name": "Delete user's credentials",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d4e68cd5-eca2-4427-ba8b-6f059a5fc130",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has credentials and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        pm.variables.set(\"credentialsId\", res.json().credentials[0].id);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "1ff89363-4db6-40bc-a848-e7532b2a7bc0",
+										"exec": [
+											"let testFunc = pm.variables.get(\"credentialsId\") ? pm.test : pm.test.skip;",
+											"testFunc(\"Credentials deleted - Expected No Content (204)\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials/{{credentialsId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials",
+										"{{credentialsId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete user's permissions",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "234a882a-edd7-4bac-8bc2-7f89c8a7a713",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has permissions and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        pm.variables.set(\"permissionsId\", res.json().permissionUsers[0].id);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "f74eb5c8-1652-480c-9fac-356b3a3ffc56",
+										"exec": [
+											"let testFunc = pm.variables.get(\"permissionsId\") ? pm.test : pm.test.skip;",
+											"testFunc(\"Permissions deleted - Expected No Content (204)\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{permissionsId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users",
+										"{{permissionsId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "123459a0-b737-4767-a32c-1c5692b8d920",
+										"exec": [
+											"pm.variables.set(\"userId\", pm.globals.get(\"testData\").user.id);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ac493f0c-3e8c-4c07-94d2-6105617f0384",
+										"exec": [
+											"pm.test(\"User deleted - Expected No Content (204)\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users/{{userId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users",
+										"{{userId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "The authorithation token from `xokapitoken-admin` environment variable is set to `xokapitoken` one to allow remaining requests to work.",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "51550a77-35a8-45ab-bf74-f093a8202d42",
+								"type": "text/javascript",
+								"exec": [
+									"pm.environment.set(\"xokapitoken\", pm.environment.get(\"xokapitoken-admin\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "0decf5ff-c87f-4041-a8cd-ef1a9f2003bd",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Revert configs",
+					"item": [
+						{
+							"name": "Get configs and revert",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let currentConfigs;",
+											"pm.test(\"Storing current configs\", function() {",
+											"    pm.response.to.be.ok;",
+											"",
+											"    currentConfigs = pm.response.json().configs;",
+											"    console.log(\"Current configs: \", currentConfigs);",
+											"});",
+											"",
+											"let configsToProcess = globals.testData.configs.configNames;",
+											"",
+											"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
+											"for (var i = 0; i < configsToProcess.length; i++) {",
+											"    let configName = configsToProcess[i];",
+											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
+											"",
+											"    if (originalConfig) {",
+											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
+											"        utils.updateConfig(originalConfig);",
+											"    } else if (currentConfigs.length > 0) {",
+											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
+											"        utils.deleteConfig(configId);",
+											"    } else {",
+											"        console.log(\"The config cannot be reverted. Config name =\" + configName);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"configurations",
+										"entries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "module==ORDERS"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Inventory types",
 					"item": [
 						{
@@ -16819,7 +17336,7 @@
 				"id": "29271af0-d608-4fd0-a6d0-7f47697b19ba",
 				"type": "text/javascript",
 				"exec": [
-					"let testData = {",
+					"const testData = {",
 					"    // mod-configuration",
 					"    configs: {",
 					"        configNames: [\"poLines-limit\", \"inventory-instanceTypeCode\", \"inventory-instanceStatusCode\", \"inventory-loanTypeName\"],",
@@ -16831,6 +17348,28 @@
 					"            \"enabled\": true,",
 					"            \"value\": \"\"",
 					"        }",
+					"    },",
+					"    // User template with hardcoded id",
+					"    user: {",
+					"        \"id\": \"00000001-1111-5555-9999-999999999999\",",
+					"        \"username\": \"mod-orders-user\",",
+					"        \"active\": true,",
+					"        \"personal\": {",
+					"            \"firstName\": \"Orders API\",",
+					"            \"lastName\": \"Orders Tests\"",
+					"        }",
+					"    },",
+					"    credentials: {",
+					"        \"username\": \"mod-orders-user\",",
+					"        \"password\": \"mod-orders-user-password\"",
+					"    },",
+					"    permissions: {",
+					"        \"userId\": \"00000001-1111-5555-9999-999999999999\",",
+					"        \"permissions\": [",
+					"            \"orders.all\",",
+					"            \"inventory-storage.items.collection.get\",",
+					"            \"inventory-storage.items.item.get\"",
+					"        ]",
 					"    },",
 					"    receiving: {",
 					"        bodyTemplate: {",
@@ -16932,13 +17471,13 @@
 					"    /**",
 					"     * Sends GET request and uses passed handler to handle result",
 					"     */",
-					"    utils.buildPmRequest = function(path, method) {",
+					"    utils.buildPmRequest = function(path, method, xokapitoken) {",
 					"        return {",
 					"            url: utils.buildOkapiUrl(path),",
 					"            method: method,",
 					"            header: {",
 					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
-					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"                \"X-Okapi-Token\": xokapitoken || pm.environment.get(\"xokapitoken-admin\")",
 					"            }",
 					"        };",
 					"    };",
@@ -17906,19 +18445,10 @@
 					"      * check-in methods",
 					"     */",
 					"     utils.postRequest = function (path, postBody, handler) {",
-					"        pm.sendRequest({",
-					"            url: utils.buildOkapiUrl(path),",
-					"            method: 'POST',",
-					"            header: {",
-					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
-					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\"),",
-					"                \"Content-type\": \"application/json\"",
-					"            },",
-					"            body: {",
-					"                mode: 'raw',",
-					"                raw: JSON.stringify(postBody)",
-					"            }",
-					"        }, handler);",
+					"        let pmRq = utils.buildPmRequest(path, \"POST\");",
+					"        pmRq.body = JSON.stringify(postBody);",
+					"        pmRq.header[\"Content-type\"] = \"application/json\";",
+					"        pm.sendRequest(pmRq, handler);",
 					"    };",
 					"",
 					"    /**",
@@ -17947,8 +18477,8 @@
 					"                });",
 					"            utils.prepareCheckinBody(compPoLine, res.json().id);",
 					"        });",
-					"    }",
-					"    ",
+					"    };",
+					"",
 					"    /**",
 					"     * This method is used for both checking in a piece and also reverting it,",
 					"     * If the checkinstatus is not provided by default it is set to check-in item",
@@ -18278,14 +18808,7 @@
 					"     */",
 					"    utils.processDeleteRequest = function(path) {",
 					"        return new Promise((resolve) => {",
-					"            pm.sendRequest({",
-					"                url: utils.buildOkapiUrl(path),",
-					"                method: \"DELETE\",",
-					"                header: {",
-					"                    \"X-Okapi-Tenant\": pm.variables.get(\"xokapitenant\"),",
-					"                    \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\")",
-					"                }",
-					"            }, function(err, response) {",
+					"            utils.sendDeleteRequest(path, (err, response) => {",
 					"                resolve(response.code);",
 					"            });",
 					"        });",
@@ -18309,36 +18832,26 @@
 					"       ",
 					"    utils.updateOrCreateConfig = function(configs, configName, value) {",
 					"        // Just in case check if the config available (should not be the case because all configs were deleted recently)",
-					"        let bodyTemplate = globals.testData.configs.bodyTemplate;",
 					"        let existingConfig = utils.getConfigByName(configs, configName);",
 					"        if (existingConfig) {",
 					"            existingConfig.value = value;",
 					"            utils.updateConfig(existingConfig);",
 					"        } else {",
+					"            let bodyTemplate = utils.copyJsonObj(globals.testData.configs.bodyTemplate);",
 					"            bodyTemplate.configName = configName;",
 					"            bodyTemplate.value = value;",
 					"            utils.createConfig(bodyTemplate);",
 					"        ",
 					"            // store new config",
-					"            configs.push(utils.copyJsonObj(bodyTemplate));",
+					"            configs.push(bodyTemplate);",
 					"        }",
 					"    };",
 					"",
 					"    utils.createConfig = function(body) {",
-					"         pm.sendRequest({",
-					"            url: utils.buildOkapiUrl(\"/configurations/entries\"),",
-					"            method: \"POST\",",
-					"            header: {",
-					"                \"X-Okapi-Token\": pm.variables.get(\"xokapitoken\"),",
-					"                \"Content-type\": \"application/json\",",
-					"                \"Accept-Encoding\": \"identity\"",
-					"            },",
-					"            body: JSON.stringify(body)",
-					"        }, function(err, response) {",
-					"            pm.test(\"Config created\", function() {",
+					"        utils.postRequest(\"/configurations/entries\", body, function(err, response) {",
+					"            pm.test(\"Config created. Config name = \" + body.configName, function() {",
 					"                pm.expect(response.code).to.eql(201);",
 					"            });",
-					"      ",
 					"        });",
 					"    };",
 					"",
@@ -18400,7 +18913,7 @@
 					"        pm.environment.values",
 					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
 					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
-					"            ",
+					"",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
 					"        pm.globals.unset(\"emptyOrderId\");",
@@ -18432,8 +18945,9 @@
 					"        pm.globals.unset(\"testTenant\");",
 					"        pm.globals.unset(\"enabledModules\");",
 					"        pm.globals.unset(\"testTenantActiveVendorId\");",
-					"        ",
+					"",
 					"        pm.environment.unset(\"xokapitoken\");",
+					"        pm.environment.unset(\"xokapitoken-admin\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
 					"        pm.environment.unset(\"receivingItemBarcode\");",
 					"        pm.environment.unset(\"activeVendorId\");",
