@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "47cd6c62-f770-4a73-b291-95425ba0b976",
+		"_postman_id": "032e4342-3a92-48db-87cc-509f910d55eb",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -1509,92 +1509,6 @@
 					"item": [
 						{
 							"name": "Create new user",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"utils.sendGetRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
-											"    pm.test(\"Check if user for API Tests already exists\", () => {",
-											"        pm.expect(err).to.equal(null);",
-											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
-											"        // If user already exists, check if this is for API Tests and delete it",
-											"        if (res.code === 200 && res.json().username) {",
-											"            utils.sendDeleteRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
-											"                pm.test(\"User '\" + globals.testData.user.username + \"' deleted\", () => {",
-											"                    pm.expect(res.code).to.eql(204);",
-											"                });",
-											"            });",
-											"        }",
-											"    });",
-											"});",
-											"",
-											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.user));"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
-										"exec": [
-											"// In case the user was not created no sense to run further requests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"User created - Expected Created (201)\", () => {",
-											"    pm.response.to.have.status(201);",
-											"",
-											"    // All is okay so running further requests",
-											"    postman.setNextRequest();",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "content-type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-tenant",
-										"type": "text",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{userData}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"users"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new user Copy",
 							"event": [
 								{
 									"listen": "prerequest",
@@ -11264,10 +11178,10 @@
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let order = JSON.stringify(utils.buildOrderWithMinContent());",
-											"order.owner = \"12345\";",
+											"let order = utils.buildOrderWithMinContent();",
+											"order.notes = [\"THIS IS TEST FOR ORDER WITHOUT POLINES\"];",
 											"",
-											"pm.variables.set(\"orderWithoutPoLinesBody\", order);"
+											"pm.variables.set(\"orderWithoutPoLinesBody\", JSON.stringify(order));"
 										],
 										"type": "text/javascript"
 									}
@@ -11284,7 +11198,7 @@
 											"    var jsonData = pm.response.json();",
 											"",
 											"    pm.test(\"Empty list of notes exist\", function () {",
-											"        pm.expect(jsonData.notes).to.have.lengthOf(0);",
+											"        pm.expect(jsonData.notes).to.have.lengthOf(1);",
 											"    });",
 											"    ",
 											"    pm.test(\"Each order has required fields\", function(){",
@@ -11358,9 +11272,12 @@
 											"pm.test(\"Status code is 200\", function () {",
 											"    pm.response.to.have.status(200);",
 											"});",
-											"pm.test(\"At least 3 orders\", function () {",
+											"pm.test(\"Check orders without po-lines\", function () {",
 											"    var jsonData = pm.response.json();",
-											"    pm.expect(jsonData.purchaseOrders).to.have.lengthOf.at.least(3);",
+											"    var purchaseOrders = jsonData.purchaseOrders;",
+											"    var result = purchaseOrders.filter(order => order.notes.filter(string => string = 'THIS IS TEST FOR ORDER WITHOUT POLINES').length > 0);",
+											"    ",
+											"    pm.expect(result).to.have.lengthOf.above(0);",
 											"});"
 										],
 										"type": "text/javascript"
