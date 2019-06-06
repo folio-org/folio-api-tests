@@ -1594,6 +1594,92 @@
 							"response": []
 						},
 						{
+							"name": "Create new user Copy",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
+											"    pm.test(\"Check if user for API Tests already exists\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
+											"        // If user already exists, check if this is for API Tests and delete it",
+											"        if (res.code === 200 && res.json().username) {",
+											"            utils.sendDeleteRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
+											"                pm.test(\"User '\" + globals.testData.user.username + \"' deleted\", () => {",
+											"                    pm.expect(res.code).to.eql(204);",
+											"                });",
+											"            });",
+											"        }",
+											"    });",
+											"});",
+											"",
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Create credentials for new user",
 							"event": [
 								{
@@ -11178,7 +11264,10 @@
 										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"orderBody\", JSON.stringify(utils.buildOrderWithMinContent()));"
+											"let order = JSON.stringify(utils.buildOrderWithMinContent());",
+											"order.owner = \"12345\";",
+											"",
+											"pm.variables.set(\"orderWithoutPoLinesBody\", order);"
 										],
 										"type": "text/javascript"
 									}
@@ -11200,15 +11289,11 @@
 											"    ",
 											"    pm.test(\"Each order has required fields\", function(){",
 											"        pm.expect(jsonData.id).to.exist;",
-											"        pm.globals.set(\"emptyOrderId\", jsonData.id); ",
+											"        pm.globals.set(\"emptyOrderWithoutPoLinesId\", jsonData.id); ",
 											"        pm.expect(jsonData.notes).to.exist;",
 											"        pm.expect(jsonData.poNumber).to.exist;",
 											"        pm.expect(jsonData.compositePoLines).to.exist;",
 											"        pm.expect(jsonData.compositePoLines).to.be.empty;",
-											"    });",
-											"    ",
-											"    pm.test(\"MODORDERS-145: Verify status to be Pending\", function(){",
-											"        pm.expect(jsonData.workflowStatus).to.equal(\"Pending\");",
 											"    });",
 											"});"
 										],
@@ -11234,7 +11319,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{{orderBody}}"
+									"raw": "{{orderWithoutPoLinesBody}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
@@ -20243,37 +20328,37 @@
 	],
 	"variable": [
 		{
-			"id": "17f79eb5-299b-4770-bba1-2756d9bb2ab6",
+			"id": "af027a81-bf78-463b-b666-abed6b0abff1",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "7029b29c-c3fa-4575-b3f8-00f2ee68b3ff",
+			"id": "4fffc095-4f62-40ab-9fd6-8b6b2d67af3a",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "be3ca4de-598e-4594-8187-67e4e80b35db",
+			"id": "b0f41ee7-f369-40b6-80ac-363e5d0a01b1",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "83a6fb53-dc47-4921-bf44-8d64f42fb374",
+			"id": "af0d7e66-5f5b-4b7f-98c3-f53235c60357",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "ed81e6dd-687a-4065-9d54-d1e1f44de453",
+			"id": "310d8944-90ba-4f9a-bee0-4133bd4dbf83",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "2a785172-6082-44e9-ad9d-05345fdae40e",
+			"id": "0e65c333-9c62-4997-8df7-eb607003720a",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
