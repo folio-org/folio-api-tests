@@ -1666,6 +1666,221 @@
 							"_postman_isSubFolder": true
 						},
 						{
+							"name": "Delete Invoice and associated lines",
+							"item": [
+								{
+									"name": "Create invoice for deletion test",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.environment.set(\"InvoiceIdForDelete\", invoice.id);",
+													"",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"invoiceForDelete\", JSON.stringify(utils.buildInvoiceWithMinContent()));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceForDelete}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create invoice line for delete with invoice",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice line has required and optional fields\", function(){",
+													"    pm.expect(invoiceLine.id).to.exist;",
+													"    pm.expect(invoiceLine.invoiceId).to.equal(pm.environment.get(\"InvoiceIdForDelete\"));",
+													"    utils.validateInvoiceLineWithMinimalContent(invoiceLine);",
+													"});",
+													"",
+													"pm.environment.set(\"InvoiceLineIdForDelete\", invoiceLine.id);",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"InvoiceIdForDelete\"));",
+													"",
+													"pm.variables.set(\"InvoiceLineForDelete\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceLineForDelete}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete  invoice and associated lines",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice is deleted\", function() {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"",
+													"pm.test(\"invoce line deleted: \", () => {",
+													"    let invoiceId = pm.environment.get(\"InvoiceIdForDelete\");",
+													"",
+													"    utils.sendGetRequest(\"/invoice/invoice-lines?query=invoiceId==\" + invoiceId , (err, response) => {",
+													"        pm.expect(response).to.have.status(200);",
+													"        pm.expect(response.json().invoiceLines.length).to.be.equal(0);",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceIdForDelete}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceIdForDelete}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
 							"name": "Create invoice",
 							"event": [
 								{
@@ -1700,7 +1915,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoice.json\", function (err, res) {",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/52fd6ec7-ddc3-4c53-bc26-2779afc27136.json\", function (err, res) {",
 											"    let invoice = res.json();",
 											"",
 											"    delete invoice.id;",
