@@ -1475,6 +1475,8 @@
 													"",
 													"    delete invoice.id;",
 													"    delete invoice.folioInvoiceNo;",
+													"    delete invoice.subTotal;",
+													"    delete invoice.total;",
 													"    invoice.note = \"Invoice to test transition to Paid\";",
 													"    invoice.status = \"Approved\";",
 													"",
@@ -1526,6 +1528,8 @@
 												"exec": [
 													"let invoice = JSON.parse(globals.approvedToPaidInvoiceContent);",
 													"invoice.status = \"Paid\";",
+													"delete invoice.subTotal;",
+													"delete invoice.total;",
 													"pm.globals.set(\"approvedToPaidInvoiceContent\", JSON.stringify(invoice));",
 													""
 												],
@@ -2034,60 +2038,6 @@
 								"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
 							},
 							"response": []
-						},
-						{
-							"name": "Delete  invoice",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{invoiceId}}"
-									]
-								}
-							},
-							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -2510,6 +2460,361 @@
 												"{{invoiceLineId}}"
 											]
 										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "adjustments",
+							"item": [
+								{
+									"name": "Create invoice-line with adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice line has expected fields\", function(){",
+													"    pm.expect(invoiceLine.id).to.exist;",
+													"    utils.rememberInvoiceLineId(invoiceLine);",
+													"    pm.expect(invoiceLine.invoiceId).to.equal(pm.environment.get(\"invoiceId\"));",
+													"    pm.expect(invoiceLine.adjustmentsTotal).to.exist;",
+													"    pm.expect(invoiceLine.total).to.be.above(invoiceLine.subTotal);",
+													"});",
+													"",
+													"pm.test(\"adjustment total to include only In addition to relation\",function(){",
+													"    pm.expect(invoiceLine.adjustmentsTotal).to.equal(10.27);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let adjustmentsArray = [];",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", function (err, res) {",
+													"    let invoiceLine = res.json();",
+													"",
+													"    delete invoiceLine.id;",
+													"    delete invoiceLine.invoiceLineNumber;",
+													"    delete invoiceLine.adjustments;",
+													"    invoiceLine.comment = \"Adding line for API testing adjustment\";",
+													"    invoiceLine.invoiceId = pm.environment.get(\"invoiceId\");",
+													"",
+													"    let adjustment1 = utils.buildAdjustmentObject();",
+													"    adjustmentsArray.push(adjustment1);",
+													"    ",
+													"    let adjustment2 = utils.buildAdjustmentObject();",
+													"    adjustment2.relationToTotal = \"Included in\";",
+													"    adjustmentsArray.push(adjustment2);",
+													"    ",
+													"    ",
+													"     let adjustment3 = utils.buildAdjustmentObject();",
+													"     adjustment3.type = \"Percentage\";",
+													"     adjustment3.value = 12.222; ",
+													"     adjustmentsArray.push(adjustment3);",
+													"    ",
+													"    invoiceLine.adjustments = adjustmentsArray;",
+													"",
+													"    pm.variables.set(\"invoiceLineContent\", JSON.stringify(invoiceLine));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLineContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										},
+										"description": "Tests the adjustments calculations \n1.with amount and Percentage \n2.only \"In addition to\" relationToTotal adjustments are included in the calculation"
+									},
+									"response": []
+								},
+								{
+									"name": "Create invoice-line with negative adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"    pm.environment.set(\"negativeAdjInLineId\",invoiceLine.id)",
+													"});",
+													"",
+													"pm.test(\"Invoice line has expected fields\", function(){",
+													"    pm.expect(invoiceLine.id).to.exist;",
+													"    utils.rememberInvoiceLineId(invoiceLine);",
+													"    pm.expect(invoiceLine.invoiceId).to.equal(pm.environment.get(\"invoiceId\"));",
+													"    pm.expect(invoiceLine.adjustmentsTotal).to.exist;",
+													"    pm.expect(invoiceLine.total).to.be.below(invoiceLine.subTotal);",
+													"});",
+													"",
+													"pm.test(\"adjustment total to be negative\",function(){",
+													"    pm.expect(invoiceLine.adjustmentsTotal).to.equal(-28.21);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let adjustmentsArray = [];",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", function (err, res) {",
+													"    let invoiceLine = res.json();",
+													"",
+													"    delete invoiceLine.id;",
+													"    delete invoiceLine.invoiceLineNumber;",
+													"    delete invoiceLine.adjustments;",
+													"    invoiceLine.comment = \"Adding line for API testing adjustment\";",
+													"    invoiceLine.invoiceId = pm.environment.get(\"invoiceId\");",
+													"",
+													"    let adjustment1 = utils.buildAdjustmentObject();",
+													"    adjustment1.value = -13.88;",
+													"    adjustmentsArray.push(adjustment1);",
+													"    ",
+													"    let adjustment2 = utils.buildAdjustmentObject();",
+													"    adjustment2.value = -14.33;",
+													"    adjustmentsArray.push(adjustment2);",
+													"    ",
+													"    invoiceLine.adjustments = adjustmentsArray;",
+													"",
+													"     pm.environment.set(\"negativeInvoiceLineContent\", JSON.stringify(invoiceLine));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeInvoiceLineContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update invoice-line with negative adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice Line is updated\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let adjustmentsArray = [];",
+													"",
+													"",
+													"let invoiceLine = JSON.parse(pm.environment.get(\"negativeInvoiceLineContent\"));",
+													"invoiceLine.adjustments[0].value = 15;",
+													"",
+													"pm.variables.set(\"invoiceLineContent\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLineContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{negativeAdjInLineId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{negativeAdjInLineId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get updated invoice-line with adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is successfully retrieved\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice line has expected fields\", function(){",
+													"    pm.expect(invoiceLine.id).to.exist;",
+													"    utils.rememberInvoiceLineId(invoiceLine);",
+													"    pm.expect(invoiceLine.invoiceId).to.equal(pm.environment.get(\"invoiceId\"));",
+													"    pm.expect(invoiceLine.adjustmentsTotal).to.exist;",
+													"    pm.expect(invoiceLine.total).to.be.above(invoiceLine.subTotal);",
+													"});",
+													"",
+													"pm.test(\"adjustment total is recalulated\",function(){",
+													"    pm.expect(invoiceLine.adjustmentsTotal).to.equal(0.67);",
+													"    pm.expect(invoiceLine.total).to.equal(2.87);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"protocolProfileBehavior": {
+										"disableBodyPruning": true
+									},
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{negativeAdjInLineId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{negativeAdjInLineId}}"
+											]
+										},
+										"description": "validate that the adjustments are recalculated after a PUT with adjustment values changed"
 									},
 									"response": []
 								}
@@ -3083,6 +3388,8 @@
 													"",
 													"    delete invoice.id;",
 													"    delete invoice.folioInvoiceNo;",
+													"    delete invoice.subTotal;",
+													"    delete invoice.total;",
 													"    invoice.note = \"Invoice to test transition to Paid\";",
 													"    invoice.status = \"Approved\";",
 													"",
@@ -3808,7 +4115,7 @@
 							"response": []
 						},
 						{
-							"name": "Update already deleted invoice",
+							"name": "Update non existent invoice",
 							"event": [
 								{
 									"listen": "test",
@@ -3853,7 +4160,7 @@
 									"raw": "{{updatedInvoice}}"
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{$guid}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -3862,7 +4169,7 @@
 									"path": [
 										"invoice",
 										"invoices",
-										"{{invoiceId}}"
+										"{{$guid}}"
 									]
 								}
 							},
@@ -3945,6 +4252,8 @@
 										"exec": [
 											"let invoice = JSON.parse(globals.negativeApprovedToPaidInvoiceContent);",
 											"invoice.status = \"Paid\";",
+											"delete invoice.subTotal;",
+											"delete invoice.total;",
 											"pm.globals.set(\"negativeApprovedToPaidInvoiceContent\", JSON.stringify(invoice));",
 											""
 										],
@@ -4067,7 +4376,7 @@
 							"response": []
 						},
 						{
-							"name": "Delete already deleted invoice",
+							"name": "Delete non existent invoice",
 							"event": [
 								{
 									"listen": "test",
@@ -4105,7 +4414,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{$guid}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -4114,7 +4423,7 @@
 									"path": [
 										"invoice",
 										"invoices",
-										"{{invoiceId}}"
+										"{{$guid}}"
 									]
 								}
 							},
@@ -5003,6 +5312,88 @@
 										"{{invoiceLineId}}"
 									]
 								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create invoice-line with invalid adjustments",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice Line creation fails\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let adjustmentsArray = [];",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", function (err, res) {",
+											"    let invoiceLine = res.json();",
+											"",
+											"    delete invoiceLine.id;",
+											"    delete invoiceLine.invoiceLineNumber;",
+											"    delete invoiceLine.adjustments;",
+											"    invoiceLine.comment = \"Adding line for API testing adjustment\";",
+											"    invoiceLine.invoiceId = pm.environment.get(\"invoiceId\");",
+											"",
+											"    let adjustment1 = utils.buildAdjustmentObject();",
+											"    adjustmentsArray.push(adjustment1);",
+											"    ",
+											"    let adjustment2 = utils.buildAdjustmentObject();",
+											"    adjustment2.relationToTotal = \"Not Included in\";",
+											"    adjustmentsArray.push(adjustment2);",
+											"    ",
+											"    invoiceLine.adjustments = adjustmentsArray;",
+											"",
+											"    pm.variables.set(\"invoiceLineContent\", JSON.stringify(invoiceLine));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceLineContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines"
+									]
+								},
+								"description": "Tests the adjustments calculations \n1.with amount and Percentage \n2.only \"In addition to\" relationToTotal adjustments are included in the calculation"
 							},
 							"response": []
 						}
@@ -5985,6 +6376,60 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Delete  invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceId}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"event": [
@@ -6467,6 +6912,98 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Verify Delete in Storage",
+					"item": [
+						{
+							"name": "Verify that invoices are deleted in storage",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Verify that no invoices are found\", function () {",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices?query=id=={{minInvoiceId}} or id=={{filterInvoiceId}} or id=={{approvedToPaidInvoice}} or id=={{invoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoices"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "id=={{minInvoiceId}} or id=={{filterInvoiceId}} or id=={{approvedToPaidInvoice}} or id=={{invoiceId}}"
+										}
+									]
+								},
+								"description": "GET /invoice-storage/invoices returns a 404 after delete"
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "39a9eea1-1e0e-4ce0-879d-09fb42d4558d",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "d3291b4b-85b4-427a-ba76-85228594cd62",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Delete orders",
 					"item": [
 						{
@@ -6935,6 +7472,16 @@
 					"        };",
 					"    };",
 					"    ",
+					"    utils.buildAdjustmentObject = function(){",
+					"        return {",
+					"             \"description\":\"adjustment API test\",",
+					"             \"type\":\"Amount\",",
+					"             \"value\":10,",
+					"             \"prorate\":\"Not prorated\",",
+					"             \"relationToTotal\":\"In addition to\"",
+					"        };",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Verifies if the delete operation succeeded",
 					"     */",
@@ -7065,6 +7612,8 @@
 					"        pm.environment.unset(\"approvedToPaidInvoice\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
 					"        pm.environment.unset(\"current-orders-configs\");",
+					"        pm.environment.unset(\"negativeAdjInLineId\");",
+					"        pm.environment.unset(\"negativeInvoiceLineContent\");",
 					"",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"completeOrderId\");",
@@ -7177,6 +7726,8 @@
 					"",
 					"        // Verify that required and system generated fields exist",
 					"        pm.expect(invoice.id, \"Invoice id expected\").to.exist;",
+					"        pm.expect(invoice.adjustmentsTotal, \"Invoice adjustments total not expected\").to.exist;",
+					"        pm.expect(invoice.adjustmentsTotal, \"Invoice adjustments total should be zero\").to.eql(0);",
 					"        pm.expect(invoice.currency, \"Invoice currency expected\").to.exist;",
 					"        pm.expect(invoice.currency, \"Invoice currency does not match to expected\").to.eql(expectedInvoice.currency);",
 					"        pm.expect(invoice.invoiceDate, \"Invoice date expected\").to.exist;",
@@ -7190,6 +7741,10 @@
 					"        pm.expect(invoice.vendorId, \"Invoice vendor id expected\").to.exist;",
 					"        pm.expect(invoice.metadata, \"Invoice metadata expected\").to.exist;",
 					"        pm.expect(invoice.source, \"Invoice source does not match to expected\").to.eql(expectedInvoice.source);",
+					"        pm.expect(invoice.subTotal, \"Invoice subTotal not expected\").to.exist;",
+					"        pm.expect(invoice.subTotal, \"Invoice subtotal should be zero\").to.eql(0);",
+					"        pm.expect(invoice.total, \"Invoice total not expected\").to.exist;",
+					"        pm.expect(invoice.total, \"Invoice total should be zero\").to.eql(0);",
 					"        pm.expect(invoice.vendorInvoiceNo, \"Vendor Invoice No expected\").to.exist;",
 					"        pm.expect(invoice.vendorInvoiceNo, \"Vendor Invoice number does not match to expected\").to.eql(expectedInvoice.vendorInvoiceNo);",
 					"        pm.expect(invoice.vendorId, \"Invoice vendor id expected\").to.exist;",
@@ -7197,7 +7752,6 @@
 					"",
 					"        // Now verify that there are no optional fields",
 					"        pm.expect(invoice.adjustments, \"Invoice adjustments expected to be empty\").to.be.empty;",
-					"        pm.expect(invoice.adjustmentsTotal, \"Invoice adjustments total not expected\").to.not.exist;",
 					"        pm.expect(invoice.acquisitionsUnit, \"Invoice acquisitions unit not expected\").to.not.exist;",
 					"        pm.expect(invoice.approvedBy, \"Invoice approved by not expected\").to.not.exist;",
 					"        pm.expect(invoice.approvalDate, \"Invoice approval date not expected\").to.not.exist;",
@@ -7210,8 +7764,6 @@
 					"        pm.expect(invoice.paymentId, \"Invoice payment id not expected\").to.not.exist;",
 					"        pm.expect(invoice.paymentTerms, \"Invoice payment terms not expected\").to.not.exist;",
 					"        pm.expect(invoice.poNumbers, \"Invoice PO numbers expected to be empty\").to.be.empty;",
-					"        pm.expect(invoice.subTotal, \"Invoice subTotal not expected\").to.not.exist;",
-					"        pm.expect(invoice.total, \"Invoice total not expected\").to.not.exist;",
 					"        pm.expect(invoice.voucherNumber, \"Invoice voucher number not expected\").to.not.exist;",
 					"    };",
 					"",
@@ -7274,19 +7826,19 @@
 	],
 	"variable": [
 		{
-			"id": "66dff2bc-e3a4-4df9-bdeb-99754468abee",
+			"id": "aa727fd3-50ca-42cf-96a0-2b8c09df9c78",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "16e46adb-d08d-4a1e-ac2c-12e49cec687e",
+			"id": "3780d74e-65bf-4425-8d4c-ecd42c0a25fc",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "8b7d8498-9372-46ac-9a89-66c09bfae0b7",
+			"id": "9716da39-44a1-47c5-8df9-9daa760c7782",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
