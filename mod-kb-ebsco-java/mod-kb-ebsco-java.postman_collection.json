@@ -2524,7 +2524,8 @@
 								"id": "bafb2d0f-7c26-4bfa-af03-37aba39bf53f",
 								"exec": [
 									"var uuid = require('uuid');",
-									"pm.variables.set(\"custom-resource-with-tags-uuid\", uuid.v4());"
+									"pm.variables.set(\"custom-resource-with-tags-uuid\", uuid.v4());",
+									"pm.environment.set(\"tag-name-for-resource\", \"tag one\");"
 								],
 								"type": "text/javascript"
 							}
@@ -2569,7 +2570,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": " {\n  \"data\": {\n    \"type\": \"resources\",\n    \"attributes\": {\n      \"isPeerReviewed\": false,\n      \"name\": \"custom title-{{custom-resource-with-tags-uuid}}\",\n      \"publicationType\": \"Book\",\n      \"isSelected\": true,\n      \"visibilityData\": {\n        \"isHidden\" : false\n      },\n      \"customEmbargoPeriod\": {\n      \"embargoUnit\" : \"Months\",\n      \"embargoValue\" : 5\n      },\n      \"customCoverages\" : [\n      {\n      \"beginCoverage\" : \"2001-01-01\",\n      \"endCoverage\" : \"2004-02-01\"\n      }\n      ],\n      \"coverageStatement\": \"Test Coverage Statement\",\n      \"proxy\" : {\n      \"id\" : \"<n>\"\n      },\n      \"tags\" : {\n        \"tagList\" : [\"tag one\"]\n      }\n    }\n  }\n}"
+							"raw": " {\n  \"data\": {\n    \"type\": \"resources\",\n    \"attributes\": {\n      \"isPeerReviewed\": false,\n      \"name\": \"custom title-{{custom-resource-with-tags-uuid}}\",\n      \"publicationType\": \"Book\",\n      \"isSelected\": true,\n      \"visibilityData\": {\n        \"isHidden\" : false\n      },\n      \"customEmbargoPeriod\": {\n      \"embargoUnit\" : \"Months\",\n      \"embargoValue\" : 5\n      },\n      \"customCoverages\" : [\n      {\n      \"beginCoverage\" : \"2001-01-01\",\n      \"endCoverage\" : \"2004-02-01\"\n      }\n      ],\n      \"coverageStatement\": \"Test Coverage Statement\",\n      \"proxy\" : {\n      \"id\" : \"<n>\"\n      },\n      \"tags\" : {\n        \"tagList\" : [\"{{tag-name-for-resource}}\"]\n      }\n    }\n  }\n}"
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/resources/{{custom-resourceid-with-tags}}",
@@ -5389,6 +5390,91 @@
 										}
 									},
 									"response": []
+								},
+								{
+									"name": "with valid providerId and non existing tags",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "538799ae-0b40-4376-966a-333c2e8021a3",
+												"exec": [
+													"var packageId = pm.environment.get(\"custom-package-created-for-tags-id\");",
+													"var providerId = packageId.split(\"-\")[0];",
+													"pm.environment.set(\"provider-id\", providerId);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "c625d97b-c2db-4973-b74b-3460cfe8082d",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" ",
+													"    + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Test that total records value as expected",
+													"pm.test('total records as expected', function() {",
+													"    pm.expect(response.meta.totalResults).to.eql(0);",
+													"});",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/{{provider-id}}/packages?filter[tags]=non-existing-tag",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"providers",
+												"{{provider-id}}",
+												"packages"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": "non-existing-tag"
+												}
+											]
+										}
+									},
+									"response": []
 								}
 							],
 							"_postman_isSubFolder": true
@@ -5925,91 +6011,6 @@
 												{
 													"key": "count",
 													"value": "120"
-												}
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "with valid providerId and non existing tags",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "538799ae-0b40-4376-966a-333c2e8021a3",
-												"exec": [
-													"var packageId = pm.environment.get(\"custom-package-created-for-tags-id\");",
-													"var providerId = packageId.split(\"-\")[0];",
-													"pm.environment.set(\"provider-id\", providerId);"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "c625d97b-c2db-4973-b74b-3460cfe8082d",
-												"exec": [
-													"pm.test(\"success test\", function() {",
-													"    pm.response.to.be.json;",
-													"});",
-													"",
-													"let response = pm.response.json();",
-													"",
-													"//Check that status is 200",
-													"pm.test(\"Status is 200\", function () {",
-													"    pm.response.to.have.status(200);",
-													"});",
-													"",
-													"pm.test(\"Validate schema\", function () {",
-													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_packageCollection\")))).to.equal(true, \"Schema validation error: \" ",
-													"    + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//Test that total records value as expected",
-													"pm.test('total records as expected', function() {",
-													"    pm.expect(response.meta.totalResults).to.eql(0);",
-													"});",
-													"",
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "GET",
-										"header": [
-											{
-												"key": "x-okapi-tenant",
-												"type": "text",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "x-okapi-token",
-												"type": "text",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/{{provider-id}}/packages?filter[tags]=non-existing-tag",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"eholdings",
-												"providers",
-												"{{provider-id}}",
-												"packages"
-											],
-											"query": [
-												{
-													"key": "filter[tags]",
-													"value": "non-existing-tag"
 												}
 											]
 										}
@@ -8752,6 +8753,295 @@
 												{
 													"key": "include",
 													"value": "resources"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "with valid packageId and filtered by tags",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "c5b574a6-a138-4954-9ca3-7119623b24b2",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_resourceCollection\")))).to.equal(true, \"Schema validation error: \" ",
+													"    + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Test that id matches what was provided in query",
+													"pm.test('id matches as provided in query', function(){",
+													"    pm.expect(response.data[0].attributes.packageId).eq(pm.variables.get('custom-packageid-for-resource-tags-test'));",
+													"});    ",
+													"",
+													"//Test that type is resource",
+													"pm.test('type is resource', function(){",
+													"    pm.expect(response.data[0].type).eq('resources');",
+													"});",
+													"",
+													"//Test that object has the expected keys",
+													"pm.test('expected keys are present in response object', function() {",
+													"    pm.expect(response.data[0]).to.include.all.keys(\"id\", \"type\", \"attributes\",\"relationships\");",
+													"});",
+													"",
+													"//Test that tags matches value passed in",
+													"pm.test('name matches value passed in', function() {",
+													"    var responseTags = response.data[0].attributes.tags.tagList;",
+													"    var tag = pm.environment.get(\"tag-name-for-resource\");",
+													"    pm.expect(_.includes(responseTags,tag)).to.eq(true);",
+													"});",
+													"",
+													"//Test that all package tags included in response",
+													"pm.test('package tags included in responce', function() {",
+													"    pm.expect(response.data[0].attributes.tags.tagList.length).to.eql(1); ",
+													"});",
+													"",
+													"",
+													"//Test that total records value as expected",
+													"pm.test('total records as expected', function() {",
+													"    pm.expect(response.meta.totalResults).to.eql(1);",
+													"});",
+													"",
+													"pm.test('One record in response array', function() {",
+													"    pm.expect(response.data.length).eq(1);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "9d8d645a-1993-4cde-8bf3-d6d17b729211",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{custom-packageid-for-resource-tags-test}}/resources?filter[tags]={{tag-name-for-resource}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages",
+												"{{custom-packageid-for-resource-tags-test}}",
+												"resources"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": "{{tag-name-for-resource}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "with valid packageId and non existing tags",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "538799ae-0b40-4376-966a-333c2e8021a3",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "c625d97b-c2db-4973-b74b-3460cfe8082d",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_resourceCollection\")))).to.equal(true, \"Schema validation error: \" ",
+													"    + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Test that total records value as expected",
+													"pm.test('total records as expected', function() {",
+													"    pm.expect(response.meta.totalResults).to.eql(0);",
+													"});",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{custom-packageid-for-resource-tags-test}}/resources?filter[tags]=non-existing-tag",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages",
+												"{{custom-packageid-for-resource-tags-test}}",
+												"resources"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": "non-existing-tag"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "with valid packageId and empty tags",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "538799ae-0b40-4376-966a-333c2e8021a3",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "c625d97b-c2db-4973-b74b-3460cfe8082d",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_resourceCollection\")))).to.equal(true, \"Schema validation error: \" ",
+													"    + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Test that id matches what was provided in query",
+													"pm.test('id matches as provided in query', function(){",
+													"    pm.expect(response.data[0].attributes.packageId).eq(pm.variables.get('custom-packageid-for-resource-tags-test'));",
+													"});    ",
+													"",
+													"//Test that type is resource",
+													"pm.test('type is resource', function(){",
+													"    pm.expect(response.data[0].type).eq('resources');",
+													"});",
+													"",
+													"//Test that object has the expected keys",
+													"pm.test('expected keys are present in response object', function() {",
+													"    pm.expect(response.data[0]).to.include.all.keys(\"id\", \"type\", \"attributes\",\"relationships\");",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/packages/{{custom-packageid-for-resource-tags-test}}/resources?filter[tags]=",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"packages",
+												"{{custom-packageid-for-resource-tags-test}}",
+												"resources"
+											],
+											"query": [
+												{
+													"key": "filter[tags]",
+													"value": ""
 												}
 											]
 										}
