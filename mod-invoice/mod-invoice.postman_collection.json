@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "2e6df6d1-aa29-4510-b6b4-423381d3bd0d",
+		"_postman_id": "c37b0a82-3538-4271-94c6-fd2bcdd17d8b",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -23,7 +23,8 @@
 											"    pm.response.to.have.status(201);",
 											"});",
 											"",
-											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));"
+											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));",
+											""
 										],
 										"type": "text/javascript"
 									}
@@ -231,7 +232,7 @@
 										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let testConfigs = globals.testData.configs;",
+											"let testConfigs = globals.testData.invoicesConfigs;",
 											"",
 											"let configs = [];",
 											"pm.test(\"Storing current configs\", function () {",
@@ -245,22 +246,13 @@
 											"let configNamesToProcess = testConfigs.configNames;",
 											"console.log(\"Config codes to process: \" + configNamesToProcess);",
 											"",
-											"let bodyTemplate = testConfigs.bodyTemplate;",
 											"for (var i = 0; i < configNamesToProcess.length; i++) {",
 											"    let configName = configNamesToProcess[i];",
 											"    let value = pm.variables.get(configName);",
-											"",
-											"    let existingConfig = utils.getConfigByName(configs, configName);",
-											"    if (existingConfig) {",
-											"        existingConfig.value = value;",
-											"        utils.updateConfig(existingConfig);",
-											"    } else {",
-											"        bodyTemplate.configName = configName;",
-											"        bodyTemplate.value = value;",
-											"        utils.createConfig(bodyTemplate);",
-											"    }",
+											"    utils.updateOrCreateInvoicesConfig(configs, configName, value);",
 											"}",
-											""
+											"// Store current version of configs",
+											"pm.environment.set(\"current-invoices-configs\", configs);"
 										],
 										"type": "text/javascript"
 									}
@@ -322,28 +314,19 @@
 											"    pm.response.to.be.ok;",
 											"",
 											"    configs = pm.response.json().configs;",
-											"    console.log(\"Original configs: \" + configs);",
+											"    console.log(\"Original configs: \", configs);",
 											"    pm.environment.set(\"mod-orders-configs\", JSON.stringify(configs));",
 											"});",
 											"",
 											"let configNamesToProcess = testConfigs.configNames;",
 											"console.log(\"Config codes to process: \" + configNamesToProcess);",
 											"",
-											"let bodyTemplate = testConfigs.bodyTemplate;",
 											"for (var i = 0; i < configNamesToProcess.length; i++) {",
 											"    let configName = configNamesToProcess[i];",
 											"    let value = pm.variables.get(configName);",
-											"",
-											"    let existingConfig = utils.getConfigByName(configs, configName);",
-											"    if (existingConfig) {",
-											"        existingConfig.value = value;",
-											"        utils.updateConfig(existingConfig);",
-											"    } else {",
-											"        bodyTemplate.configName = configName;",
-											"        bodyTemplate.value = value;",
-											"        utils.createConfig(bodyTemplate);",
-											"    }",
+											"    utils.updateOrCreateOrdersConfig(configs, configName, value);",
 											"}",
+											"",
 											"// Store current version of configs",
 											"pm.environment.set(\"current-orders-configs\", configs);"
 										],
@@ -930,11 +913,6 @@
 										"value": "application/json"
 									},
 									{
-										"key": "x-okapi-tenant",
-										"type": "text",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "x-okapi-token",
 										"value": "{{xokapitoken-admin}}",
 										"type": "text"
@@ -1125,9 +1103,9 @@
 											"    // All is okay so running further requests",
 											"    postman.setNextRequest();",
 											"});",
-											"let dikuAdminToken = pm.environment.get(\"xokapitoken\");",
+											"",
 											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));",
-											"pm.environment.set(\"admintoken\", dikuAdminToken);"
+											""
 										],
 										"type": "text/javascript"
 									}
@@ -4125,310 +4103,686 @@
 					"name": "Workflows",
 					"item": [
 						{
-							"name": "Create Open invoices",
+							"name": "Workflows with configs",
 							"item": [
 								{
-									"name": "Create invoice with 4 lines",
-									"event": [
+									"name": "Create Open invoices",
+									"item": [
 										{
-											"listen": "test",
-											"script": {
-												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"let invoice = {};",
-													"",
-													"pm.test(\"Invoice is created\", function () {",
-													"    pm.response.to.have.status(201);",
-													"    invoice = pm.response.json();",
-													"});",
-													"",
-													"pm.test(\"Invoice content is valid\", function() {",
-													"    pm.environment.set(\"workflow-invoiceWith4LinesId\", invoice.id);",
-													"    pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
-													"",
-													"    utils.validateInvoice(invoice);",
-													"    createLines(invoice.id);",
-													"",
-													"    pm.expect(invoice.status, \"status\").to.eql(\"Open\");",
-													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(0);",
-													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
-													"    pm.expect(invoice.total, \"total\").to.equal(0);",
-													"",
-													"    // Verify that voucher has not been created",
-													"    utils.getVouchersForInvoice(invoice.id, (err, res) => {",
-													"        pm.test(\"No voucher created\", () => pm.expect(res.json().vouchers).to.be.empty);",
-													"    });",
-													"});",
-													"",
-													"function createLines(invoiceId) {",
-													"    pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", (err, res) => {",
-													"        let invoiceLine = utils.prepareInvoiceLine(res.json(), invoiceId);",
-													"",
-													"        // Now creating 4 invoice lines",
-													"        for (let i = 1; i < 5; i++) {",
-													"            invoiceLine.poLineId = i % 2 === 0 ? pm.globals.get(\"poLine1Id\") : pm.globals.get(\"poLine2Id\");",
-													"            invoiceLine.releaseEncumbrance = i === 4;",
-													"            ",
-													"            utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
-													"                pm.test(\"Invoice line #\" + i + \" is created in storage\", () => {",
-													"                  pm.expect(err).to.equal(null);",
-													"                  pm.expect(response).to.have.property('code', 201);",
-													"                });",
-													"            });",
-													"        }",
-													"    });",
-													"}"
+											"name": "Create invoice with 4 lines",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let invoice = {};",
+															"",
+															"pm.test(\"Invoice is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    invoice = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Invoice content is valid\", function() {",
+															"    pm.environment.set(\"workflow-invoiceWith4LinesId\", invoice.id);",
+															"    pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
+															"",
+															"    utils.validateInvoice(invoice);",
+															"    createLines(invoice.id);",
+															"",
+															"    pm.expect(invoice.status, \"status\").to.eql(\"Open\");",
+															"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(0);",
+															"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
+															"    pm.expect(invoice.total, \"total\").to.equal(0);",
+															"",
+															"    // Verify that voucher has not been created",
+															"    utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+															"        pm.test(\"No voucher created\", () => pm.expect(res.json().vouchers).to.be.empty);",
+															"    });",
+															"});",
+															"",
+															"function createLines(invoiceId) {",
+															"    pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", (err, res) => {",
+															"        let invoiceLine = utils.prepareInvoiceLine(res.json(), invoiceId);",
+															"",
+															"        // Now creating 4 invoice lines",
+															"        for (let i = 1; i < 5; i++) {",
+															"            invoiceLine.poLineId = i % 2 === 0 ? pm.globals.get(\"poLine1Id\") : pm.globals.get(\"poLine2Id\");",
+															"            invoiceLine.releaseEncumbrance = i === 4;",
+															"            ",
+															"            utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
+															"                pm.test(\"Invoice line #\" + i + \" is created in storage\", () => {",
+															"                  pm.expect(err).to.equal(null);",
+															"                  pm.expect(response).to.have.property('code', 201);",
+															"                });",
+															"            });",
+															"        }",
+															"    });",
+															"}"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+															"    let invoice = utils.prepareInvoice(res.json().invoices[1]);",
+															"",
+															"    invoice.note += \" - with 4 lines for transition through workflow\";",
+															"    invoice.status = \"Open\";",
+															"    invoice.currency=\"EUR\";",
+															"    delete invoice.adjustments;",
+															"",
+															"    pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"",
-													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
-													"    let invoice = utils.prepareInvoice(res.json().invoices[1]);",
-													"",
-													"    invoice.note += \" - with 4 lines for transition through workflow\";",
-													"    invoice.status = \"Open\";",
-													"    delete invoice.adjustments;",
-													"",
-													"    pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
-													"});"
-												],
-												"type": "text/javascript"
-											}
+												"body": {
+													"mode": "raw",
+													"raw": "{{workflow-invoiceWith4LinesContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"invoice",
+														"invoices"
+													]
+												}
+											},
+											"response": []
 										}
 									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{{workflow-invoiceWith4LinesContent}}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "Transition to Approved",
+									"item": [
+										{
+											"name": "Approve invoice with 4 lines",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															"let invoice = JSON.parse(pm.environment.get(\"workflow-invoiceWith4LinesContent\"));",
+															"invoice.status = \"Approved\";",
+															"pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"pm.test(\"Status code is 204\", function () {",
+															"    pm.response.to.have.status(\"No Content\");",
+															"",
+															"    // The test can be run only if update succeded",
+															"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"workflow-invoiceWith4LinesId\"), (err, res) => {",
+															"        pm.test(\"Invoice status updated\", function () {",
+															"            let invoice = res.json();",
+															"            pm.expect(invoice.status).to.equal(\"Approved\");",
+															"",
+															"            // Remember updated invoice",
+															"            pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
+															"",
+															"            // Verify that voucher has been created",
+															"            utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+															"                pm.test(\"One voucher created\", () => {",
+															"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
+															"                    let voucher = res.json().vouchers[0];",
+															"                    pm.expect(voucher.status).to.eql(\"Awaiting payment\");",
+															"                    pm.expect(voucher.voucherNumber).to.include(pm.variables.get(\"voucherNumberPrefix\"));",
+															"                });",
+															"            });",
+															"        });",
+															"    });",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
 											],
-											"port": "{{okapiport}}",
-											"path": [
-												"invoice",
-												"invoices"
-											]
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "X-Okapi-Tenant",
+														"value": "{{xokapitenant}}"
+													},
+													{
+														"key": "Content-Type",
+														"name": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													},
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{workflow-invoiceWith4LinesContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{workflow-invoiceWith4LinesId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"invoice",
+														"invoices",
+														"{{workflow-invoiceWith4LinesId}}"
+													]
+												}
+											},
+											"response": []
 										}
-									},
-									"response": []
+									],
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "Transition to Paid",
+									"item": [
+										{
+											"name": "Pay invoice with 4 lines",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															"let invoice = JSON.parse(pm.environment.get(\"workflow-invoiceWith4LinesContent\"));",
+															"invoice.status = \"Paid\";",
+															"pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"pm.test(\"Status code is 204\", function () {",
+															"    pm.response.to.have.status(\"No Content\");",
+															"",
+															"    // The test can be run only if update succeded",
+															"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"workflow-invoiceWith4LinesId\"), (err, res) => {",
+															"        pm.test(\"Invoice status updated\", function () {",
+															"            let invoice = res.json();",
+															"            pm.expect(invoice.status).to.equal(\"Paid\");",
+															"",
+															"            // Remember updated invoice",
+															"            pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
+															"",
+															"            // Validate voucher",
+															"            utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+															"                pm.test(\"Still only one voucher but already Paid\", () => {",
+															"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
+															"                    pm.expect(res.json().vouchers[0].status).to.eql(\"Paid\");",
+															"                });",
+															"            });",
+															"",
+															"            // Validate order lines",
+															"            utils.sendGetRequest(\"/orders/composite-orders/\" + globals.completeOrderId, (err, res) => {",
+															"                pm.test(\"Associated order lines payment status updated\", function () {",
+															"                    res.json().compositePoLines.forEach(poLine => {",
+															"                        let expectedStatus = (poLine.id === globals.poLine1Id) ? \"Fully Paid\" : \"Partially Paid\";",
+															"                        pm.expect(poLine.paymentStatus).to.equal(expectedStatus);",
+															"                    });",
+															"                });",
+															"            });",
+															"        });",
+															"    });",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "X-Okapi-Tenant",
+														"value": "{{xokapitenant}}"
+													},
+													{
+														"key": "Content-Type",
+														"name": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													},
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{workflow-invoiceWith4LinesContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{workflow-invoiceWith4LinesId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"invoice",
+														"invoices",
+														"{{workflow-invoiceWith4LinesId}}"
+													]
+												}
+											},
+											"response": []
+										}
+									],
+									"_postman_isSubFolder": true
 								}
 							],
 							"_postman_isSubFolder": true
 						},
 						{
-							"name": "Transition to Approved",
+							"name": "Workflows with empty configs",
 							"item": [
 								{
-									"name": "Approve invoice with 4 lines",
-									"event": [
+									"name": "Delete invoice configs",
+									"item": [
 										{
-											"listen": "prerequest",
-											"script": {
-												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-												"exec": [
-													"let invoice = JSON.parse(pm.environment.get(\"workflow-invoiceWith4LinesContent\"));",
-													"invoice.status = \"Approved\";",
-													"pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
-													""
+											"name": "Get invoice configs and delete",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"let currentConfigs;",
+															"pm.test(\"Storing current configs\", function () {",
+															"    pm.response.to.be.ok;",
+															"",
+															"    currentConfigs = pm.response.json().configs;",
+															"    console.log(\"Current configs: \", currentConfigs);",
+															"});",
+															"",
+															"let configsToProcess = globals.testData.invoicesConfigs.configNames;",
+															"for (var i = 0; i < configsToProcess.length; i++) {",
+															"    let configName = configsToProcess[i];",
+															"     if (currentConfigs.length > 0) {",
+															"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
+															"        utils.deleteConfig(configId);",
+															"    } else {",
+															"        console.log(\"The config cannot be reverted. Config name =\" + configName);",
+															"    }",
+															"}"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"type": "text",
+														"value": "{{xokapitoken-admin}}"
+													}
 												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"pm.test(\"Status code is 204\", function () {",
-													"    pm.response.to.have.status(\"No Content\");",
-													"",
-													"    // The test can be run only if update succeded",
-													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"workflow-invoiceWith4LinesId\"), (err, res) => {",
-													"        pm.test(\"Invoice status updated\", function () {",
-													"            let invoice = res.json();",
-													"            pm.expect(invoice.status).to.equal(\"Approved\");",
-													"",
-													"            // Remember updated invoice",
-													"            pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
-													"",
-													"            // Verify that voucher has been created",
-													"            utils.getVouchersForInvoice(invoice.id, (err, res) => {",
-													"                pm.test(\"One voucher created\", () => {",
-													"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
-													"                    pm.expect(res.json().vouchers[0].status).to.eql(\"Awaiting payment\");",
-													"                });",
-													"            });",
-													"        });",
-													"    });",
-													"});"
-												],
-												"type": "text/javascript"
-											}
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==INVOICES",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"configurations",
+														"entries"
+													],
+													"query": [
+														{
+															"key": "query",
+															"value": "module==INVOICES"
+														}
+													]
+												}
+											},
+											"response": []
 										}
 									],
-									"request": {
-										"method": "PUT",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"name": "Content-Type",
-												"type": "text",
-												"value": "application/json"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{{workflow-invoiceWith4LinesContent}}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{workflow-invoiceWith4LinesId}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"invoice",
-												"invoices",
-												"{{workflow-invoiceWith4LinesId}}"
-											]
-										}
-									},
-									"response": []
-								}
-							],
-							"_postman_isSubFolder": true
-						},
-						{
-							"name": "Transition to Paid",
-							"item": [
+									"_postman_isSubFolder": true
+								},
 								{
-									"name": "Pay invoice with 4 lines",
-									"event": [
+									"name": "Create Open invoices",
+									"item": [
 										{
-											"listen": "prerequest",
-											"script": {
-												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-												"exec": [
-													"let invoice = JSON.parse(pm.environment.get(\"workflow-invoiceWith4LinesContent\"));",
-													"invoice.status = \"Paid\";",
-													"pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));"
+											"name": "Create invoice with 1 line",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let invoice = {};",
+															"",
+															"pm.test(\"Invoice is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    invoice = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Invoice content is valid\", function() {",
+															"    pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineId\", invoice.id);",
+															"    pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineContent\", JSON.stringify(invoice));",
+															"",
+															"    utils.validateInvoice(invoice);",
+															"    createLine(invoice.id);",
+															"",
+															"    pm.expect(invoice.status, \"status\").to.eql(\"Open\");",
+															"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(0);",
+															"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
+															"    pm.expect(invoice.total, \"total\").to.equal(0);",
+															"",
+															"    // Verify that voucher has not been created",
+															"    utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+															"        pm.test(\"No voucher created\", () => pm.expect(res.json().vouchers).to.be.empty);",
+															"    });",
+															"});",
+															"",
+															"function createLine(invoiceId) {",
+															"    pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", (err, res) => {",
+															"        let invoiceLine = utils.prepareInvoiceLine(res.json(), invoiceId);",
+															"",
+															"        // Now creating invoice line",
+															"        utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
+															"            pm.test(\"Invoice line is created in storage\", () => {",
+															"              pm.expect(err).to.equal(null);",
+															"              pm.expect(response).to.have.property('code', 201);",
+															"            });",
+															"        });",
+															"        ",
+															"    });",
+															"}"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+															"    let invoice = utils.prepareInvoice(res.json().invoices[1]);",
+															"",
+															"    invoice.note += \" - with 1 line for transition through workflow\";",
+															"    invoice.status = \"Open\";",
+															"    delete invoice.voucherNumber;",
+															"    delete invoice.adjustments;",
+															"",
+															"    pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineContent\", JSON.stringify(invoice));",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
 												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"pm.test(\"Status code is 204\", function () {",
-													"    pm.response.to.have.status(\"No Content\");",
-													"",
-													"    // The test can be run only if update succeded",
-													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"workflow-invoiceWith4LinesId\"), (err, res) => {",
-													"        pm.test(\"Invoice status updated\", function () {",
-													"            let invoice = res.json();",
-													"            pm.expect(invoice.status).to.equal(\"Paid\");",
-													"",
-													"            // Remember updated invoice",
-													"            pm.environment.set(\"workflow-invoiceWith4LinesContent\", JSON.stringify(invoice));",
-													"",
-													"            // Validate voucher",
-													"            utils.getVouchersForInvoice(invoice.id, (err, res) => {",
-													"                pm.test(\"Still only one voucher but already Paid\", () => {",
-													"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
-													"                    pm.expect(res.json().vouchers[0].status).to.eql(\"Paid\");",
-													"                });",
-													"            });",
-													"",
-													"            // Validate order lines",
-													"            utils.sendGetRequest(\"/orders/composite-orders/\" + globals.completeOrderId, (err, res) => {",
-													"                pm.test(\"Associated order lines payment status updated\", function () {",
-													"                    res.json().compositePoLines.forEach(poLine => {",
-													"                        let expectedStatus = (poLine.id === globals.poLine1Id) ? \"Fully Paid\" : \"Partially Paid\";",
-													"                        pm.expect(poLine.paymentStatus).to.equal(expectedStatus);",
-													"                    });",
-													"                });",
-													"            });",
-													"        });",
-													"    });",
-													"});"
-												],
-												"type": "text/javascript"
-											}
+												"body": {
+													"mode": "raw",
+													"raw": "{{emptyConfigWorkflow-invoiceWith1LineContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"invoice",
+														"invoices"
+													]
+												}
+											},
+											"response": []
 										}
 									],
-									"request": {
-										"method": "PUT",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"name": "Content-Type",
-												"type": "text",
-												"value": "application/json"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{{workflow-invoiceWith4LinesContent}}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{workflow-invoiceWith4LinesId}}",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "Transition to Approved",
+									"item": [
+										{
+											"name": "Approve invoice with 1 line",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															"let invoice = JSON.parse(pm.environment.get(\"emptyConfigWorkflow-invoiceWith1LineContent\"));",
+															"invoice.status = \"Approved\";",
+															"pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineContent\", JSON.stringify(invoice));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"pm.test(\"Status code is 204\", function () {",
+															"    pm.response.to.have.status(\"No Content\");",
+															"",
+															"    // The test can be run only if update succeded",
+															"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"emptyConfigWorkflow-invoiceWith1LineId\"), (err, res) => {",
+															"        pm.test(\"Invoice status updated\", function () {",
+															"            let invoice = res.json();",
+															"            pm.expect(invoice.status).to.equal(\"Approved\");",
+															"",
+															"            // Remember updated invoice",
+															"            pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineContent\", JSON.stringify(invoice));",
+															"",
+															"            // Verify that voucher has been created",
+															"            utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+															"                pm.test(\"One voucher created\", () => {",
+															"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
+															"                    let voucher = res.json().vouchers[0];",
+															"                    pm.expect(voucher.status).to.eql(\"Awaiting payment\");",
+															"                    pm.expect(voucher.voucherNumber).to.not.include(pm.variables.get(\"voucherNumberPrefix\"));",
+															"                });",
+															"            });",
+															"        });",
+															"    });",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
 											],
-											"port": "{{okapiport}}",
-											"path": [
-												"invoice",
-												"invoices",
-												"{{workflow-invoiceWith4LinesId}}"
-											]
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "X-Okapi-Tenant",
+														"value": "{{xokapitenant}}"
+													},
+													{
+														"key": "Content-Type",
+														"name": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													},
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{emptyConfigWorkflow-invoiceWith1LineContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{emptyConfigWorkflow-invoiceWith1LineId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"invoice",
+														"invoices",
+														"{{emptyConfigWorkflow-invoiceWith1LineId}}"
+													]
+												}
+											},
+											"response": []
 										}
-									},
-									"response": []
+									],
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "Restore invoice configs",
+									"item": [
+										{
+											"name": "Check invoice configs and restore",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let testConfigs = globals.testData.invoicesConfigs;",
+															"",
+															"let configs = [];",
+															"pm.test(\"Storing current configs\", function () {",
+															"    pm.response.to.be.ok;",
+															"    configs = pm.response.json().configs;",
+															"});",
+															"",
+															"let configNamesToProcess = testConfigs.configNames;",
+															"console.log(\"Config codes to process: \" + configNamesToProcess);",
+															"",
+															"for (var i = 0; i < configNamesToProcess.length; i++) {",
+															"    let configName = configNamesToProcess[i];",
+															"    let value = pm.variables.get(configName);",
+															"    utils.updateOrCreateInvoicesConfig(configs, configName, value);",
+															"}"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"type": "text",
+														"value": "{{xokapitoken-admin}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==INVOICES",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"configurations",
+														"entries"
+													],
+													"query": [
+														{
+															"key": "query",
+															"value": "module==INVOICES"
+														}
+													]
+												}
+											},
+											"response": []
+										}
+									],
+									"_postman_isSubFolder": true
 								}
 							],
 							"_postman_isSubFolder": true
@@ -4467,6 +4821,105 @@
 				{
 					"name": "Create invoices for negative tests",
 					"item": [
+						{
+							"name": "Create reviewed invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let invoice = {};",
+											"",
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    invoice = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Invoice content is valid\", function() {",
+											"    pm.environment.set(\"negativeReviewedToApprovedInvoiceId\", invoice.id);",
+											"    pm.environment.set(\"negativeReviewedToApprovedInvoiceContent\", JSON.stringify(invoice));",
+											"",
+											"    createLine(invoice.id);",
+											"",
+											"    // Verify that voucher has not been created",
+											"    utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+											"        pm.test(\"No voucher created\", () => pm.expect(res.json().vouchers).to.be.empty);",
+											"    });",
+											"});",
+											"",
+											"function createLine(invoiceId) {",
+											"    pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/invoice_line.json\", (err, res) => {",
+											"        let invoiceLine = utils.prepareInvoiceLine(res.json(), invoiceId);",
+											"",
+											"        // Now creating invoice line",
+											"        utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
+											"            pm.test(\"Invoice line is created in storage\", () => {",
+											"              pm.expect(err).to.equal(null);",
+											"              pm.expect(response).to.have.property('code', 201);",
+											"            });",
+											"        });",
+											"        ",
+											"    });",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+											"    let invoice = utils.prepareInvoice(res.json().invoices[1]);",
+											"",
+											"    invoice.note += \" - transition to Approved\";",
+											"    invoice.status = \"Reviewed\";",
+											"    delete invoice.adjustments;",
+											"    delete invoice.voucherNumber;",
+											"",
+											"    pm.environment.set(\"negativeReviewedToApprovedInvoiceContent\", JSON.stringify(invoice));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{negativeReviewedToApprovedInvoiceContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Create approved invoice",
 							"event": [
@@ -7350,6 +7803,160 @@
 					"name": "Workflows",
 					"item": [
 						{
+							"name": "Transition to Approved",
+							"item": [
+								{
+									"name": "Prepare invalid vousherNumberPrefix config",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let configs = [];",
+													"pm.test(\"Get configs response is ok\", function () {",
+													"    pm.response.to.be.ok;",
+													"    configs = pm.response.json().configs;",
+													"});",
+													"",
+													"let configName = \"voucherNumberPrefix\";",
+													"let value = \"invalid-prefix\";",
+													"",
+													"utils.updateOrCreateInvoicesConfig(configs, configName, value);"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken-admin}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==INVOICES and configName==voucherNumberPrefix",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"configurations",
+												"entries"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "module==INVOICES and configName==voucherNumberPrefix"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update invoice with status Approved",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let invoice = JSON.parse(pm.environment.get(\"negativeReviewedToApprovedInvoiceContent\"));",
+													"invoice.status = \"Approved\";",
+													"pm.environment.set(\"negativeReviewedToApprovedInvoiceContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 500\", function () {",
+													"    pm.response.to.have.status(\"Internal Server Error\");",
+													"",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativeReviewedToApprovedInvoiceId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function () {",
+													"            pm.expect(invoice.status).to.equal(\"Reviewed\");",
+													"        });",
+													"        pm.test(\"Voucher number not exist\", function () {",
+													"             pm.expect(invoice.voucherNumber).to.not.exist;",
+													"        });",
+													"        ",
+													"    });",
+													"});",
+													"",
+													"pm.globals.unset(\"reviewedToApprovedInvoiceContent\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeReviewedToApprovedInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeReviewedToApprovedInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativeReviewedToApprovedInvoiceId}}"
+											]
+										},
+										"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
 							"name": "Transition to Paid",
 							"item": [
 								{
@@ -7757,6 +8364,62 @@
 							"response": []
 						},
 						{
+							"name": "Delete invoice with 1 line",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    pm.environment.unset(\"emptyConfigWorkflow-invoiceWith1LineId\");",
+											"    pm.environment.unset(\"emptyConfigWorkflow-invoiceWith1LineContent\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"eval(globals.loadUtils).deleteVouchersForInvoice(pm.variables.get(\"emptyConfigWorkflow-invoiceWith1LineId\"));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{emptyConfigWorkflow-invoiceWith1LineId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{emptyConfigWorkflow-invoiceWith1LineId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Delete  invoice",
 							"event": [
 								{
@@ -7836,7 +8499,7 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Delete invoices/invoice-lines for negative tests",
+					"name": "Delete invoices for negative tests",
 					"item": [
 						{
 							"name": "Delete Negative Approved to Paid invoice",
@@ -7887,6 +8550,60 @@
 										"invoice",
 										"invoices",
 										"{{negativeApprovedToPaidInvoice}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Negative Reviewed to Approved invoice Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeReviewedToApprovedInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{negativeReviewedToApprovedInvoiceId}}"
 									]
 								}
 							},
@@ -8523,7 +9240,7 @@
 								{
 									"listen": "test",
 									"script": {
-										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"id": "eed87d63-620c-49f8-9d98-6d9bc7400617",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
@@ -8559,7 +9276,7 @@
 								{
 									"listen": "prerequest",
 									"script": {
-										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"id": "1bfdef49-0a3f-494e-8ad5-c86b5b228a30",
 										"exec": [
 											""
 										],
@@ -8598,7 +9315,7 @@
 							"response": []
 						},
 						{
-							"name": "Get configs and revert",
+							"name": "Get invoices configs and revert",
 							"event": [
 								{
 									"listen": "test",
@@ -8608,19 +9325,22 @@
 											"let utils = eval(globals.loadUtils);",
 											"",
 											"let currentConfigs;",
-											"pm.test(\"Storing current configs\", function () {",
+											"pm.test(\"Storing current configs\", function() {",
 											"    pm.response.to.be.ok;",
 											"",
 											"    currentConfigs = pm.response.json().configs;",
 											"    console.log(\"Current configs: \", currentConfigs);",
 											"});",
 											"",
-											"let configsToProcess = globals.testData.configs.configNames;",
+											"let configsToProcess = globals.testData.invoicesConfigs.configNames;",
+											"",
 											"let originalConfigs = pm.environment.get(\"mod-invoices-configs\") ? JSON.parse(pm.environment.get(\"mod-invoices-configs\")) : [];",
 											"for (var i = 0; i < configsToProcess.length; i++) {",
 											"    let configName = configsToProcess[i];",
 											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
+											"",
 											"    if (originalConfig) {",
+											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
 											"        utils.updateConfig(originalConfig);",
 											"    } else if (currentConfigs.length > 0) {",
 											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
@@ -8692,8 +9412,8 @@
 				"exec": [
 					"let testData = {",
 					"    // mod-configuration",
-					"    configs: {",
-					"        configNames: [\"invoiceLines-limit\"],",
+					"    invoicesConfigs: {",
+					"        configNames: [\"voucherNumberPrefix\"],",
 					"        bodyTemplate: {",
 					"            \"module\": \"INVOICES\",",
 					"            \"configName\": \"Test Config\",",
@@ -9009,14 +9729,62 @@
 					"    };",
 					"",
 					"    /* BEGIN - Functions to work with mod-configuration */",
+					"    utils.getConfigsByName = function(configs, configName) {",
+					"        return configs.filter(config => config.configName === configName);",
+					"    };",
+					"",
 					"    utils.getConfigByName = function(configs, configName) {",
-					"        let config = configs.filter(value => value.configName === configName);",
-					"        return config.length > 0 ? config[0] : null;",
+					"        return utils.getConfigByNameAndCode(configs, configName);",
+					"    };",
+					"",
+					"    utils.getConfigByNameAndCode = function(configs, configName, configCode) {",
+					"        let filteredConfigs = utils.getConfigsByName(configs, configName);",
+					"        if (configCode) {",
+					"            filteredConfigs = filteredConfigs.filter(config => config.code === configCode);",
+					"        }",
+					"        return filteredConfigs.length > 0 ? filteredConfigs[0] : null;",
+					"    };",
+					"",
+					"    utils.updateOrCreateConfig = function(configs, configName, value, bodyTemplate) {",
+					"        let existingConfig = utils.getConfigByNameAndCode(configs, configName, bodyTemplate.code);",
+					"        if (existingConfig) {",
+					"            existingConfig.value = value;",
+					"            utils.updateConfig(existingConfig);",
+					"        } else {",
+					"            let body = utils.copyJsonObj(bodyTemplate);",
+					"            body.configName = configName;",
+					"            body.value = value;",
+					"            utils.createConfig(body);",
+					"        ",
+					"            // store new config",
+					"            configs.push(body);",
+					"        }",
+					"    };",
+					"    ",
+					"    utils.updateOrCreateInvoicesConfig = function(configs, configName, value) {",
+					"        let bodyTemplate = globals.testData.invoicesConfigs.bodyTemplate;",
+					"        utils.updateOrCreateConfig(configs, configName, value, bodyTemplate);",
+					"    };",
+					"",
+					"    utils.updateOrCreateOrdersConfig = function(configs, configName, value) {",
+					"        let bodyTemplate = globals.testData.ordersConfigs.bodyTemplate;",
+					"        utils.updateOrCreateConfig(configs, configName, value, bodyTemplate);",
 					"    };",
 					"",
 					"    utils.createConfig = function(body) {",
-					"        utils.sendPostRequest(\"/configurations/entries\", body, (err, res) => {",
-					"            pm.test(\"Config created\", () => pm.expect(res.code).to.eql(201));",
+					"        pm.sendRequest({",
+					"            url: utils.buildOkapiUrl(\"/configurations/entries\"),",
+					"            method: \"POST\",",
+					"            header: {",
+					"                \"X-Okapi-Token\": pm.variables.get(\"xokapitoken-admin\"),",
+					"                \"Content-type\": \"application/json\",",
+					"                \"Accept-Encoding\": \"identity\"",
+					"            },",
+					"            body: JSON.stringify(body)",
+					"        }, function(err, response) {",
+					"            pm.test(\"Config created\", function() {",
+					"                pm.expect(response.code).to.eql(201);",
+					"            });",
 					"        });",
 					"    };",
 					"",
@@ -9024,8 +9792,8 @@
 					"     * @param body with updated data",
 					"     */",
 					"    utils.updateConfig = function(body) {",
-					"        utils.sendPutRequest(\"/configurations/entries/\" + body.id, body, (err, response) => {",
-					"            pm.test(\"Config updated. Config name = \" + body.configName, () => {",
+					"        utils.sendPutRequest(\"/configurations/entries/\" + body.id, body, pm.environment.get(\"xokapitoken-admin\"), (err, response) => {",
+					"            pm.test(\"Config updated. Config name = \" + body.configName, function() {",
 					"                pm.expect(response.code).to.eql(204);",
 					"            });",
 					"        });",
@@ -9033,7 +9801,7 @@
 					"",
 					"    utils.deleteConfig = function(id) {",
 					"        const timerId = setTimeout(() => {}, 60000);",
-					"        utils.processDeleteRequest(\"/configurations/entries/\" + id)",
+					"        utils.processDeleteRequest(\"/configurations/entries/\" + id, pm.environment.get(\"xokapitoken-admin\"))",
 					"            .then(code => utils.validateResultOfDeleteRequest(code))",
 					"            .then(result => clearTimeout(timerId))",
 					"            .catch(err => {",
@@ -9306,33 +10074,39 @@
 	],
 	"variable": [
 		{
-			"id": "aa727fd3-50ca-42cf-96a0-2b8c09df9c78",
+			"id": "b766e669-3ce2-4602-8d18-f1c2efab5d85",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "3780d74e-65bf-4425-8d4c-ecd42c0a25fc",
+			"id": "395e5d56-903b-4c6e-ac34-35ac824e996b",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "9716da39-44a1-47c5-8df9-9daa760c7782",
+			"id": "865bddee-8d9e-4ed2-9c5d-e96e24ec87d0",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "6f649c69-fe4a-411b-bf5e-42dd5b72484b",
+			"id": "4f1d14e9-0fc8-47c2-bc9a-09b04ee18b4d",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "7af0f78a-6166-498f-ba31-55cf20fa4c10",
+			"id": "ccad09da-f6a5-4d28-9326-3d7b06caed73",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
+			"type": "string"
+		},
+		{
+			"id": "cd0c9d5f-030a-4c6a-a6cb-78b12de9971a",
+			"key": "voucherNumberPrefix",
+			"value": "testPrefix",
 			"type": "string"
 		}
 	]
