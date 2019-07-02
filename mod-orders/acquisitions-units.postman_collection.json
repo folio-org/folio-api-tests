@@ -1,0 +1,2123 @@
+{
+	"info": {
+		"_postman_id": "d06852d5-2066-4a86-bb6e-da711bfdf321",
+		"name": "acquisitions-units",
+		"description": "Tests for acquisitions-units",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "Create user",
+					"item": [
+						{
+							"name": "Login by admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));",
+											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create new user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
+											"    pm.test(\"Check if user for API Tests already exists\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
+											"        // If user already exists, check if this is for API Tests and delete it",
+											"        if (res.code === 200 && res.json().username) {",
+											"            utils.sendDeleteRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
+											"                pm.test(\"User '\" + globals.testData.user.username + \"' deleted\", () => {",
+											"                    pm.expect(res.code).to.eql(204);",
+											"                });",
+											"            });",
+											"        }",
+											"    });",
+											"});",
+											"",
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create credentials for new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5542417e-4b64-431c-8b07-7f5b5e9179ff",
+										"exec": [
+											"pm.test(globals.testData.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "de3203a8-0abe-4599-aee0-b34306d051de",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has credentials and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        utils.sendDeleteRequest(\"/authn/credentials/\" + res.json().credentials[0].id, (err, res) => {",
+											"            pm.test(globals.testData.user.username + \" user's credentials deleted\", () => {",
+											"                pm.expect(res.code).to.eql(204);",
+											"            });",
+											"        });",
+											"    }",
+											"});",
+											"",
+											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add only acquisitions-units permissions",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
+										"exec": [
+											"pm.test(globals.testData.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "dded3598-c238-487d-b06c-721c60509cf4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has permissions and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        utils.sendDeleteRequest(\"/perms/users/\" + res.json().permissionUsers[0].id, (err, res) => {",
+											"            pm.test(globals.testData.user.username + \" user's permissions deleted\", () => {",
+											"                pm.expect(res.code).to.eql(204);",
+											"            });",
+											"        });",
+											"    }",
+											"});",
+											"",
+											"pm.variables.set(\"orgsUserPermissions\", JSON.stringify(globals.testData.permissions));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orgsUserPermissions}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login by new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"// In case the new user cannot be logged in no sense to run further tests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a59f5097-d5cb-4e46-8bf6-3bddff268e65",
+										"exec": [
+											"pm.variables.set(\"modInvoiceUserCreds\", JSON.stringify(globals.testData.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modInvoiceUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
+			"name": "Positive Tests",
+			"item": [
+				{
+					"name": "Units",
+					"item": [
+						{
+							"name": "Create unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = globals.testData.unit;",
+											"body.name += \" - First\";",
+											"",
+											"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify unit\", () => {",
+											"        pm.expect(jsonData.id).to.exist;",
+											"        pm.environment.set(\"unit1Id\", jsonData.id);",
+											"",
+											"        let template = globals.testData.unit;",
+											"        pm.expect(jsonData.protectCreate).to.be.eql(template.protectCreate);",
+											"        pm.expect(jsonData.protectRead).to.be.eql(template.protectRead);",
+											"        pm.expect(jsonData.protectUpdate).to.be.eql(template.protectUpdate);",
+											"        pm.expect(jsonData.protectDelete).to.be.eql(template.protectDelete);",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{unitBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify unit with default values\", () => {",
+											"        pm.expect(jsonData.name).to.exist;",
+											"        pm.expect(jsonData.id).to.exist;",
+											"",
+											"        let template = globals.testData.unit;",
+											"        pm.expect(jsonData.protectCreate).to.eql(template.protectCreate);",
+											"        pm.expect(jsonData.protectRead).to.eql(template.protectRead);",
+											"        pm.expect(jsonData.protectUpdate).to.eql(template.protectUpdate);",
+											"        pm.expect(jsonData.protectDelete).to.eql(template.protectDelete);",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit1Id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create unit with name only",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"const body = {",
+											"    \"name\": globals.testData.unit.name + \" - Second\"",
+											"};",
+											"",
+											"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify unit with default values\", () => {",
+											"        pm.expect(jsonData.id).to.exist;",
+											"        pm.environment.set(\"unit2Id\", jsonData.id); ",
+											"",
+											"        let template = globals.testData.unit;",
+											"        pm.expect(jsonData.protectCreate).to.be.true;",
+											"        pm.expect(jsonData.protectRead).to.be.false;",
+											"        pm.expect(jsonData.protectUpdate).to.be.true;",
+											"        pm.expect(jsonData.protectDelete).to.be.true;",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{unitBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created units by name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0b40992e-c024-4a88-82d3-e8646f49f5ae",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify unit\", () => {",
+											"        pm.expect(jsonData.totalRecords).to.eql(2);",
+											"        pm.expect(jsonData.acquisitionsUnits).to.have.lengthOf(2);",
+											"",
+											"        let acquisitionsUnits = jsonData.acquisitionsUnits.forEach(unit => {",
+											"            pm.expect(unit.name).to.exist;",
+											"            pm.expect(unit.protectCreate).to.exist;",
+											"            pm.expect(unit.protectRead).to.exist;",
+											"            pm.expect(unit.protectUpdate).to.exist;",
+											"            pm.expect(unit.protectDelete).to.exist;",
+											"            pm.expect(unit.metadata).to.exist;",
+											"        });",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "1e05adb9-0839-419e-b220-db821a3ff022",
+										"exec": [
+											"pm.variables.set(\"acqName\", globals.testData.unit.name);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units?query=name={{acqName}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name={{acqName}}"
+										}
+									]
+								},
+								"description": ""
+							},
+							"response": []
+						},
+						{
+							"name": "Update unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = globals.testData.unit;",
+											"body.protectCreate = false;",
+											"body.protectRead = false;",
+											"body.protectUpdate = false;",
+											"body.protectDelete = false;",
+											"",
+											"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{unitBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit1Id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get updated unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify unit with default values\", () => {",
+											"        pm.expect(jsonData.name).to.exist;",
+											"        pm.expect(jsonData.id).to.exist;",
+											"",
+											"        let template = globals.testData.unit;",
+											"        pm.expect(jsonData.protectCreate).to.be.false;",
+											"        pm.expect(jsonData.protectRead).to.be.false;",
+											"        pm.expect(jsonData.protectUpdate).to.be.false;",
+											"        pm.expect(jsonData.protectDelete).to.be.false;",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit1Id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Memberships",
+					"item": [
+						{
+							"name": "Create membership",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = {};",
+											"",
+											"body.userId = globals.testData.user.id;",
+											"body.acquisitionsUnitId = pm.environment.get(\"unit1Id\");",
+											"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify membership\", () => {",
+											"        // Id is presented",
+											"        pm.expect(jsonData.id).to.exist;",
+											"        // Metadata is presented",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"        // MembershipId is the same",
+											"        pm.environment.set(\"membershipId\", jsonData.id);",
+											"        ",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{membershipBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created membership",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify membership has correct values\", () => {",
+											"    ",
+											"        // Verify that metadata is presented",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"        ",
+											"        // Verify if id exists",
+											"        pm.expect(jsonData.id).to.exist;",
+											"",
+											"        // Verify ",
+											"        let userId = globals.testData.user.id;",
+											"        pm.expect(jsonData.userId).to.eql(userId);",
+											"        ",
+											"        // Verify acquisitionsUnitId == unitId ",
+											"        let acquisitionsUnitId = pm.environment.get(\"unit1Id\");",
+											"        pm.expect(jsonData.acquisitionsUnitId).to.eql(acquisitionsUnitId);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships/{{membershipId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships",
+										"{{membershipId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created membership by acquisitionsUnitId",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0b40992e-c024-4a88-82d3-e8646f49f5ae",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify unit\", () => {",
+											"        pm.expect(jsonData.totalRecords).to.eql(1);",
+											"        pm.expect(jsonData.acquisitionsUnitMemberships).to.have.lengthOf(1);",
+											"        ",
+											"        let membership = jsonData.acquisitionsUnitMemberships[0];",
+											"",
+											"        // Verify that metadata is presented",
+											"        pm.expect(membership.metadata).to.exist;",
+											"        ",
+											"        // Verify if id exists",
+											"        pm.expect(membership.id).to.exist;",
+											"",
+											"        // Verify ",
+											"        let userId = globals.testData.user.id;",
+											"        pm.expect(membership.userId).to.eql(userId);",
+											"        ",
+											"        // Verify acquisitionsUnitId == unitId ",
+											"        let acquisitionsUnitId = pm.environment.get(\"unit1Id\");",
+											"        pm.expect(membership.acquisitionsUnitId).to.eql(acquisitionsUnitId);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "1e05adb9-0839-419e-b220-db821a3ff022",
+										"exec": [
+											"pm.variables.set(\"acqName\", globals.testData.unit.name);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships?query=acquisitionsUnitId={{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "acquisitionsUnitId={{unit1Id}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update membership",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = {};",
+											"",
+											"body.userId = globals.testData.user.id;",
+											"body.acquisitionsUnitId = pm.environment.get(\"unit2Id\");",
+											"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{membershipBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships/{{membershipId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships",
+										"{{membershipId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get updated membership",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Verify membership has correct values\", () => {",
+											"        ",
+											"        // Verify that metadata is presented",
+											"        pm.expect(jsonData.metadata).to.exist;",
+											"        ",
+											"        // Verify if id exists",
+											"        pm.expect(jsonData.id).to.exist;",
+											"",
+											"        // Verify ",
+											"        let userId = globals.testData.user.id;",
+											"        pm.expect(jsonData.userId).to.eql(userId);",
+											"        ",
+											"        // Verify acquisitionsUnitId == unitId ",
+											"        let acquisitionsUnitId = pm.environment.get(\"unit2Id\");",
+											"        pm.expect(jsonData.acquisitionsUnitId).to.eql(acquisitionsUnitId);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships/{{membershipId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships",
+										"{{membershipId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "eabc0e99-5321-4b94-8073-c1009945649c",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "42e30b13-2d65-40cc-871d-b736930858cb",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Negative Tests",
+			"item": [
+				{
+					"name": "Units",
+					"item": [
+						{
+							"name": "Create unit without name",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = globals.testData.unit;",
+											"delete body.name;",
+											"",
+											"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{unitBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update unit removing name",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = globals.testData.unit;",
+											"delete body.name;",
+											"",
+											"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{unitBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit1Id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update unit by wrong id",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = globals.testData.unit;",
+											"body.id = pm.variables.get(\"unit2Id\");",
+											"",
+											"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"",
+											"    pm.test(\"One error expected\", function () {",
+											"        var errors = pm.response.json().errors;",
+											"        pm.expect(errors).to.have.lengthOf(1);",
+											"        pm.expect(errors[0].code).to.eql(\"idMismatch\");",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{unitBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit1Id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Memberships",
+					"item": [
+						{
+							"name": "Create membership without acquisitionsUnitId",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = {};",
+											"",
+											"body.userId = globals.testData.user.id;",
+											"",
+											"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{membershipBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update membership removing acquisitionUnitId",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let body = {};",
+											"",
+											"body.userId = globals.testData.user.id;",
+											"",
+											"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{membershipBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships/{{membershipId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships",
+										"{{membershipId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "Delete memberships",
+					"item": [
+						{
+							"name": "Delete membership",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    pm.environment.unset(\"membershipId\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships/{{membershipId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships",
+										"{{membershipId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete units",
+					"item": [
+						{
+							"name": "Delete unit 1",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    pm.environment.unset(\"unit1Id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit1Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit1Id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete unit 2",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    pm.environment.unset(\"unit2Id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/units/{{unit2Id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"units",
+										"{{unit2Id}}"
+									]
+								},
+								"description": ""
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Delete user with acquisitions-units permissions only",
+					"item": [
+						{
+							"name": "Delete user's credentials",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d4e68cd5-eca2-4427-ba8b-6f059a5fc130",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has credentials and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        pm.variables.set(\"credentialsId\", res.json().credentials[0].id);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "1ff89363-4db6-40bc-a848-e7532b2a7bc0",
+										"exec": [
+											"let testFunc = pm.variables.get(\"credentialsId\") ? pm.test : pm.test.skip;",
+											"testFunc(\"Credentials deleted - Expected No Content (204)\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-admin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials/{{credentialsId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials",
+										"{{credentialsId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete user's permissions",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "234a882a-edd7-4bac-8bc2-7f89c8a7a713",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.user.id, (err, res) => {",
+											"    // If user already has permissions and delete them to create fresh each time",
+											"    if (res.code === 200 && res.json().totalRecords > 0) {",
+											"        pm.variables.set(\"permissionsId\", res.json().permissionUsers[0].id);",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "f74eb5c8-1652-480c-9fac-356b3a3ffc56",
+										"exec": [
+											"let testFunc = pm.variables.get(\"permissionsId\") ? pm.test : pm.test.skip;",
+											"testFunc(\"Permissions deleted - Expected No Content (204)\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-admin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{permissionsId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users",
+										"{{permissionsId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "123459a0-b737-4767-a32c-1c5692b8d920",
+										"exec": [
+											"pm.variables.set(\"userId\", pm.globals.get(\"testData\").user.id);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ac493f0c-3e8c-4c07-94d2-6105617f0384",
+										"exec": [
+											"pm.test(\"User deleted - Expected No Content (204)\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    pm.environment.unset(\"xokapitoken\");",
+											"    pm.environment.unset(\"xokapitoken-admin\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"type": "text",
+										"value": "{{xokapitoken-admin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users/{{userId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users",
+										"{{userId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "The authorithation token from `xokapitoken-admin` environment variable is set to `xokapitoken` one to allow remaining requests to work.",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "51550a77-35a8-45ab-bf74-f093a8202d42",
+								"type": "text/javascript",
+								"exec": [
+									"pm.environment.set(\"xokapitoken\", pm.environment.get(\"xokapitoken-admin\"));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "0decf5ff-c87f-4041-a8cd-ef1a9f2003bd",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "29271af0-d608-4fd0-a6d0-7f47697b19ba",
+				"type": "text/javascript",
+				"exec": [
+					"const testData = {",
+					"    unit: {",
+					"        name: \"ACQ units API tests\",",
+					"        protectCreate: true,",
+					"        protectRead: true,",
+					"        protectUpdate: true,",
+					"        protectDelete: true",
+					"    },",
+					"    // User template with hardcoded id",
+					"    user: {",
+					"        \"id\": \"00010001-1111-5555-9999-999999999999\",",
+					"        \"username\": \"acquisitions-units-user\",",
+					"        \"active\": true,",
+					"        \"personal\": {",
+					"            \"firstName\": \"Acq units API\",",
+					"            \"lastName\": \"Acq units Tests\"",
+					"        }",
+					"    },",
+					"    credentials: {",
+					"        \"username\": \"acquisitions-units-user\",",
+					"        \"password\": \"acquisitions-units-password\"",
+					"    },",
+					"    permissions: {",
+					"        \"userId\": \"00010001-1111-5555-9999-999999999999\",",
+					"        \"permissions\": [\"acquisitions-units.units.all\", \"acquisitions-units.memberships.all\"]",
+					"    }",
+					"};",
+					"",
+					"// Global testing object - used in further tests",
+					"pm.globals.set(\"testData\", testData);",
+					"",
+					"pm.globals.set(\"loadUtils\", function loadUtils() {",
+					"    let utils = {};",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function(path, method, xokapitoken) {",
+					"        return {",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": xokapitoken || pm.environment.get(\"xokapitoken-admin\")",
+					"            }",
+					"        };",
+					"    };",
+					"",
+					"    utils.copyJsonObj = function(obj) {",
+					"        return JSON.parse(JSON.stringify(obj));",
+					"    };",
+					"",
+					"    /**",
+					"     * Creates OKAPI URL endpoint based on provided path",
+					"     */",
+					"    utils.buildOkapiUrl = function(path) {",
+					"        return pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path;",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends POST request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendPostRequest = function (path, postBody, handler) {",
+					"        let pmRq = utils.buildPmRequest(path, \"POST\");",
+					"        pmRq.body = JSON.stringify(postBody);",
+					"        pmRq.header[\"Content-type\"] = \"application/json\";",
+					"        pm.sendRequest(pmRq, handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendGetRequest = function(path, handler) {",
+					"        pm.sendRequest(utils.buildPmRequest(path, \"GET\"), handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends PUT request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendPutRequest = function(path, body, handler) {",
+					"        // Build request and add required header and body",
+					"        let pmRq = utils.buildPmRequest(path, \"PUT\");",
+					"        pmRq.header[\"Content-type\"] = \"application/json\";",
+					"        pmRq.body = JSON.stringify(body);",
+					"",
+					"        pm.sendRequest(pmRq, handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends DELETE request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendDeleteRequest = function(path, handler) {",
+					"        pm.sendRequest(utils.buildPmRequest(path, \"DELETE\"), handler);",
+					"    };",
+					"",
+					"    return utils;",
+					"    ",
+					"} + '; loadUtils();');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "65f7e387-a850-4a74-a499-63606dd653fa",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
