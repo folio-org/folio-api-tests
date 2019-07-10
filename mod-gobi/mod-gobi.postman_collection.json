@@ -134,6 +134,108 @@
 								"description": "Create a new Organization with name GOBI, which is a vendor"
 							},
 							"response": []
+						},
+						{
+							"name": "Get or create Contributor name type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"GET Contributor Name types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.contributorNameTypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.contributorNameTypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
+											"});  ",
+											"",
+											"function useAlreadyExistingType(materialType) {",
+											"    pm.test(\"Contributor Name Type already exists\", function () {",
+											"        pm.expect(materialType.id).to.exist;",
+											"        setIdAsGlobalVariable(materialType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const nameType = {",
+											"        \"id\": \"6d6f642d-0005-1111-aaaa-6f7264657273\",",
+											"        \"name\": pm.variables.get(\"contributorNameType\")",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).sendPostRequest(\"/contributor-name-types\", nameType, (err, res) => {",
+											"        pm.test(\"Contributor Name Type created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            setIdAsGlobalVariable(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function setIdAsGlobalVariable(id) {",
+											"    pm.environment.set(\"contributorNameTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											"pm.variables.set(\"contributorNameType\", \"GOBI API Tests type\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/contributor-name-types?query=name=={{contributorNameType}}&limit=1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"contributor-name-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name=={{contributorNameType}}"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "Gets or creates if not yet exists test contributor name type. This is required if no reference data is available in inventory storage."
+							},
+							"response": []
 						}
 					],
 					"_postman_isSubFolder": true
@@ -1887,6 +1989,59 @@
 					"response": []
 				},
 				{
+					"name": "Delete contributor name type",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Contributor name type deleted\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/contributor-name-types/{{contributorNameTypeId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"contributor-name-types",
+								"{{contributorNameTypeId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "/user",
 					"event": [
 						{
@@ -2238,7 +2393,19 @@
 					"    function (err, res) {",
 					"      pm.test(\"Test Purchase Order is created\", function(){",
 					"        pm.expect(res).to.have.property('code', 200);",
-					"        pm.expect(res.json().poLines[0].purchaseOrderId).to.exist;",
+					"        pm.expect(res.json().poLines, \"One PO Lineis expected\").to.have.lengthOf(1);",
+					"",
+					"        let poLine = res.json().poLines[0];",
+					"        pm.expect(poLine.purchaseOrderId).to.exist;",
+					"",
+					"        if (poLine.hasOwnProperty(\"contributors\")) {",
+					"          pm.test(\"Contributor presents\", function() {",
+					"              poLine.contributors.forEach(contributor => {",
+					"                pm.expect(contributor.contributor, \"Contributor name is expected\").to.not.be.empty;",
+					"                pm.expect(contributor.contributorNameTypeId, \"Contributor name type is expected\").to.not.be.empty;",
+					"              });",
+					"          });",
+					"        }",
 					"      });",
 					"       utils.deleteOrder(res.json().poLines[0].purchaseOrderId);",
 					"     });",
@@ -2298,16 +2465,7 @@
 					"     */",
 					"    utils.updateConfig = function(body) {",
 					"        console.log(body);",
-					"        pm.sendRequest({",
-					"            url: utils.buildOkapiURL(\"/configurations/entries/\" + body.id),",
-					"            method: \"PUT\",",
-					"            header: {",
-					"                \"X-Okapi-Token\": pm.variables.get(\"xokapitokenAdmin\"),",
-					"                \"Content-type\": \"application/json\",",
-					"                \"Accept-Encoding\": \"identity\"",
-					"            },",
-					"            body: JSON.stringify(body)",
-					"        }, function (err, response) {",
+					"        utils.sendPutRequest(\"/configurations/entries/\" + body.id, body, function (err, response) {",
 					"            pm.test(\"Config updated. Config name = \" + body.configName, function () {",
 					"                pm.expect(response.code).to.eql(204);",
 					"            });",
@@ -2331,7 +2489,31 @@
 					"",
 					"        pm.sendRequest(pmRq, handler);",
 					"    };",
-					"    ",
+					"",
+					"    /**",
+					"     * Sends post request by specified path and handle result by handler",
+					"     */",
+					"    utils.sendPostRequest = function (path, postBody, handler) {",
+					"        let pmRq = utils.buildPmRequest(path, \"POST\");",
+					"        pmRq.body = JSON.stringify(postBody);",
+					"        pmRq.header[\"Content-type\"] = \"application/json\";",
+					"        pm.sendRequest(pmRq, handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function(path, method) {",
+					"        return {",
+					"            url: utils.buildOkapiURL(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitokenAdmin\")",
+					"            }",
+					"        };",
+					"    };",
+					"",
 					"    /**",
 					"     * Clean up variables",
 					"     */",
