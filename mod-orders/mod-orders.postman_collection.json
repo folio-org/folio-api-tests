@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "035ce062-6276-4db2-a7a4-e7281f9af869",
+		"_postman_id": "b8df0e0f-7967-4ac8-8638-3cf29e69927b",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -12079,7 +12079,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.variables.set(\"assignmentBody\", JSON.stringify(utils.buildAssignmentContent()));"
+											"pm.variables.set(\"assignmentBody\", JSON.stringify(utils.buildAssignmentContent(pm.globals.get(\"completeOrderId\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -12133,7 +12133,7 @@
 											"",
 											"    // The test can be run only if update succeded",
 											"    utils.sendGetRequest(\"/orders-storage/acquisitions-unit-assignments/\" + environment.assignmentId, (err, res) => {",
-											"        pm.test(\"Verify updated assignment with new recordId\", () => pm.expect(res.json().recordId).to.equal(pm.variables.get(\"updatedAssignmentRecordId\")));",
+											"        pm.test(\"Verify updated assignment with new recordId\", () => pm.expect(res.json().recordId).to.equal(pm.globals.get(\"anotherCompleteOrderId\")));",
 											"    });",
 											"});"
 										],
@@ -12146,11 +12146,8 @@
 										"id": "d1116217-372f-46f3-9223-ecd764bcbfad",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let assignment = utils.buildAssignmentContent();",
-											"let recordId= \"589a6016-3463-49f6-8aa2-dc315d0665fd\";",
+											"let assignment = utils.buildAssignmentContent(pm.globals.get(\"anotherCompleteOrderId\"));",
 											"",
-											"assignment.recordId = recordId;",
-											"pm.variables.set(\"updatedAssignmentRecordId\", recordId);",
 											"pm.variables.set(\"updatedAssignment\", JSON.stringify(assignment));"
 										],
 										"type": "text/javascript"
@@ -12243,7 +12240,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"recordId\": \"55b97a4a-6601-4488-84e1-8b0d47a3f523\",\r\n  \"acquisitionsUnitId\": \"0ebb1f7d-983f-3026-8a4c-5318e0ebc041\"\r\n}\r\n"
+									"raw": ""
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/acquisitions-unit-assignments/{{assignmentId}}",
@@ -12302,7 +12299,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/acquisitions-unit-assignments?query=recordId==589a6016-3463-49f6-8aa2-dc315d0665fd",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/acquisitions-unit-assignments?query=recordId=={{anotherCompleteOrderId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -12315,7 +12312,7 @@
 									"query": [
 										{
 											"key": "query",
-											"value": "recordId==589a6016-3463-49f6-8aa2-dc315d0665fd"
+											"value": "recordId=={{anotherCompleteOrderId}}"
 										}
 									]
 								}
@@ -13687,6 +13684,94 @@
 						{
 							"name": "Verify missing inventory enties errors",
 							"item": [
+								{
+									"name": "Update pending order to open with missing contributorNameType",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let testConfigs = globals.testData.configs;",
+													"uuid = require('uuid')",
+													"",
+													"let order = utils.buildOrderWithMinContent();",
+													"",
+													"order.workflowStatus = \"Open\";",
+													"order.notes = [\"Open Order for Negative API Tests\"];",
+													"order.poNumber = \"contributorType\";",
+													"",
+													"let line = JSON.parse(globals.poLineForNegativeTests);",
+													"let contributor = {};",
+													"let randomUUID = uuid.v4();",
+													"contributor.contributor = \"Test\";",
+													"contributor.contributorNameTypeId = randomUUID;",
+													"line.contributors = [contributor];",
+													"pm.variables.set(\"randomContributorNameTypeId\", randomUUID);",
+													"line.physical.createInventory = \"Instance\";",
+													"order.compositePoLines = [line];",
+													"pm.variables.set(\"orderBody\", JSON.stringify(order));",
+													"",
+													"    ",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let testConfigs = globals.testData.configs;",
+													"let error = {};",
+													"pm.test(\"Status code is 500 and one error\", function () {",
+													"    pm.response.to.have.status(500);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"    error = pm.response.json().errors[0];",
+													"    pm.expect(error.code).to.equal(\"missingContributorNameType\");",
+													"    pm.expect(error.parameters[0].value).to.equal(pm.variables.get(\"randomContributorNameTypeId\"));",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsPendingOrderId}}"
+											]
+										}
+									},
+									"response": []
+								},
 								{
 									"name": "Prepare missing instanceTypeCode config",
 									"event": [
@@ -17476,7 +17561,7 @@
 										"id": "18b13f93-34ab-4597-84f0-030e1d5a6f02",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"let assignment = JSON.stringify(utils.buildAssignmentContent());",
+											"let assignment = JSON.stringify(utils.buildAssignmentContent(pm.globals.get(\"emptyOrderId\")));",
 											"let add = JSON.parse(assignment);",
 											"add.id = \"123-345\"",
 											"",
@@ -17543,7 +17628,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.variables.set(\"updatedAssignment\", JSON.stringify(utils.buildAssignmentContent()));"
+											"pm.variables.set(\"updatedAssignment\", JSON.stringify(utils.buildAssignmentContent(pm.globals.get(\"emptyOrderId\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -20941,9 +21026,9 @@
 					"    /**",
 					"     * Build Unit assignment",
 					"     */",
-					"    utils.buildAssignmentContent = function() {",
+					"    utils.buildAssignmentContent = function(recordId) {",
 					"        return {",
-					"            \"recordId\": \"05bdf3c8-01f0-4ddb-bd6c-6efd465f9e33\",",
+					"            \"recordId\": recordId,",
 					"            \"acquisitionsUnitId\": \"0ebb1f7d-983f-3026-8a4c-5318e0ebc041\"",
 					"        };",
 					"    };",
@@ -22554,55 +22639,55 @@
 	],
 	"variable": [
 		{
-			"id": "a97d14f9-7322-4bf8-bc7c-fe77cced2e43",
+			"id": "2b42e54f-d6e2-4ba7-9125-66a4b969c041",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "0f7be2b9-a879-4d99-93cf-66a14d5c8630",
+			"id": "1854861c-9c8f-498c-987d-03bf05dca320",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "ba09bd74-e165-4aa4-a0f0-0a03634670c8",
+			"id": "55bdc592-979f-4f86-a9e1-8f29c3c75575",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "a8e6f5f0-fc33-4116-9872-964b54968533",
+			"id": "72b28882-6f27-486e-ae21-ae932d7d0b9b",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "e19c7e41-cb4e-4536-8b08-7617c8a798f6",
+			"id": "8db0be25-faca-4c87-9cfd-2ee785225102",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "7838f9b5-39e7-4f55-a50f-5900e3c0960e",
+			"id": "1afda8bd-0a08-4ffe-9dcc-b44420274c05",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "06b931bf-6e69-4346-8748-f6acaa6fbf7a",
+			"id": "14fcabe1-bee0-4996-9205-75df072fd707",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "a8a8d6e7-d908-4a73-a3f9-9fd6e06bbd11",
+			"id": "0c82b3ef-c22b-497e-9195-30d13ba9d5cb",
 			"key": "finance-ledgerCode",
 			"value": "ordersApiTestsLedgerCode",
 			"type": "string"
 		},
 		{
-			"id": "eba736c5-fbce-4dd0-9e3f-101afe883eac",
+			"id": "7a4333ea-a60e-4dd3-aa77-34095a910a3d",
 			"key": "finance-fundCode",
 			"value": "ordersApiTestsFundCode",
 			"type": "string"
