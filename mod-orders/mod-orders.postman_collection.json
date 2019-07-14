@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "035ce062-6276-4db2-a7a4-e7281f9af869",
+		"_postman_id": "fb4a4eef-130e-4539-b02d-2885d9b1af26",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4836,6 +4836,652 @@
 								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
 							},
 							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Ensure receiptStatus consistency between Pieces PoLine",
+					"item": [
+						{
+							"name": "Verify PoLine Awaiting ReceiptStatus",
+							"item": [
+								{
+									"name": "Create 1st Piece - Received",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.globals.set(\"poLineIdToCreatePiece\", utils.getLastPoLineId());",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/mockdata/pieces/pieceRecord.json\", function(err, res) {",
+													"    let piece = res.json();",
+													"    piece.poLineId = pm.globals.get(\"poLineIdToCreatePiece\");",
+													"    pm.globals.set(\"pieceRecordAwaiting1\", JSON.stringify(piece));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var jsonData = {};",
+													"jsonData = pm.response.json();",
+													"",
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    pm.globals.set(\"pieceId1ToUpdate\", jsonData.id);",
+													"    utils.validatePiece(jsonData);",
+													"});",
+													"",
+													"pm.test(\"Each piece has these optional fields\", function() {",
+													"    pm.expect(jsonData.id).to.exist;",
+													"    pm.expect(jsonData.caption).to.exist;",
+													"    pm.expect(jsonData.comment).to.exist;",
+													"    pm.expect(jsonData.itemId).to.exist;",
+													"    pm.expect(jsonData.locationId).to.exist;",
+													"    pm.expect(jsonData.supplement).to.exist;",
+													"    pm.expect(jsonData.receivedDate).to.exist;",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{pieceRecordAwaiting1}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"pieces"
+											]
+										},
+										"description": "MODORDERS-173 - ensure receiptStatus consistency between piece and poLine"
+									},
+									"response": []
+								},
+								{
+									"name": "Create 2nd Piece - Expected",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/mockdata/pieces/pieceRecord.json\", function(err, res) {",
+													"    let piece = res.json();",
+													"    piece.poLineId = pm.globals.get(\"poLineIdToCreatePiece\");",
+													"    piece.caption = \"Tutorial Volume 99\";",
+													"    piece.comment = \"Special Edition II\";",
+													"    piece.format = \"Physical\";",
+													"    piece.itemId = \"522a501a-56b5-48d9-b28a-3a8f02482d97\";",
+													"    piece.locationId = \"53cf956f-c1df-410b-8bea-27f712cca7c0\";",
+													"    piece.receivingStatus = \"Expected\";",
+													"    piece.supplement = true;",
+													"    piece.receivedDate = \"2018-10-10T00:00:00.000+0000\";",
+													"    ",
+													"    pm.globals.set(\"pieceRecordAwaiting2\", JSON.stringify(piece));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var jsonData = {};",
+													"jsonData = pm.response.json();",
+													"",
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    pm.globals.set(\"pieceId2ToUpdate\", jsonData.id);",
+													"    utils.validatePiece(jsonData);",
+													"});",
+													"",
+													"pm.test(\"Each piece has these optional fields\", function() {",
+													"    pm.expect(jsonData.id).to.exist;",
+													"    pm.expect(jsonData.caption).to.exist;",
+													"    pm.expect(jsonData.comment).to.exist;",
+													"    pm.expect(jsonData.itemId).to.exist;",
+													"    pm.expect(jsonData.locationId).to.exist;",
+													"    pm.expect(jsonData.supplement).to.exist;",
+													"    pm.expect(jsonData.receivedDate).to.exist;",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{pieceRecordAwaiting2}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"pieces"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update 1st piece - to Expected",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f4d22769-3016-4e46-81ea-e42044dac59e",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let pieceId1ToUpdate = pm.globals.get(\"pieceId1ToUpdate\");",
+													"utils.sendGetRequest(\"/orders-storage/pieces/\" + pieceId1ToUpdate, function(err, res) {",
+													"    piece = res.json();",
+													"    let receivingStatus = piece.receivingStatus;",
+													"    console.log(\"receivingStatus storage: \" + receivingStatus);",
+													"});",
+													"",
+													"var piece1 = {};",
+													"piece1 = JSON.parse(pm.globals.get(\"pieceRecordAwaiting1\"));",
+													"",
+													"// Update piece1 receivingStatus to Expected",
+													"piece1.receivingStatus = \"Expected\"; // Received -> Expected will trigger event",
+													"",
+													"// Use this pieceIdToUpdate to delete in next delete request",
+													"pm.variables.set(\"updatedPieceRecordAwaiting1\", JSON.stringify(piece1));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "78dbb04b-c21b-4ca4-aee9-a498911da327",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"    pm.response.to.have.status(\"No Content\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "X-Okapi-Url",
+												"type": "text",
+												"value": "http://internal-fse-lb-pvt-1993629965.us-east-1.elb.amazonaws.com:9130",
+												"disabled": true
+											},
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "text/plain",
+												"disabled": true
+											},
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/json",
+												"disabled": true
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedPieceRecordAwaiting1}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces/{{pieceId1ToUpdate}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"pieces",
+												"{{pieceId1ToUpdate}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get all pieces by poLineId",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"var jsonData = {};",
+													" ",
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
+													"    pm.expect(jsonData.pieces[0].receivingStatus).to.equal(\"Expected\");",
+													"    pm.expect(jsonData.pieces[1].receivingStatus).to.equal(\"Expected\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/pieces?query=poLineId=={{poLineIdToCreatePiece}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders-storage",
+												"pieces"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "poLineId=={{poLineIdToCreatePiece}}"
+												}
+											]
+										},
+										"description": "GET /orders-storage/pieces requests that return 200"
+									},
+									"response": []
+								},
+								{
+									"name": "Get PoLine by poLineId",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"var jsonData = {};",
+													" ",
+													"pm.test(\"Status code is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    jsonData = pm.response.json();",
+													"    ",
+													"    // All pieces receiving status is \"Expected\" so receiptStatus should be \"Awaiting Receipt\"",
+													"    pm.expect(jsonData.receiptStatus).to.equal(\"Awaiting Receipt\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poLineIdToCreatePiece}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines",
+												"{{poLineIdToCreatePiece}}"
+											]
+										},
+										"description": "GET /orders/order-lines/id requests that return 200"
+									},
+									"response": []
+								},
+								{
+									"name": "Delete first piece",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"pm.globals.unset(\"pieceId1ToUpdate\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "X-Okapi-Url",
+												"type": "text",
+												"value": "http://internal-fse-lb-pvt-1993629965.us-east-1.elb.amazonaws.com:9130",
+												"disabled": true
+											},
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "text/plain",
+												"disabled": true
+											},
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/json",
+												"disabled": true
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces/{{pieceId1ToUpdate}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"pieces",
+												"{{pieceId1ToUpdate}}"
+											]
+										},
+										"description": "[MODORDERS-257](https://issues.folio.org/browse/MODORDERS-257)"
+									},
+									"response": []
+								},
+								{
+									"name": "Delete second piece",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"pm.globals.unset(\"pieceId2ToUpdate\");",
+													"pm.globals.unset(\"poLineIdToCreatePiece\");",
+													"pm.globals.unset(\"pieceRecordAwaiting1\");",
+													"pm.globals.unset(\"pieceRecordAwaiting2\");",
+													"pm.globals.unset(\"updatedPieceRecordAwaiting1\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "X-Okapi-Url",
+												"type": "text",
+												"value": "http://internal-fse-lb-pvt-1993629965.us-east-1.elb.amazonaws.com:9130",
+												"disabled": true
+											},
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "text/plain",
+												"disabled": true
+											},
+											{
+												"key": "Accept",
+												"type": "text",
+												"value": "application/json",
+												"disabled": true
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces/{{pieceId2ToUpdate}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"pieces",
+												"{{pieceId2ToUpdate}}"
+											]
+										},
+										"description": "[MODORDERS-257](https://issues.folio.org/browse/MODORDERS-257)"
+									},
+									"response": []
+								}
+							],
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "7bf8e56f-d149-49e8-ae7b-2f4a9d19e6a5",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "58692dd1-3661-4e41-a56f-0c58334e17b9",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"_postman_isSubFolder": true
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "fcba4c16-5473-4fdb-8774-ef24ac89fb2a",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "38647880-b894-44d4-8d9c-e70a8fa19a90",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
 						}
 					],
 					"_postman_isSubFolder": true
@@ -20736,7 +21382,8 @@
 					"        \"permissions\": [",
 					"            \"orders.all\",",
 					"            \"inventory-storage.items.collection.get\",",
-					"            \"inventory-storage.items.item.get\"",
+					"            \"inventory-storage.items.item.get\",",
+					"            \"orders-storage.pieces.collection.get\"",
 					"        ]",
 					"    },",
 					"    receiving: {",
@@ -22554,55 +23201,55 @@
 	],
 	"variable": [
 		{
-			"id": "a97d14f9-7322-4bf8-bc7c-fe77cced2e43",
+			"id": "5464de0e-2ba2-4c07-aafe-0831a188f08d",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "0f7be2b9-a879-4d99-93cf-66a14d5c8630",
+			"id": "b952008b-abbd-47a9-8187-46e2508bbd32",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "ba09bd74-e165-4aa4-a0f0-0a03634670c8",
+			"id": "8b67032f-ae22-465b-af28-7527179b573a",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "a8e6f5f0-fc33-4116-9872-964b54968533",
+			"id": "afa92728-215f-46ec-adbb-220dc1c753bd",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "e19c7e41-cb4e-4536-8b08-7617c8a798f6",
+			"id": "277d2534-fe48-433b-9ceb-306b2399afd2",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "7838f9b5-39e7-4f55-a50f-5900e3c0960e",
+			"id": "fd8900b3-a80b-4ca9-8b26-f2b9a26f005b",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "06b931bf-6e69-4346-8748-f6acaa6fbf7a",
+			"id": "a519686f-c8e9-4ebf-bf2c-e0fcad38905e",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "a8a8d6e7-d908-4a73-a3f9-9fd6e06bbd11",
+			"id": "08dee0c2-26d6-4cb2-aafc-423b9196d6f8",
 			"key": "finance-ledgerCode",
 			"value": "ordersApiTestsLedgerCode",
 			"type": "string"
 		},
 		{
-			"id": "eba736c5-fbce-4dd0-9e3f-101afe883eac",
+			"id": "c615b280-600d-4c3c-b917-2ab960d4a1e6",
 			"key": "finance-fundCode",
 			"value": "ordersApiTestsFundCode",
 			"type": "string"
