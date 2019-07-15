@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "642dab0d-09f2-4b61-a3c5-0bd54f27922f",
+		"_postman_id": "1e64d2a4-db42-445a-9265-71c7835d316a",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -13079,6 +13079,7 @@
 											"    pm.response.to.have.status(201);",
 											"",
 											"    pm.globals.set(\"negativeTestsOpenOrderId\", order.id);",
+											"    pm.globals.set(\"negativeTestsOpenPOLineId\", order.compositePoLines[0].id);",
 											"",
 											"    pm.expect(order.workflowStatus).to.equal(\"Open\");",
 											"    utils.validatePoLines(order, 1);",
@@ -14982,6 +14983,252 @@
 											]
 										},
 										"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Verify protected fields modification",
+							"item": [
+								{
+									"name": "Put Open order - Modify Purchase Order Fields",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+													"    let json = utils.prepareOpenOrderWithoutPoNumber(res.json());",
+													"    json.orderType = \"One-Time\";",
+													"    json.approved = true;",
+													"    json.poNumber = \"anyPoNumber\";",
+													"    json.manualPo = true;",
+													"    pm.variables.set(\"po_with_protected_fields\", JSON.stringify(json));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 400 - Bad Request\", function () {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    let jsonRs = pm.response.json();",
+													"    let error = jsonRs.errors[0];",
+													"    pm.expect(error.message).to.include(\"Protected fields can't be modified\");",
+													"    pm.expect(error.code).to.include(\"protectedFieldChanging\");",
+													"    pm.expect(error.protectedAndModifiedFields.length).to.equal(3);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_protected_fields}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										},
+										"description": "Verify that protected fields cannot be modified once order is \"Open\""
+									},
+									"response": []
+								},
+								{
+									"name": "Put Open order - Modify Composite PO Line Fields",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let json;",
+													"utils.sendGetRequest(\"/orders/composite-orders/\" + pm.globals.get(\"negativeTestsOpenOrderId\"), (err, res) => {",
+													"    json = res.json();",
+													"    json.compositePoLines[0].acquisitionMethod = \"Exchange\";",
+													"    json.compositePoLines[0].rush = true;",
+													"    json.compositePoLines[0].title = \"Changing Title\";",
+													"    pm.variables.set(\"po_with_protected_fields\", JSON.stringify(json));",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 400 - Bad Request\", function () {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    let jsonRs = pm.response.json();",
+													"    let error = jsonRs.errors[0];",
+													"    pm.expect(error.message).to.include(\"Protected fields can't be modified\");",
+													"    pm.expect(error.code).to.include(\"protectedFieldChanging\");",
+													"    pm.expect(error.protectedAndModifiedFields.length).to.equal(3);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_protected_fields}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsOpenOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsOpenOrderId}}"
+											]
+										},
+										"description": "Verify that protected fields in Purchase Order Line cannot be modified once order is \"Open\""
+									},
+									"response": []
+								},
+								{
+									"name": "Put Open order - Modify PO Line Fields Copy",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let json;",
+													"utils.sendGetRequest(\"/orders/order-lines/\" + pm.globals.get(\"negativeTestsOpenPOLineId\"), (err, res) => {",
+													"    json = res.json();",
+													"    json.donor = \"Donor\";",
+													"    json.checkinItems = true;",
+													"    pm.variables.set(\"po_with_protected_fields\", JSON.stringify(json));",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 400 - Bad Request\", function () {",
+													"    pm.response.to.have.status(400);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"    let jsonRs = pm.response.json();",
+													"    let error = jsonRs.errors[0];",
+													"    pm.expect(error.message).to.include(\"Protected fields can't be modified\");",
+													"    pm.expect(error.code).to.include(\"protectedFieldChanging\");",
+													"    pm.expect(error.protectedAndModifiedFields.length).to.equal(2);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_with_protected_fields}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{negativeTestsOpenPOLineId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines",
+												"{{negativeTestsOpenPOLineId}}"
+											]
+										},
+										"description": "Verify that protected fields in Purchase Order Line cannot be modified once order is \"Open\""
 									},
 									"response": []
 								}
