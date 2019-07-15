@@ -5028,6 +5028,9 @@
 											"invoice.note += \" - locked total\";",
 											"invoice.status = \"Open\";",
 											"",
+											"delete invoice.approvalDate;",
+											"delete invoice.approvedBy;",
+											"",
 											"pm.variables.set(\"invoiceContentLockedTotal\", JSON.stringify(invoice));"
 										],
 										"type": "text/javascript"
@@ -8093,6 +8096,610 @@
 								}
 							],
 							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Transition to Approved with Empty FundDistributions",
+							"item": [
+								{
+									"name": "Create invoice with minimal content",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    pm.environment.set(\"InvoiceWithEmptyFundDistrosId\", invoice.id);",
+													"    // pm.environment.set(\"folioInvoiceNo\", invoice.folioInvoiceNo);",
+													"    pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));",
+													"",
+													"    utils.validateInvoiceWithMinimalContent(invoice);",
+													"",
+													"    utils.validateInvoice(invoice);",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.variables.set(\"invoiceContent\", JSON.stringify(utils.buildInvoiceWithMinContent()));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Add line with FundDistributions percentage !=100",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "94753103-bb6d-46d3-bebd-3ce94cc05fcd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/e0d08448-343b-118a-8c2f-4fb50248d672.json\", function(err, res) {",
+													"    let invoiceLine = utils.prepareInvoiceLine(res.json(), pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"));",
+													"    ",
+													"    invoiceLine.fundDistributions[0].percentage=50;;",
+													"    pm.environment.set(\"lineWithoutFundDistros\", JSON.stringify(invoiceLine));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "dbfd94db-59c5-4fd9-8467-a284b21fb175",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice is created\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"    pm.environment.set(\"InvoiceLineWithePercentageNot100Id\", invoiceLine.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-admin}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{lineWithoutFundDistros}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice-storage",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. FundDistros percantage !=100",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"    //delete invalid line",
+													"    let lineToDelete = pm.environment.get(\"InvoiceLineWithePercentageNot100Id\");",
+													"    utils.sendDeleteRequest(\"/invoice-storage/invoice-lines/\" + lineToDelete, (err, res) => {",
+													"        pm.expect(res).to.have.property('code', 204);",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Add line without FundDistributions",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "94753103-bb6d-46d3-bebd-3ce94cc05fcd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/e0d08448-343b-118a-8c2f-4fb50248d672.json\", function(err, res) {",
+													"    let invoiceLine = utils.prepareInvoiceLine(res.json(), pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"));",
+													"    delete invoiceLine.fundDistributions;",
+													"    pm.environment.set(\"lineWithoutFundDistros\", JSON.stringify(invoiceLine));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "cb8eab54-0245-46b7-b52f-1769914da16e",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"value": "application/json",
+												"type": "text"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-admin}}",
+												"type": "text"
+											},
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{lineWithoutFundDistros}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice-storage",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit ot approved invoice without FundDistros",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"});",
+													"",
+													"pm.globals.unset(\"InvoiceWithEmptyFundDistrosContent\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "7e3760d3-5781-4771-ab48-f3fbe71589c0",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ce5e7416-6d02-4d2d-a699-1e6f9ea1a28d",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Invoice with incompatible fields",
+							"item": [
+								{
+									"name": "Create Open invoice",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice is not created\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    pm.variables.set(\"incompatibleFieldsInvoiceContent\", JSON.stringify(pm.response.json()));",
+													"    pm.variables.set(\"incompatibleFieldsInvoiceId\", pm.response.json().id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let incompatibleFieldsInvoice = utils.buildInvoiceWithMinContent();",
+													"",
+													"pm.variables.set(\"incompatibleFieldsInvoiceContent\", JSON.stringify(incompatibleFieldsInvoice));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{incompatibleFieldsInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update Open invoice with incompatible fields",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice is not updated\", function() {",
+													"    pm.response.to.have.status(422);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let incompatibleFieldsInvoice = JSON.parse(pm.variables.get(\"incompatibleFieldsInvoiceContent\"));",
+													"incompatibleFieldsInvoice.approvedBy = \"1d17b91c-5eaf-4f24-b50b-cb10b4cfbc63\";",
+													"",
+													"pm.variables.set(\"incompatibleFieldsInvoiceContent\", JSON.stringify(incompatibleFieldsInvoice));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{incompatibleFieldsInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{incompatibleFieldsInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{incompatibleFieldsInvoiceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create Open invoice with incompatible fields",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice is not created\", function() {",
+													"    pm.response.to.have.status(422);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let incompatibleFieldsInvoice = utils.buildInvoiceWithMinContent();",
+													"incompatibleFieldsInvoice.approvedBy = \"1d17b91c-5eaf-4f24-b50b-cb10b4cfbc63\";",
+													"",
+													"pm.variables.set(\"incompatibleFieldsInvoiceContent\", JSON.stringify(incompatibleFieldsInvoice));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{incompatibleFieldsInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
 						}
 					],
 					"_postman_isSubFolder": true
@@ -8764,6 +9371,114 @@
 										"invoice",
 										"invoices",
 										"{{approvedInvoiceId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Invoice with empty FundDistributions",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{InvoiceWithEmptyFundDistrosId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Invoice with incompatible fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{incompatibleFieldsInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{incompatibleFieldsInvoiceId}}"
 									]
 								}
 							},
