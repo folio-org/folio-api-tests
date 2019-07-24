@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "68479f52-3912-4295-a97d-3dfa4777d554",
+		"_postman_id": "7d500c39-e2bb-482a-a03b-ed5955c72eec",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -4794,6 +4794,331 @@
 					],
 					"description": "This directory contains various tests related to transition of the invoices/vouchers through the workflow",
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Acquisitions unit assignments",
+					"item": [
+						{
+							"name": "Create assignment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Each unit-assignments has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.environment.set(\"assignmentId\", jsonData.id); ",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"assignmentBody\", JSON.stringify(utils.buildAssignmentContent(pm.environment.get(\"invoiceId\"))));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{assignmentBody}}\r\n"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update recordId for assignment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/invoice/acquisitions-unit-assignments/\" + environment.assignmentId, (err, res) => {",
+											"        pm.test(\"Verify updated assignment with new recordId\", () => pm.expect(res.json().recordId).to.equal(pm.environment.get(\"filterInvoiceId\")));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d1116217-372f-46f3-9223-ecd764bcbfad",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let assignment = utils.buildAssignmentContent(pm.environment.get(\"filterInvoiceId\"));",
+											"",
+											"pm.variables.set(\"updatedAssignment\", JSON.stringify(assignment));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedAssignment}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Recive created assignment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let assignment = {};",
+											"",
+											"pm.test(\"Assignment found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    assignment = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Assignment content is valid\", function() {",
+											"    pm.expect(assignment.id).to.eql(pm.environment.get(\"assignmentId\"));",
+											"    utils.validateAssignmentAgainstSchema(assignment);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Recive created assignments",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let assignments = [];",
+											"",
+											"pm.test(\"Assignment found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    assignments = pm.response.json().acquisitionsUnitAssignments;",
+											"});",
+											"",
+											"pm.test(\"Assignments content is valid\", function() {",
+											"    pm.expect(pm.response.json().totalRecords).to.be.above(0);",
+											"    assignments.forEach(assignment => utils.validateAssignmentAgainstSchema(assignment));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments?query=recordId=={{filterInvoiceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "recordId=={{filterInvoiceId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete created assignment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Assignment has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -8713,6 +9038,484 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Acquisitions unit assignments",
+					"item": [
+						{
+							"name": "Get assignment - bad ID 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0d97ca96-4b98-49d2-aa71-5c524905cc80",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get assignment - valid token, invalid tenant - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "de7e87e3-83dd-4c97-9ea4-8b5d310cc605",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"No such Tenant fs12345678\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "fs12345678"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get assignment - bad token format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "7383726d-6b23-483b-9c6b-e6ee2af74213",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "bad-token"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get assignment - invalid token - 401",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bdef6c41-4588-48db-89cc-4339b5c10ac0",
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"Invalid token\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "eyJhbGciOiJIUzUxMiJ999999.eyJzdWIiOiJhZG1pbiIsInVzZXJfaWQiOiJlZjY3NmRiOS1kMjMxLTQ3OWEtYWE5MS1mNjVlYjRiMTc4NzIiLCJ0ZW5hbnQiOiJmczAwMDAwMDAwIn2.KC0RbgafcMmR5Mc3-I7a6SQPKeDSr0SkJlLMcqQz3nwI0lwPTlxw0wJgidxDq-qjCR0wurFRn5ugd9_SVadSxg",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create assignment with invalid ID",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "18b13f93-34ab-4597-84f0-030e1d5a6f02",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let assignment = JSON.stringify(utils.buildAssignmentContent(pm.environment.get(\"InvoiceIdForDelete\")));",
+											"let add = JSON.parse(assignment);",
+											"add.id = \"123-345\"",
+											"",
+											"pm.variables.set(\"assignmentContent\", JSON.stringify(add));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "cab16de5-7348-40ce-9b12-f34c1f81c199",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{assignmentContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update assignment - bad ID 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5e653a4c-2d7a-4f58-a6f8-0f63c2e6bc7e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"updatedAssignment\", JSON.stringify(utils.buildAssignmentContent(pm.environment.get(\"InvoiceIdForDelete\"))));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "24056b69-f204-4c32-985a-573f81411624",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedAssignment}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete assignment - bad ID 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "be8660fd-3caf-4230-afa7-f48f5b6c07b2",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "58b49b0d-631e-4905-a714-14609b278a35",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete already deleted assignment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "a55e3253-5f71-4674-97ff-7142376e2aea",
+										"exec": [
+											"pm.test(\"Assignment is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{assignmentId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{assignmentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete assignment by random ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "34fcdba4-e7c4-4991-8bbe-8b9b9bd4f627",
+										"exec": [
+											"pm.test(\"Assignment is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/acquisitions-unit-assignments/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"acquisitions-unit-assignments",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -10279,6 +11082,13 @@
 					"    utils.buildOkapiUrl = function(path) {",
 					"        return pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path;",
 					"    };",
+					"    ",
+					"     /**",
+					"     * Validates the Unit Assignment against schemas",
+					"     */",
+					"    utils.validateAssignmentAgainstSchema = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"acquisitions_unit_assignment.json\")));",
+					"    };",
 					"",
 					"    /**",
 					"     * Validates sequence number against schema",
@@ -10391,6 +11201,16 @@
 					"        pm.expect(invoiceLine.subscriptionEnd, \"Invoice line: subscriptionEnd not expected\").to.not.exist;",
 					"        pm.expect(invoiceLine.total, \"Invoice line: total expected\").to.exist;",
 					"        pm.expect(invoiceLine.vendorRefNo, \"Invoice line: vendorRefNo not expected\").to.not.exist;",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Build Unit assignment",
+					"     */",
+					"    utils.buildAssignmentContent = function(recordId) {",
+					"        return {",
+					"            \"recordId\": recordId,",
+					"            \"acquisitionsUnitId\": \"0ebb1f7d-983f-3026-8a4c-5318e0ebc041\"",
+					"        };",
 					"    };",
 					"",
 					"    /**",
@@ -10855,37 +11675,37 @@
 	],
 	"variable": [
 		{
-			"id": "fc77c058-fa27-425c-ab2b-f11bb41a53c0",
+			"id": "b88b1ffc-f9f1-4617-82f3-a40c9812c6aa",
 			"key": "resourcesUrl",
-			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/4b9f7cca26991a396dd321879b5f305d204d4b82/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "6475c7a9-118e-4020-bd8e-b3524bc3e69f",
+			"id": "c9c4d2a0-ed99-4e6b-90e6-2c0bf2279146",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "8ab24b80-64d0-4616-90b8-fe8d55077f09",
+			"id": "7f297a97-fce5-4d3f-8c7d-00c6ccf582c4",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "b3a2b498-8720-46fc-834a-87f94f824886",
+			"id": "2fafddfc-cb12-4c37-8daa-3433a4fb692d",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "77d1cf83-72b0-4dc2-a3fd-7b1f77bf8744",
+			"id": "5be3ed90-8ef5-467d-812f-a86dc126e40b",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "76a3f293-4e3f-4da2-965c-6723d2d52db8",
+			"id": "a067ead1-b68b-418e-9b4c-d9c4868712e2",
 			"key": "voucherNumberPrefix",
 			"value": "testPrefix",
 			"type": "string"
