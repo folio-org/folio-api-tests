@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "faa905f9-2cbc-4349-8b1e-ce3f3643c3a1",
+		"_postman_id": "d92105d2-221a-45b8-aabb-5d0b3044e25e",
 		"name": "mod-orders-acq-units",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -220,23 +220,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"let user = globals.testData.users.admin.user;",
-											"utils.sendGetRequest(\"/users/\" + user.id, (err, res) => {",
-											"    pm.test(\"Check if user for API Tests already exists\", () => {",
-											"        pm.expect(err).to.equal(null);",
-											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
-											"        // If user already exists, check if this is for API Tests and delete it",
-											"        if (res.code === 200 && res.json().username) {",
-											"            utils.sendDeleteRequest(\"/users/\" + user.id, (err, res) => {",
-											"                pm.test(\"User '\" + user.username + \"' deleted\", () => {",
-											"                    pm.expect(res.code).to.eql(204);",
-											"                });",
-											"            });",
-											"        }",
-											"    });",
-											"});",
-											"",
-											"pm.variables.set(\"userData\", JSON.stringify(user));"
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.admin.user));"
 										],
 										"type": "text/javascript"
 									}
@@ -670,6 +654,77 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Prepare required external data",
+					"item": [
+						{
+							"name": "Create vendor",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Vendor is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"});",
+											"",
+											"pm.environment.set(\"activeVendorId\", pm.response.json().id);"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"name\": \"Test active vendor\",\n\t\"code\": \"TAV\",\n\t\"isVendor\": true,\n\t\"status\" : \"Active\"\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/organizations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"organizations"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Create units",
 					"item": [
 						{
@@ -817,23 +872,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"let user = globals.testData.users.regular.user;",
-											"utils.sendGetRequest(\"/users/\" + user.id, (err, res) => {",
-											"    pm.test(\"Check if user for API Tests already exists\", () => {",
-											"        pm.expect(err).to.equal(null);",
-											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
-											"        // If user already exists, check if this is for API Tests and delete it",
-											"        if (res.code === 200 && res.json().username) {",
-											"            utils.sendDeleteRequest(\"/users/\" + user.id, (err, res) => {",
-											"                pm.test(\"User '\" + user.username + \"' deleted\", () => {",
-											"                    pm.expect(res.code).to.eql(204);",
-											"                });",
-											"            });",
-											"        }",
-											"    });",
-											"});",
-											"",
-											"pm.variables.set(\"userData\", JSON.stringify(user));"
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.regular.user));"
 										],
 										"type": "text/javascript"
 									}
@@ -909,18 +948,6 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"let user = globals.testData.users.regular.user;",
-											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + user.id, (err, res) => {",
-											"    // If user already has credentials and delete them to create fresh each time",
-											"    if (res.code === 200 && res.json().totalRecords > 0) {",
-											"        utils.sendDeleteRequest(\"/authn/credentials/\" + res.json().credentials[0].id, (err, res) => {",
-											"            pm.test(user.username + \" user's credentials deleted\", () => {",
-											"                pm.expect(res.code).to.eql(204);",
-											"            });",
-											"        });",
-											"    }",
-											"});",
-											"",
 											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.users.regular.credentials));"
 										],
 										"type": "text/javascript"
@@ -980,19 +1007,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.users.regular.user.id, (err, res) => {",
-											"    // If user already has permissions and delete them to create fresh each time",
-											"    if (res.code === 200 && res.json().totalRecords > 0) {",
-											"        utils.sendDeleteRequest(\"/perms/users/\" + res.json().permissionUsers[0].id, (err, res) => {",
-											"            pm.test(globals.testData.users.admin.user.username + \" user's permissions deleted\", () => {",
-											"                pm.expect(res.code).to.eql(204);",
-											"            });",
-											"        });",
-											"    }",
-											"});",
-											"",
-											"pm.variables.set(\"userPermissions\", JSON.stringify(globals.testData.users.regular.permissions));",
-											""
+											"pm.variables.set(\"userPermissions\", JSON.stringify(globals.testData.users.regular.permissions));"
 										],
 										"type": "text/javascript"
 									}
@@ -1104,7 +1119,7 @@
 			"name": "Positive Tests",
 			"item": [
 				{
-					"name": "Create Draft order with 2 lines",
+					"name": "Create Open order with 1 line",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -1114,7 +1129,11 @@
 									"let utils = eval(globals.loadUtils);",
 									"",
 									"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
-									"    pm.globals.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(res.json())));",
+									"    let order = utils.prepareOrder(res.json());",
+									"    // Set Open status and leave only one line",
+									"    order.compositePoLines.pop();",
+									"    order.workflowStatus = \"Open\";",
+									"    pm.variables.set(\"po_listed_print_monograph\", JSON.stringify(order));",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1130,6 +1149,74 @@
 									"    let jsonData = pm.response.json();",
 									"    pm.expect(jsonData.id).to.exist;",
 									"    pm.environment.set(\"firstOrderId\", jsonData.id); ",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{po_listed_print_monograph}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders"
+							]
+						},
+						"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Draft order with 2 lines",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
+									"    pm.variables.set(\"po_listed_print_monograph\", JSON.stringify(utils.prepareOrder(res.json())));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"Order is created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"    let jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.exist;",
+									"    pm.environment.set(\"secondOrderId\", jsonData.id); ",
 									"});",
 									""
 								],
@@ -1189,62 +1276,7 @@
 							"script": {
 								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 								"exec": [
-									"pm.test(\"1 order found\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.totalRecords).to.eql(1);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "x-okapi-token",
-								"value": "{{xokapitoken}}"
-							}
-						],
-						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
-							"protocol": "{{protocol}}",
-							"host": [
-								"{{url}}"
-							],
-							"port": "{{okapiport}}",
-							"path": [
-								"orders",
-								"composite-orders"
-							]
-						},
-						"description": "GET /orders/composite-orders/id requests that return 200"
-					},
-					"response": []
-				},
-				{
-					"name": "Get list of lines",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-								"exec": [
-									"pm.test(\"2 lines found\", function () {",
+									"pm.test(\"2 orders should be found\", function () {",
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData.totalRecords).to.eql(2);",
 									"});"
@@ -1266,7 +1298,68 @@
 							}
 						],
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?query=cql.allRecords=1 sortBy poNumber/sort.ascending",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"composite-orders"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "cql.allRecords=1 sortBy poNumber/sort.ascending"
+								}
+							]
+						},
+						"description": "There is no any order with assigned acq unit"
+					},
+					"response": []
+				},
+				{
+					"name": "Get list of lines",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"3 lines should be found\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.totalRecords).to.eql(3);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines?query=cql.allRecords=1 sortBy poLineNumber/sort.ascending",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -1275,6 +1368,12 @@
 							"path": [
 								"orders",
 								"order-lines"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "cql.allRecords=1 sortBy poLineNumber/sort.ascending"
+								}
 							]
 						},
 						"description": "GET /orders/orders/order-lines requests that return 200"
@@ -1282,15 +1381,76 @@
 					"response": []
 				},
 				{
-					"name": "Assign fully protected unit to order",
+					"name": "Get list of pieces",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"4 pieces should be found\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.totalRecords).to.eql(4);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=cql.allRecords=1 sortBy title/sort.ascending",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"receiving-history"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "cql.allRecords=1 sortBy title/sort.ascending"
+								}
+							]
+						},
+						"description": "GET /orders/orders/order-lines requests that return 200"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign fully protected unit to an order",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
 								"exec": [
-									"pm.test(\"Status code is 201\", function () {",
-									"    pm.response.to.have.status(201);",
+									"pm.test(\"Order is updated successfully\", function () {",
+									"    pm.response.to.have.status(204);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1303,14 +1463,24 @@
 								"exec": [
 									"let utils = eval(globals.loadUtils);",
 									"",
-									"pm.variables.set(\"assignmentBody\", JSON.stringify(utils.buildAssignmentContent(pm.environment.get(\"firstOrderId\"), pm.environment.get(\"fullyProtectedUnitId\"))));"
+									"utils.sendGetRequest(\"/orders/composite-orders/\" + pm.environment.get(\"firstOrderId\"), (err, res) => {",
+									"    pm.test(\"Order is successfully retrieved and ready for updates\", () => {",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 200);",
+									"",
+									"        // Assign unit to an order",
+									"        let order = res.json();",
+									"        order.acqUnitIds.push(pm.environment.get(\"fullyProtectedUnitId\"));",
+									"        pm.variables.set(\"orderBody\", JSON.stringify(order));",
+									"    });",
+									"});"
 								],
 								"type": "text/javascript"
 							}
 						}
 					],
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "x-okapi-token",
@@ -1326,10 +1496,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{{assignmentBody}}\r\n"
+							"raw": "{{orderBody}}"
 						},
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/acquisitions-unit-assignments",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{firstOrderId}}",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -1337,7 +1507,8 @@
 							"port": "{{okapiport}}",
 							"path": [
 								"orders",
-								"acquisitions-unit-assignments"
+								"composite-orders",
+								"{{firstOrderId}}"
 							]
 						}
 					},
@@ -1361,9 +1532,9 @@
 							"script": {
 								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 								"exec": [
-									"pm.test(\"No orders found\", function () {",
+									"pm.test(\"Only one order should be found\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.totalRecords).to.eql(0);",
+									"    pm.expect(jsonData.totalRecords).to.eql(1);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1383,7 +1554,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders?query=approved==false or approved==true sortBy poNumber/sort.ascending",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -1392,9 +1563,15 @@
 							"path": [
 								"orders",
 								"composite-orders"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "approved==false or approved==true sortBy poNumber/sort.ascending"
+								}
 							]
 						},
-						"description": "GET /orders/composite-orders/id requests that return 200"
+						"description": "One order is now protected so user should not get it in the response"
 					},
 					"response": []
 				},
@@ -1416,9 +1593,9 @@
 							"script": {
 								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 								"exec": [
-									"pm.test(\"No lines found\", function () {",
+									"pm.test(\"2 lines should be found\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.totalRecords).to.eql(0);",
+									"    pm.expect(jsonData.totalRecords).to.eql(2);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1438,7 +1615,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines?query=approved==false or approved==true sortBy poLineNumber/sort.ascending",
 							"protocol": "{{protocol}}",
 							"host": [
 								"{{url}}"
@@ -1447,9 +1624,76 @@
 							"path": [
 								"orders",
 								"order-lines"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "approved==false or approved==true sortBy poLineNumber/sort.ascending"
+								}
 							]
 						},
 						"description": "GET /orders/orders/order-lines requests that return 200"
+					},
+					"response": []
+				},
+				{
+					"name": "Get list of pieces",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"4 pieces should be found\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.receivingHistory).to.be.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=cql.allRecords=1 sortBy title/sort.ascending",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"receiving-history"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "cql.allRecords=1 sortBy title/sort.ascending"
+								}
+							]
+						},
+						"description": "Open order is now protected"
 					},
 					"response": []
 				},
@@ -1532,9 +1776,9 @@
 							"script": {
 								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 								"exec": [
-									"pm.test(\"1 order found\", function () {",
+									"pm.test(\"2 orders should be found\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.totalRecords).to.eql(1);",
+									"    pm.expect(jsonData.totalRecords).to.eql(2);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1587,9 +1831,9 @@
 							"script": {
 								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 								"exec": [
-									"pm.test(\"2 lines found\", function () {",
+									"pm.test(\"3 lines should be found\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.totalRecords).to.eql(2);",
+									"    pm.expect(jsonData.totalRecords).to.eql(3);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -1618,6 +1862,61 @@
 							"path": [
 								"orders",
 								"order-lines"
+							]
+						},
+						"description": "GET /orders/orders/order-lines requests that return 200"
+					},
+					"response": []
+				},
+				{
+					"name": "Get list of pieces",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+								"exec": [
+									"pm.test(\"4 pieces should be found\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.totalRecords).to.eql(4);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"orders",
+								"receiving-history"
 							]
 						},
 						"description": "GET /orders/orders/order-lines requests that return 200"
@@ -1758,7 +2057,10 @@
 										"exec": [
 											"pm.test(\"Tenant deleted - Expected Created (204)\", () => {",
 											"    pm.response.to.have.status(204);",
-											"});"
+											"});",
+											"",
+											"// Remove all created variables",
+											"eval(globals.loadUtils).unsetTestVariables();"
 										],
 										"type": "text/javascript"
 									}
@@ -1948,6 +2250,7 @@
 					"        delete order.totalItems;",
 					"        delete order.poNumber;",
 					"        order.workflowStatus = \"Pending\";",
+					"        order.vendor = pm.environment.get(\"activeVendorId\");",
 					"",
 					"        for (var i = 0; i < order.compositePoLines.length; i++) {",
 					"            utils.preparePoLine(order.compositePoLines[i]);",
@@ -1963,8 +2266,18 @@
 					"        delete poLine.id;",
 					"        delete poLine.purchaseOrderId;",
 					"        delete poLine.receiptDate;",
+					"        delete poLine.fundDistribution;",
 					"        utils._deleteSubObjectsIds(poLine.alerts);",
 					"        utils._deleteSubObjectsIds(poLine.reportingCodes);",
+					"",
+					"        if (poLine.hasOwnProperty(\"eresource\")) {",
+					"            poLine.eresource.accessProvider = pm.environment.get(\"activeVendorId\");",
+					"            poLine.eresource.createInventory = \"None\";",
+					"        }",
+					"        if (poLine.hasOwnProperty(\"physical\")) {",
+					"            poLine.physical.createInventory = \"None\";",
+					"        }",
+					"",
 					"        return poLine;",
 					"    };",
 					"",
@@ -2061,8 +2374,15 @@
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
 					"",
+					"        pm.environment.unset(\"activeVendorId\");",
+					"        pm.environment.unset(\"enabledModules\");",
+					"        pm.environment.unset(\"firstOrderId\");",
+					"        pm.environment.unset(\"fullyProtectedUnitId\");",
+					"        pm.environment.unset(\"readOpenUnitId\");",
+					"        pm.environment.unset(\"secondOrderId\");",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"xokapitoken-admin\");",
+					"        pm.environment.unset(\"xokapitoken-testAdmin\");",
 					"    };",
 					"",
 					"    /**",
@@ -2093,19 +2413,19 @@
 	],
 	"variable": [
 		{
-			"id": "edc107df-31da-495e-9e15-cc8270429888",
+			"id": "21d2b5ad-736c-469d-bbfe-c75392a5ce46",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "e34f550c-13ed-4435-8160-331d85ce4b9d",
+			"id": "ae6aa0de-a6e0-42fc-b82e-1fb97486df82",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "11a904b7-ed5b-45ff-9401-a75adf0a6f71",
+			"id": "a1d767b6-a235-42c5-89ca-6c7c051e5332",
 			"key": "testTenant",
 			"value": "orders_acq_units_test",
 			"type": "string"
