@@ -1,8 +1,10 @@
-## Introduction
+# Introduction
 
 This is the API Tests (Postman Collection) for [mod-orders](https://github.com/folio-org/mod-orders/blob/master/README.md) module.
 
-## Additional information
+# Collections
+## [mod-orders](mod-orders.postman_collection.json)
+The collection contents set of tests to verify `orders` APIs and different workflows
 
 ### Collection structure
 
@@ -53,11 +55,43 @@ Variable | Initial Value | Description
 
 The functions and request body templates are defined in the `Pre-request Scripts` section of the collection. The main idea is to create reusable functions to not duplicate the same logic in the tests.
 
-### Issue tracker
+## [mod-orders-acq-units](mod-orders-acq-units.postman_collection.json)
+The collection contents set of tests to verify `orders` APIs behavior depending on acquisition unit(s) assignment
+
+### Collection structure
+Folder | Description  
+--- | --- 
+`Setup` | Contains various preparation requests/operations required for test runs
+`- Create tenant and enable modules` | Creates new tenant for API tests, enables required modules and creates admin user for this tenant
+`- Update configs` | Update PO Lines limit (based on variable with default value 10);
+`- Prepare required external data` | Prepares data in the external modules e.g. active vendor
+`- Create units` | Creates test acq units
+`- Create regular users` | Creates user with orders permissions
+`- Setup new tenant` | Create new tenant to verify tenant-specific logic
+`Positive Tests` | Contains various requests and tests to verify success cases
+`Cleanup` | Deletes test tenant
+
+### Collection variables
+
+Variable | Initial Value | Description  
+ --- | --- | --- 
+`mod-ordersResourcesURL` | https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources | Path to mod-orders test resources
+`poLines-limit` | 10 | Purchase Order Lines Limit to be used for configuration update
+`testTenant` | orders_acq_units_test | Tenant identifier which is going to be used (created) for API tests
+
+### Collection utility functions
+
+The functions and request body templates are defined in the `Pre-request Scripts` section of the collection.
+
+### Known limitations 
+Once the collection run is completed, the second one might fail. The reason is that when DB schemas are deleted for test tenant, some modules still keep open DB connection in pool for a minute (please refer to [AsyncConnectionPool.java](https://github.com/folio-org/vertx-mysql-postgresql-client/blob/release-connection-pool-3-5-1-folio-1/src/main/java/io/vertx/ext/asyncsql/impl/pool/AsyncConnectionPool.java#L52)). When test tenant is created again in less then 1 min after previous run, the module's connection from pool cannot access DB schema because it is recreated but the connection still tries to access "old" DB schema.  
+To avoid this issue, either wait for at least 1 minute after previous run completed or change `testTenant` collection level variable to some new value.
+
+# Issue tracker
 
 See project [MODORDERS](https://issues.folio.org/browse/MODORDERS) at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
 
-### Other documentation
+# Other documentation
 
  * [Conduct API testing](https://dev.folio.org/guides/api-testing/)
  * Other [modules](https://dev.folio.org/source-code/#server-side) are described, with further FOLIO Developer documentation at [dev.folio.org](https://dev.folio.org/)
