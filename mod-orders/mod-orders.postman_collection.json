@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "91645168-91a7-4697-94b0-c7bca44c2b14",
+		"_postman_id": "71bf872f-aa8b-461c-bc2d-4cc1f03ddea4",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -704,7 +704,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.test(\"Storing active vendor\", function () {",
+											"pm.test(\"Storing active location\", function () {",
 											"    pm.response.to.have.status(201);",
 											"    pm.response.to.be.withBody;",
 											"});",
@@ -1581,6 +1581,103 @@
 									]
 								},
 								"description": "Gets or creates if not yet exists test meterial type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Get or create ISBN Identifier Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"GET ISBN identifier types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.identifierTypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.identifierTypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
+											"});  ",
+											"",
+											"function useAlreadyExistingType(identifierType) {",
+											"    pm.test(\"ISBN Identifier Type already exists\", function () {",
+											"        pm.expect(identifierType.id).to.exist;",
+											"        rememberId(identifierType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const type = {",
+											"        \"id\": \"8261054f-be78-422d-bd51-4ed9f33c3422\",",
+											"        \"name\": \"ISBN\"",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/identifier-types\", type, (err, res) => {",
+											"        pm.test(\"Identifier Type created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            rememberId(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function rememberId(id) {",
+											"    pm.environment.set(\"isbnIdentifierTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/identifier-types?query=name==ISBN&limit=1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"identifier-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name==ISBN"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "Gets or creates ISBN identifier type to be used for ISBN validation"
 							},
 							"response": []
 						}
@@ -12696,6 +12793,188 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ISBN validation",
+					"item": [
+						{
+							"name": "Create Order with ISBN10",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Pending\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.compositePoLines.pop();",
+											"    let preparedOrder = utils.prepareOrder(order);",
+											"    ",
+											"    //set ISBN10",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productId = \"1-4028-9462-7\";",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productIdType = pm.environment.get(\"isbnIdentifierTypeId\");",
+											"    ",
+											"    pm.globals.set(\"order_isbn_validation\", JSON.stringify(preparedOrder));",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"isbnOrderId\", jsonData.id); ",
+											"    pm.globals.set(\"isbn_Order_content\", jsonData);",
+											"});",
+											"",
+											"pm.test(\"validate ISBN 13 is returned\", function () {",
+											"    pm.expect(jsonData.compositePoLines[0].details.productIds[0].productId).to.equal(\"9781402894626\");",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_isbn_validation}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status, with product ID having `ISBN10`, verify that it is converted to `ISBN13`"
+							},
+							"response": []
+						},
+						{
+							"name": "Update Order with ISBN10 - with hyphens",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"     let pendingOrder = pm.globals.get(\"isbn_Order_content\");",
+											"    ",
+											"    //set ISBN10",
+											"    pendingOrder.compositePoLines[0].details.productIds[0].productId = \"81-7525-766-0\";",
+											"    pendingOrder.compositePoLines[0].details.productIds[0].productIdType = pm.environment.get(\"isbnIdentifierTypeId\");",
+											"    ",
+											"    pm.globals.set(\"order_isbn_validation\", JSON.stringify(pendingOrder));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.isbnOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let order  = res.json();",
+											"    pm.test(\"ISBN value is modified to ISBN 13\", function () {",
+											"            pm.expect(order.compositePoLines[0].details.productIds[0].productId).to.equal(\"9788175257665\");",
+											"    });",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_isbn_validation}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{isbnOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{isbnOrderId}}"
+									]
+								},
+								"description": "Update a purchase order in `Pending` status, with product ID having `ISBN10`, verify that it is converted to `ISBN13`"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -17935,6 +18214,97 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ISBN validation",
+					"item": [
+						{
+							"name": "Create Order with invalid ISBN",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Pending\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.compositePoLines.pop();",
+											"    let preparedOrder = utils.prepareOrder(order);",
+											"    ",
+											"    //set ISBN10",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productId = \"1-4028-9462-7456\";",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productIdType = pm.environment.get(\"isbnIdentifierTypeId\");",
+											"    ",
+											"    pm.globals.set(\"order_isbn_validation\", JSON.stringify(preparedOrder));",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Expected errors verification\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"ISBN value 1-4028-9462-7456 is invalid\");",
+											"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_isbn_validation}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status, with product ID having `ISBN10`, verify that it is converted to `ISBN13`"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -22716,55 +23086,55 @@
 	],
 	"variable": [
 		{
-			"id": "f3a07cd4-00d2-4718-b084-9a77b97ceafb",
+			"id": "cf46496e-359e-4a02-9931-863af240ed03",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "aee07858-88ca-46ca-8664-b3a109cf5644",
+			"id": "0635a12a-9283-4e41-b8d2-898cbf78fd11",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "f99a89ff-ad5f-45f8-8109-68240f5d8520",
+			"id": "bb98c6f8-6f7b-4d94-816a-968338e17d17",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "7b305622-a740-4644-881b-c60e600b1d7d",
+			"id": "b85b0158-8d2d-45bf-9922-d96372344eba",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "5dabb817-d3f7-4dcd-843f-e79ba45a87db",
+			"id": "0366d388-2f57-4039-92cd-75aeb9183584",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "a985e04d-6b29-4a60-8850-f418caa62798",
+			"id": "09508858-3e6f-4c3a-acf2-4334196ee54d",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "eb0c6bc2-5ce0-4656-9984-86acce38b5fd",
+			"id": "ceb1c5c5-1a7f-4f58-935d-669d064c079b",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "a2911901-6f47-4949-b2a2-32f298fced1e",
+			"id": "f664661e-1aad-415e-bf6e-b3ad05d05de1",
 			"key": "finance-ledgerCode",
 			"value": "ordersApiTestsLedgerCode",
 			"type": "string"
 		},
 		{
-			"id": "9e8df62b-6137-4509-a4be-58a95a11e2a0",
+			"id": "2fd0a483-3f26-4bc5-9519-042b5cbf086f",
 			"key": "finance-fundCode",
 			"value": "ordersApiTestsFundCode",
 			"type": "string"
