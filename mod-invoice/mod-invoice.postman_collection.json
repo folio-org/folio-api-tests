@@ -4954,6 +4954,3180 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Prorated adjustments",
+					"item": [
+						{
+							"name": "Invoice without lines and one prorated adjustment",
+							"item": [
+								{
+									"name": "Create invoice with percentage adjustment prorated by line",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"",
+													"let invoice = utils.prepareInvoice(utils.buildInvoiceWithMinContent(\"MODINVOICE-54\"));",
+													"",
+													"invoice.note += \" - prorated adjustments\";",
+													"invoice.status = \"Open\";",
+													"",
+													"invoice.adjustments = [utils.buildAdjustmentObject(10, \"Percentage\", \"By line\")];",
+													"",
+													"pm.variables.set(\"invoiceContentBody\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsId\", invoice.id);",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"",
+													"    // The invoice has 1 prorated adjustment",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 1);",
+													"",
+													"    // validate totals are zero",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(0);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
+													"    pm.expect(invoice.total, \"total\").to.equal(0);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceContentBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice without lines yet",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"One adjustment and zero totals\", function() {",
+													"    // validate against schema",
+													"    utils.validateInvoice(invoice);",
+													"    // The invoice has 1 prorated adjustment",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 1);",
+													"",
+													"    // validate calculated totals",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(0);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
+													"    pm.expect(invoice.total, \"total\").to.equal(0);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add first line",
+							"item": [
+								{
+									"name": "Create invoice line with 1 non prorated adjustment",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Calculated totals\",function(){",
+													"    pm.environment.set(\"invoiceLine1WithProratedAdjustmentsId\", invoiceLine.id);",
+													"",
+													"    // The invoice line has one non prorated and one prorated adjustments.",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 1);",
+													"",
+													"    // 2 adjustments. Total adj amount is 10% of 100.15 plus 11.11",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(21.12);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(121.27);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"invoiceWithProratedAdjustmentsId\"));",
+													"",
+													"invoiceLine.subTotal = 100.15;",
+													"invoiceLine.quantity = 5;",
+													"invoiceLine.adjustments = [utils.buildAdjustmentObject(11.11)];",
+													"",
+													"pm.variables.set(\"invoiceLineContent\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLineContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										},
+										"description": "Tests the adjustments calculations \n1.with amount and Percentage \n2.only \"In addition to\" relationToTotal adjustments are included in the calculation"
+									},
+									"response": []
+								},
+								{
+									"name": "Verify invoice line has 2 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and one prorated adjustments.",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(2);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 1);",
+													"",
+													"    // 2 adjustments. Total adj amount is 10% of 100.15 plus 11.11",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(21.12);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(121.27);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with one line and one prorated adj",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Validate totals\", function() {",
+													"    // The invoice still has 1 prorated adjustment",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 1);",
+													"",
+													"    // validate calculated totals - same as in line",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(21.12);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoice.total, \"total\").to.equal(121.27);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add second prorated adjustment",
+							"item": [
+								{
+									"name": "Add fixed amount adjustment prorated by line",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = JSON.parse(pm.environment.get(\"invoiceWithProratedAdjustmentsContent\"));",
+													"invoice.adjustments.push(utils.buildAdjustmentObject(25, \"Amount\", \"By line\"));",
+													"",
+													"pm.variables.set(\"invoiceWithProratedAdjustmentsContent\", JSON.stringify(invoice));",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice updated\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceWithProratedAdjustmentsContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with one line and two prorated adj",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Validate fields\", function() {",
+													"    // The invoice has 2 prorated adjustment",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 2);",
+													"",
+													"    // validate calculated totals - same as in line",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(46.12);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoice.total, \"total\").to.equal(146.27);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify invoice line has 3 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and two prorated adjustments.",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(3);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 2);",
+													"",
+													"    // Total adj amount is 10% of 100.15 plus 11.11 plus 25",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(46.12);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(146.27);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add second line",
+							"item": [
+								{
+									"name": "Create invoice line without non prorated adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Calculated totals\",function(){",
+													"    pm.environment.set(\"invoiceLine2WithProratedAdjustmentsId\", invoiceLine.id);",
+													"",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(2);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 2);",
+													"",
+													"    // 2 adjustments. Total adj amount is 5% of 200.20 plus 12.5",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(22.51);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(222.71);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"invoiceWithProratedAdjustmentsId\"));",
+													"",
+													"invoiceLine.subTotal = 200.20;",
+													"invoiceLine.quantity = 15;",
+													"",
+													"pm.variables.set(\"invoiceLineContent\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLineContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										},
+										"description": "Tests the adjustments calculations \n1.with amount and Percentage \n2.only \"In addition to\" relationToTotal adjustments are included in the calculation"
+									},
+									"response": []
+								},
+								{
+									"name": "Verify second invoice line has 2 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(2);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 2);",
+													"",
+													"    // Total adj amount is 5% of 200.20 plus 12.5",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(22.51);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(222.71);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first invoice line has 3 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and two prorated adjustments.",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(3);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 2);",
+													"",
+													"    // Total adj amount is 11.11 plus 5% of 100.15 (10% devided by 2) plus 12.5 (25 devided by 2)",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(28.62);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(128.77);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with two lines and verify totals",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 2 prorated adjustments",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 2);",
+													"",
+													"    // validate calculated totals - just sum of props of 2 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(51.13);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(300.35);",
+													"    pm.expect(invoice.total, \"total\").to.equal(351.48);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add third prorated adjustment",
+							"item": [
+								{
+									"name": "Add fixed amount adjustment prorated by amount",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = JSON.parse(pm.environment.get(\"invoiceWithProratedAdjustmentsContent\"));",
+													"invoice.adjustments.push(utils.buildAdjustmentObject(50, \"Amount\", \"By amount\"));",
+													"",
+													"pm.variables.set(\"invoiceWithProratedAdjustmentsContent\", JSON.stringify(invoice));",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice updated\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceWithProratedAdjustmentsContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with two lines and verify totals - 3 prorated adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 3 prorated adjustments",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 3);",
+													"",
+													"    // validate calculated totals - just sum of props of 2 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(101.13);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(300.35);",
+													"    pm.expect(invoice.total, \"total\").to.equal(401.48);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first invoice line has 4 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and two prorated adjustments.",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 3);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 5% of 100.15 (10% devided by 2)",
+													"     * 3. 12.5 (25 devided by 2)",
+													"     * 4. 16.67 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(45.29);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(145.44);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify second invoice line has 3 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(3);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 3);",
+													"",
+													"    // 3 adjustments. Total adj amount is 5% of 200.20 (10% devided by 2) plus 12.5 (25 devided by 2) plus 33.33 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(55.84);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(256.04);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add fourth prorated adjustment",
+							"item": [
+								{
+									"name": "Add percentage adjustment prorated by amount",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = JSON.parse(pm.environment.get(\"invoiceWithProratedAdjustmentsContent\"));",
+													"invoice.adjustments.push(utils.buildAdjustmentObject(5, \"Percentage\", \"By amount\"));",
+													"",
+													"pm.variables.set(\"invoiceWithProratedAdjustmentsContent\", JSON.stringify(invoice));",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice updated\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceWithProratedAdjustmentsContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with two lines and verify totals - 4 prorated adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 4 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoice.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 4);",
+													"",
+													"    // validate calculated totals - just sum of props of 2 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(116.15);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(300.35);",
+													"    pm.expect(invoice.total, \"total\").to.equal(416.50);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first invoice line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and 4 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 4);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 5% of 100.15 (10% devided by 2)",
+													"     * 3. 12.5 (25 devided by 2)",
+													"     * 4. 16.67 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"     * 5. 5% of 100.15 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(50.30);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(150.45);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify second invoice line has 4 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 4);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 5% of 200.20 (10% devided by 2)",
+													"     * 2. 12.5 (25 devided by 2)",
+													"     * 3. 33.33 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"     * 4. 5% of 200.20 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(65.85);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(266.05);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add third line",
+							"item": [
+								{
+									"name": "Create invoice line without non prorated adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice Line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Calculated totals\",function(){",
+													"    pm.environment.set(\"invoiceLine3WithProratedAdjustmentsId\", invoiceLine.id);",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    invoiceLine.adjustments.forEach(adjustment => pm.expect(adjustment, \"adjustment must have id to invoice's adjustment\").to.exist);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.6549999999999993345 i.e. 3.3333...% of 199.65 (10% devided by 3) ",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 19.96 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"     * 4. 9.9825 i.e. 5% of 199.65 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(44.93);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(199.65);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(244.58);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = utils.buildInvoiceLineWithMinContent(pm.environment.get(\"invoiceWithProratedAdjustmentsId\"));",
+													"",
+													"invoiceLine.subTotal = 199.65;",
+													"invoiceLine.quantity = 30;",
+													"",
+													"pm.variables.set(\"invoiceLineContent\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLineContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines"
+											]
+										},
+										"description": "Tests the adjustments calculations \n1.with amount and Percentage \n2.only \"In addition to\" relationToTotal adjustments are included in the calculation"
+									},
+									"response": []
+								},
+								{
+									"name": "Verify third line has 4 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 4);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.6549999999999993345 i.e. 3.3333...% of 199.65 (10% devided by 3) ",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 19.96 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"     * 4. 9.9825 i.e. 5% of 199.65 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(44.93);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(199.65);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(244.58);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine3WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine3WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first invoice line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and 4 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 4);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 3.3383333333333329995 i.e. 3.333..% (10% devided by 3) of 100.15",
+													"     * 3. 8.33 (25 devided by 3)",
+													"     * 4. 10.02 (portion of 50 proportionate to the invoiceLine's (100.15) contribution to the invoice subTotal (500))",
+													"     * 5. 5.0075 i.e. 5% of 100.15 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(37.81);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(137.96);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify second invoice line has 4 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 4);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.673333333333332666 i.e. 3.33333...% of 200.20 (10% devided by 3)",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 20.02 (portion of 50 proportionate to the invoiceLine's (200.20) contribution to the invoice subTotal (500))",
+													"     * 4. 10.01 i.e. 5% of 200.20 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(45.03);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(245.23);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with three lines and verify totals",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 4 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoice.adjustments, \"adjustments size\").to.have.lengthOf(4);",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 4);",
+													"",
+													"    // validate calculated totals - just sum of props of 3 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(127.77);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(500);",
+													"    pm.expect(invoice.total, \"total\").to.equal(627.77);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Add fifth prorated adjustment",
+							"item": [
+								{
+									"name": "Add amount adjustment prorated by quantity",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = JSON.parse(pm.environment.get(\"invoiceWithProratedAdjustmentsContent\"));",
+													"invoice.adjustments.push(utils.buildAdjustmentObject(125, \"Amount\", \"By quantity\"));",
+													"",
+													"pm.variables.set(\"invoiceWithProratedAdjustmentsContent\", JSON.stringify(invoice));",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice updated\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceWithProratedAdjustmentsContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with three lines and verify totals",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoice.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 5);",
+													"",
+													"    // validate calculated totals - just sum of props of 3 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(252.77);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(500);",
+													"    pm.expect(invoice.total, \"total\").to.equal(752.77);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first line has 6 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceLine1WithProratedAdjustmentsContent\", pm.response.text());",
+													"",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(6);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 3.3383333333333329995 i.e. 3.333..% (10% devided by 3) of 100.15",
+													"     * 3. 8.33 (25 devided by 3)",
+													"     * 4. 10.02 (portion of 50 proportionate to the invoiceLine's (100.15) contribution to the invoice subTotal (500))",
+													"     * 5. 5.0075 i.e. 5% of 100.15 (5% adjustment is added to each line)",
+													"     * 6. 12.5 (portion of 125 proportionate to the invoiceLine's quantity (5) contribution to the total quantity (50))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(50.31);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(100.15);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(150.46);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify second invoice line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.673333333333332666 i.e. 3.33333...% of 200.20 (10% devided by 3)",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 20.02 (portion of 50 proportionate to the invoiceLine's (200.20) contribution to the invoice subTotal (500))",
+													"     * 4. 10.01 i.e. 5% of 200.20 (5% adjustment is added to each line)",
+													"     * 5. 37.5 (portion of 125 proportionate to the invoiceLine's quantity (15) contribution to the total quantity (50))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(82.53);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(282.73);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify third line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.6549999999999993345 i.e. 3.3333...% of 199.65 (10% devided by 3) ",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 19.96 (portion of 50 proportionate to the invoiceLine's contribution to the invoice subTotal)",
+													"     * 4. 9.9825 i.e. 5% of 199.65 (5% adjustment is added to each line)",
+													"     * 5. 75 (portion of 125 proportionate to the invoiceLine's quantity (30) contribution to the total quantity (50))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(119.93);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(199.65);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(319.58);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine3WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine3WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Make subTotal of  first line negative",
+							"item": [
+								{
+									"name": "Update first line",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = JSON.parse(pm.environment.get(\"invoiceLine1WithProratedAdjustmentsContent\"));",
+													"// Change subTotal of the line so grand subTotal should be zero",
+													"invoiceLine.subTotal = -399.85;",
+													"",
+													"pm.variables.set(\"invoiceLine1WithProratedAdjustmentsContent\", JSON.stringify(invoiceLine));",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice line is updated\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceLine1WithProratedAdjustmentsContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first line has 6 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(6);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 13.3283333333333320005 i.e. 3.333..% (10% devided by 3) of abs(-399.85)",
+													"     * 3. 8.33 (25 devided by 3)",
+													"     * 4. 25 (portion of 50 proportionate to the invoiceLine's abs(-399.85) contribution to the invoice subTotal by absolute value (799.7))",
+													"     * 5. 19.9925 i.e. 5% of abs(-399.85) (5% adjustment is added to each line)",
+													"     * 6. 12.5 (portion of 125 proportionate to the invoiceLine's quantity (5) contribution to the total quantity (50))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(90.26);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(-399.85);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(-309.59);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify second line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.673333333333332666 i.e. 3.33333...% of 200.20 (10% devided by 3)",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 12.52 (portion of 50 proportionate to the invoiceLine's (200.20) contribution to the invoice subTotal by absolute value (799.7))",
+													"     * 4. 10.01 i.e. 5% of 200.20 (5% adjustment is added to each line)",
+													"     * 5. 37.5 (portion of 125 proportionate to the invoiceLine's quantity (15) contribution to the total quantity (50))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(75.03);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(200.20);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(275.23);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify third line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 6.6549999999999993345 i.e. 3.3333...% of 199.65 (10% devided by 3) ",
+													"     * 2. 8.33 (25 devided by 3)",
+													"     * 3. 12.48 (portion of 50 proportionate to the invoiceLine's contribution (199.65) to the invoice subTotal by absolute value (799.7))",
+													"     * 4. 9.9825 i.e. 5% of 199.65 (5% adjustment is added to each line)",
+													"     * 5. 75 (portion of 125 proportionate to the invoiceLine's quantity (30) contribution to the total quantity (50))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(112.45);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(199.65);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(312.1);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine3WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine3WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with three lines and verify totals",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoice.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 5);",
+													"",
+													"    // validate calculated totals - just sum of props of 3 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(277.74);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
+													"    pm.expect(invoice.total, \"total\").to.equal(277.74);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Delete second line",
+							"item": [
+								{
+									"name": "Delete second line",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice line is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine2WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine2WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first line has 6 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(6);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 19.9925 i.e. 5% (10% devided by 2) of abs(-399.85)",
+													"     * 3. 12.5 (25 devided by 2)",
+													"     * 4. 33.35 (portion of 50 proportionate to the invoiceLine's abs(-399.85) contribution to the invoice subTotal by absolute value (599.5))",
+													"     * 5. 19.9925 i.e. 5% of abs(-399.85) (5% adjustment is added to each line)",
+													"     * 6. 17.86 (portion of 125 proportionate to the invoiceLine's quantity (5) contribution to the total quantity (35))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(114.8);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(-399.85);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(-285.05);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"// Wait for 1 second before sending request",
+													"setTimeout(function(){}, 1000);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify former \"third\" line has 5 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 5);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 9.9825 i.e. 5% of 199.65 (10% devided by 2) ",
+													"     * 2. 12.5 (25 devided by 2)",
+													"     * 3. 16.65 (portion of 50 proportionate to the invoiceLine's contribution (199.65) to the invoice subTotal by absolute value (599.5))",
+													"     * 4. 9.9825 i.e. 5% of 199.65 (5% adjustment is added to each line)",
+													"     * 5. 107.14 (portion of 125 proportionate to the invoiceLine's quantity (30) contribution to the total quantity (35))",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(156.26);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(199.65);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(355.91);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine3WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine3WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with two lines and verify totals",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoice.adjustments, \"adjustments size\").to.have.lengthOf(5);",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 5);",
+													"",
+													"    // validate calculated totals - just sum of props of 3 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(271.06);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(-200.20);",
+													"    pm.expect(invoice.total, \"total\").to.equal(70.86);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Remove prorated adjustments with amount value",
+							"item": [
+								{
+									"name": "Update invoice leaving only percentage prorated adjustments",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = JSON.parse(pm.environment.get(\"invoiceWithProratedAdjustmentsContent\"));",
+													"invoice.adjustments = invoice.adjustments.filter(adjustment => adjustment.type === \"Percentage\");",
+													"",
+													"pm.variables.set(\"invoiceWithProratedAdjustmentsContent\", JSON.stringify(invoice));",
+													"",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Invoice updated\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{invoiceWithProratedAdjustmentsContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get invoice with two lines and verify totals",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    pm.environment.set(\"invoiceWithProratedAdjustmentsContent\", pm.response.text());",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice has 5 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoice.adjustments, \"adjustments size\").to.have.lengthOf(2);",
+													"    utils.validateInvoiceProratedAdjustments(invoice, 2);",
+													"",
+													"    // validate calculated totals - just sum of props of 3 lines",
+													"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(71.06);",
+													"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(-200.20);",
+													"    pm.expect(invoice.total, \"total\").to.equal(-129.14);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{invoiceWithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify first line has 3 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has one non prorated and 2 prorated adjustments. Make sure all of them are correctly added",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(3);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 2);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 11.11 (non prorated adjustment)",
+													"     * 2. 19.9925 i.e. 5% (10% devided by 2) of abs(-399.85)",
+													"     * 3. 19.9925 i.e. 5% of abs(-399.85) (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(51.10);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(-399.85);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(-348.75);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"// Wait for 1 second before sending request",
+													"setTimeout(function(){}, 1000);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine1WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine1WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Verify former \"third\" line has 2 adjustments",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"    invoiceLine = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Verify totals\", function() {",
+													"    // The invoice line has only prorated adjustments",
+													"    pm.expect(invoiceLine.adjustments, \"adjustments size\").to.have.lengthOf(2);",
+													"    utils.validateInvoiceLineProratedAdjustments(invoiceLine, 2);",
+													"",
+													"    /*",
+													"     * Total adjustment amount is sum of following applied adjustments:",
+													"     * 1. 9.9825 i.e. 5% of 199.65 (10% devided by 2) ",
+													"     * 2. 9.9825 i.e. 5% of 199.65 (5% adjustment is added to each line)",
+													"     */",
+													"    pm.expect(invoiceLine.adjustmentsTotal, \"adjustmentsTotal\").to.equal(19.96);",
+													"    pm.expect(invoiceLine.subTotal, \"subTotal\").to.equal(199.65);",
+													"    pm.expect(invoiceLine.total, \"total\").to.equal(219.61);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLine3WithProratedAdjustmentsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoice-lines",
+												"{{invoiceLine3WithProratedAdjustmentsId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Delete  invoice with prorated adjustments",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    pm.environment.unset(\"invoiceWithProratedAdjustmentsId\");",
+											"    pm.environment.unset(\"invoiceWithProratedAdjustmentsContent\");",
+											"    pm.environment.unset(\"invoiceLine1WithProratedAdjustmentsId\");",
+											"    pm.environment.unset(\"invoiceLine1WithProratedAdjustmentsContent\");",
+											"    pm.environment.unset(\"invoiceLine2WithProratedAdjustmentsId\");",
+											"    pm.environment.unset(\"invoiceLine3WithProratedAdjustmentsId\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithProratedAdjustmentsId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceWithProratedAdjustmentsId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Vouchers",
 					"item": [
 						{
@@ -11660,6 +14834,8 @@
 					"",
 					"    utils.prepareInvoice = function(invoice) {",
 					"        delete invoice.id;",
+					"        delete invoice.approvedBy;",
+					"        delete invoice.approvalDate;",
 					"        delete invoice.folioInvoiceNo;",
 					"        delete invoice.subTotal;",
 					"",
@@ -11847,15 +15023,43 @@
 					"        };",
 					"    };",
 					"",
-					"    utils.buildAdjustmentObject = function(amount, type){",
+					"    utils.buildAdjustmentObject = function(amount, type, prorate){",
 					"        return {",
-					"            \"description\":\"adjustment API test\",",
+					"            \"description\": \"Adjustment for API test\",",
 					"            \"type\": type || \"Amount\",",
 					"            \"value\": amount || 10,",
-					"            \"prorate\":\"Not prorated\",",
+					"            \"prorate\": prorate || \"Not prorated\",",
 					"            \"relationToTotal\":\"In addition to\"",
 					"        };",
 					"    };",
+					"",
+					"    /* === BEGIN - Functions specific to prorated adjustments tests === */",
+					"    /**",
+					"     * Validates the invoice's prorated adjustments",
+					"     */",
+					"    utils.validateInvoiceProratedAdjustments = function(invoice, expectedQuantity) {",
+					"        let proAdjustments = invoice.adjustments.filter(adjustment => adjustment.prorate !== \"Not prorated\");",
+					"        pm.expect(proAdjustments, \"Adjustments size\").to.have.lengthOf(expectedQuantity);",
+					"        proAdjustments.forEach(adjustment => {",
+					"            pm.expect(adjustment.id, \"Adjustment must have `id` which is going to be referenced by invoice line's adjustment\").to.exist;",
+					"            pm.expect(adjustment.adjustmentId, \"`adjustmentId` is not expected\").to.not.exist;",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Validates the invoice line's prorated adjustments",
+					"     */",
+					"    utils.validateInvoiceLineProratedAdjustments = function(invoiceLine, expectedQuantity) {",
+					"        let invoiceAdjustmentIds = JSON.parse(pm.environment.get(\"invoiceWithProratedAdjustmentsContent\")).adjustments.map(adj => adj.id);",
+					"        let proAdjustments = invoiceLine.adjustments.filter(adjustment => adjustment.prorate !== \"Not prorated\");",
+					"",
+					"        pm.expect(proAdjustments, \"Adjustments size\").to.have.lengthOf(expectedQuantity);",
+					"        proAdjustments.forEach(adjustment => {",
+					"            pm.expect(adjustment.adjustmentId, \"Adjustment must have id to invoice's adjustment\").to.be.oneOf(invoiceAdjustmentIds);",
+					"            pm.expect(adjustment.id, \"Adjustment id is not expected - only invoice's prorated adjustment can have it\").to.not.exist;",
+					"        });",
+					"    };",
+					"    /* === END - Functions specific to prorated adjustments tests === */",
 					"",
 					"    utils.updateInvoiceStatus = function(invoice, status) {",
 					"        invoice.status = status;",
@@ -12217,14 +15421,14 @@
 					"    /**",
 					"     * Build invoice with minimal required fields.",
 					"     */",
-					"    utils.buildInvoiceWithMinContent = function() {",
+					"    utils.buildInvoiceWithMinContent = function(vendorInvoiceNo) {",
 					"        return {",
 					"            \"currency\": \"USD\",",
 					"            \"invoiceDate\": \"2018-07-20T00:00:00.000+0000\",",
 					"            \"paymentMethod\": \"EFT\",",
 					"            \"status\": \"Open\",",
 					"            \"source\": \"API\",",
-					"            \"vendorInvoiceNo\": \"YK75851\",",
+					"            \"vendorInvoiceNo\": vendorInvoiceNo || \"YK75851\",",
 					"            \"vendorId\": \"168f8a63-d612-406e-813f-c7527f241ac3\",",
 					"            \"note\": utils.INVOICE_NOTE",
 					"        };",
