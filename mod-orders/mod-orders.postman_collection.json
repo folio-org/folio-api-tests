@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "91645168-91a7-4697-94b0-c7bca44c2b14",
+		"_postman_id": "11e63090-4e94-4876-9a23-2036cb8b56c3",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -703,10 +703,14 @@
 										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"",
-											"pm.test(\"Storing active vendor\", function () {",
+											"// Most of the request will fail if there is a problem with location",
+											"postman.setNextRequest(null);",
+											"pm.test(\"Storing active location\", function () {",
 											"    pm.response.to.have.status(201);",
 											"    pm.response.to.be.withBody;",
+											"    ",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
 											"});",
 											"let newLocationId = pm.response.json().id;",
 											"pm.environment.set(\"newLocationId\", newLocationId);",
@@ -1581,6 +1585,103 @@
 									]
 								},
 								"description": "Gets or creates if not yet exists test meterial type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Get or create ISBN Identifier Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"GET ISBN identifier types response is ok\", function () {",
+											"    pm.response.to.be.ok;",
+											"    let jsonData = pm.response.json();",
+											"    if (jsonData.identifierTypes.length == 1) {",
+											"        useAlreadyExistingType(jsonData.identifierTypes[0]);",
+											"    } else {",
+											"        createNewType();",
+											"    }",
+											"});  ",
+											"",
+											"function useAlreadyExistingType(identifierType) {",
+											"    pm.test(\"ISBN Identifier Type already exists\", function () {",
+											"        pm.expect(identifierType.id).to.exist;",
+											"        rememberId(identifierType.id);",
+											"    });",
+											"}",
+											"",
+											"function createNewType() {",
+											"    const type = {",
+											"        \"id\": \"8261054f-be78-422d-bd51-4ed9f33c3422\",",
+											"        \"name\": \"ISBN\"",
+											"    };",
+											"",
+											"    eval(globals.loadUtils).postRequest(\"/identifier-types\", type, (err, res) => {",
+											"        pm.test(\"Identifier Type created\", () => {",
+											"            pm.expect(err).to.equal(null);",
+											"            pm.expect(res).to.have.property('code', 201);",
+											"            rememberId(res.json().id);",
+											"        });",
+											"    });",
+											"}",
+											"",
+											"function rememberId(id) {",
+											"    pm.environment.set(\"isbnIdentifierTypeId\", id);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/identifier-types?query=name==ISBN&limit=1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"identifier-types"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name==ISBN"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "Gets or creates ISBN identifier type to be used for ISBN validation"
 							},
 							"response": []
 						}
@@ -5812,7 +5913,7 @@
 											"jsonData.compositePoLines.forEach(line => utils.validatePaymentStatus(line, \"Partially Paid\"));",
 											"utils.verifyOrderCalculatedInfo(jsonData);",
 											"",
-											"pm.test(\"Each order has these optional fields\", function() {",
+											"pm.test(\"Each order has these fields\", function() {",
 											"    pm.expect(jsonData.id).to.exist;",
 											"    pm.globals.set(\"completeOpenOrderId\", jsonData.id); ",
 											"    pm.expect(jsonData.approved).to.exist;",
@@ -5820,6 +5921,9 @@
 											"    pm.expect(jsonData.notes).to.exist;",
 											"    pm.expect(jsonData.totalItems).to.equal(utils.getTotalResourcesQuantity(jsonData));",
 											"    pm.expect(jsonData.vendor).to.exist;",
+											"    // the approval details are set on OPEN if \"approval required\" is set to false",
+											"    pm.expect(jsonData.approvalDate).to.exist;",
+											"    pm.expect(jsonData.approvedById).to.exist;",
 											"  ",
 											"});",
 											"  utils.validateWorkflowStatus(jsonData);",
@@ -11381,7 +11485,8 @@
 											"}",
 											"",
 											"// Store current version of configs",
-											"pm.environment.set(\"current-orders-configs\", configs);"
+											"pm.environment.set(\"current-orders-configs\", configs);",
+											"pm.environment.set(\"temp-orders-configs\", configs);"
 										],
 										"type": "text/javascript"
 									}
@@ -12691,6 +12796,188 @@
 									]
 								},
 								"description": "GET /orders/composite-orders/id requests that return 200"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ISBN validation",
+					"item": [
+						{
+							"name": "Create Order with ISBN10",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Pending\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.compositePoLines.pop();",
+											"    let preparedOrder = utils.prepareOrder(order);",
+											"    ",
+											"    //set ISBN10",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productId = \"1-4028-9462-7\";",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productIdType = pm.environment.get(\"isbnIdentifierTypeId\");",
+											"    ",
+											"    pm.globals.set(\"order_isbn_validation\", JSON.stringify(preparedOrder));",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"isbnOrderId\", jsonData.id); ",
+											"    pm.globals.set(\"isbn_Order_content\", jsonData);",
+											"});",
+											"",
+											"pm.test(\"validate ISBN 13 is returned\", function () {",
+											"    pm.expect(jsonData.compositePoLines[0].details.productIds[0].productId).to.equal(\"9781402894626\");",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_isbn_validation}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status, with product ID having `ISBN10`, verify that it is converted to `ISBN13`"
+							},
+							"response": []
+						},
+						{
+							"name": "Update Order with ISBN10 - with hyphens",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"     let pendingOrder = pm.globals.get(\"isbn_Order_content\");",
+											"    ",
+											"    //set ISBN10",
+											"    pendingOrder.compositePoLines[0].details.productIds[0].productId = \"81-7525-766-0\";",
+											"    pendingOrder.compositePoLines[0].details.productIds[0].productIdType = pm.environment.get(\"isbnIdentifierTypeId\");",
+											"    ",
+											"    pm.globals.set(\"order_isbn_validation\", JSON.stringify(pendingOrder));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.isbnOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let order  = res.json();",
+											"    pm.test(\"ISBN value is modified to ISBN 13\", function () {",
+											"            pm.expect(order.compositePoLines[0].details.productIds[0].productId).to.equal(\"9788175257665\");",
+											"    });",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_isbn_validation}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{isbnOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{isbnOrderId}}"
+									]
+								},
+								"description": "Update a purchase order in `Pending` status, with product ID having `ISBN10`, verify that it is converted to `ISBN13`"
 							},
 							"response": []
 						}
@@ -17935,6 +18222,334 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "ISBN validation",
+					"item": [
+						{
+							"name": "Create Order with invalid ISBN",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function (err, res) {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Pending\";",
+											"    order = utils.deletePoNumber(order);",
+											"    order.compositePoLines.pop();",
+											"    let preparedOrder = utils.prepareOrder(order);",
+											"    ",
+											"    //set ISBN10",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productId = \"1-4028-9462-7456\";",
+											"    preparedOrder.compositePoLines[0].details.productIds[0].productIdType = pm.environment.get(\"isbnIdentifierTypeId\");",
+											"    ",
+											"    pm.globals.set(\"order_isbn_validation\", JSON.stringify(preparedOrder));",
+											"})"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Expected errors verification\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"ISBN value 1-4028-9462-7456 is invalid\");",
+											"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{order_isbn_validation}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status, with product ID having `ISBN10`, verify that it is converted to `ISBN13`"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Order Approval",
+					"item": [
+						{
+							"name": "Create order with \"approval required\" set to true",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/configurations/entries?query=module==ORDERS and configName==approvals\", (err, res) => {",
+											"  let configName = \"approvals\";",
+											"  let value = \"{\\\"isApprovalRequired\\\":true}\";",
+											"",
+											"  utils.updateOrCreateOrdersConfig(res.json().configs, configName, value);",
+											"});",
+											"",
+											"    ",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/order_without_po_lines.json\", (err, res) => {",
+											"    let order = res.json();",
+											"    order.poNumber = \"TSTAPPROVAL\";",
+											"    order.approved = false;",
+											"    order.workflowStatus = \"Open\";",
+											"    ",
+											"    order.id = \"00000001-1111-5555-8888-888888888888\";",
+											"        pm.globals.set(\"orderWithApprovalReqTrueId\", order.id); ",
+											"",
+											"    pm.variables.set(\"orderWithApprovalReqTrue\", JSON.stringify(order));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Expected errors verification\", function () {",
+											"    ",
+											"    pm.expect(pm.response.text()).to.include(\"Approval is required to open order\");",
+											"    pm.expect(pm.response.text()).to.include(\"orderApprovalRequired\");",
+											"    ",
+											"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderWithApprovalReqTrue}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "When the config \"approval required\" is set to true, an order must be approved for it to be transitioned to be open status"
+							},
+							"response": []
+						},
+						{
+							"name": "Re-login to fetch latest permissions",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a59f5097-d5cb-4e46-8bf6-3bddff268e65",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendDeleteRequest(\"/perms/users/\"+ globals.testData.user.id + \"/permissions/orders.item.approve?indexField=userId\", (err, res) => {",
+											"    pm.expect(res.code).to.eql(204);",
+											"});",
+											"",
+											"pm.variables.set(\"modInvoiceUserCreds\", JSON.stringify(globals.testData.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modInvoiceUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create order with user not having approval permission",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/order_without_po_lines.json\", (err, res) => {",
+											"    let order = res.json();",
+											"    order.poNumber = \"TST123APPROVAL1\";",
+											"    order.approved = true;",
+											"    ",
+											"    pm.variables.set(\"orderWithNoApprovalPerms\", JSON.stringify(order));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 403\", function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Expected errors verification\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"User does not have permissions to approve order - operation is restricted\");",
+											"    pm.expect(pm.response.text()).to.include(\"userHasNoApprovalPermission\");",
+											"    pm.response.to.have.jsonBody(\"total_records\", 1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderWithNoApprovalPerms}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "When the config \"approval required\" is set to true, an order must be approved in for it to be transitioned to be open status.\nIf the user doesn't have permissions to approve, the order must fail"
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			]
 		},
@@ -19305,14 +19920,16 @@
 					"name": "Delete orders for negative tests",
 					"item": [
 						{
-							"name": "Delete Pending order",
+							"name": "Delete Un Approved Order",
 							"event": [
 								{
 									"listen": "prerequest",
 									"script": {
 										"id": "638ecd6c-ee91-4b54-a37d-487714653b72",
 										"exec": [
-											""
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.deleteOrderRelatedRecords(globals.orderWithApprovalReqTrueId, true);"
 										],
 										"type": "text/javascript"
 									}
@@ -19354,7 +19971,7 @@
 									"raw": ""
 								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderWithApprovalReqTrueId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -19363,7 +19980,7 @@
 									"path": [
 										"orders",
 										"composite-orders",
-										"{{negativeTestsPendingOrderId}}"
+										"{{orderWithApprovalReqTrueId}}"
 									]
 								},
 								"description": "GET /orders/composite-orders/id requests that return 204"
@@ -19562,6 +20179,72 @@
 										"orders",
 										"composite-orders",
 										"{{negativeTestsFailedEncumbrances}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 204"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Pending order Copy",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "638ecd6c-ee91-4b54-a37d-487714653b72",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccbbd9a9-875f-4851-a9af-2df76cfc098e",
+										"exec": [
+											"pm.test(\"Order has been successfully deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"utils.verifyAllPieceRecordsDeleted();"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{negativeTestsPendingOrderId}}"
 									]
 								},
 								"description": "GET /orders/composite-orders/id requests that return 204"
@@ -20889,7 +21572,7 @@
 					"const testData = {",
 					"    // mod-configuration",
 					"    configs: {",
-					"        configNames: [\"poLines-limit\", \"inventory-instanceTypeCode\", \"inventory-instanceStatusCode\", \"inventory-loanTypeName\"],",
+					"        configNames: [\"poLines-limit\", \"inventory-instanceTypeCode\", \"inventory-instanceStatusCode\", \"inventory-loanTypeName\", \"approvals\"],",
 					"        bodyTemplate: {",
 					"            \"module\": \"ORDERS\",",
 					"            \"configName\": \"Test Config\",",
@@ -20914,6 +21597,29 @@
 					"        \"password\": \"mod-orders-user-password\"",
 					"    },",
 					"    permissions: {",
+					"        \"userId\": \"00000001-1111-5555-9999-999999999999\",",
+					"        \"permissions\": [",
+					"            \"orders.all\",",
+					"            \"orders.item.approve\",",
+					"            \"inventory-storage.items.collection.get\",",
+					"            \"inventory-storage.items.item.get\",",
+					"            \"orders-storage.pieces.collection.get\"",
+					"        ]",
+					"    },",
+					"    limited_user: {",
+					"        \"id\": \"00000001-1111-5555-8888-888888888888\",",
+					"        \"username\": \"mod-orders-user\",",
+					"        \"active\": true,",
+					"        \"personal\": {",
+					"            \"firstName\": \"Orders API Limited\",",
+					"            \"lastName\": \"Orders Tests Limited\"",
+					"        }",
+					"    },",
+					"    limited_credentials: {",
+					"        \"username\": \"mod-orders-user-limited\",",
+					"        \"password\": \"mod-orders-user-password\"",
+					"    },",
+					"    limited_permissions: {",
 					"        \"userId\": \"00000001-1111-5555-9999-999999999999\",",
 					"        \"permissions\": [",
 					"            \"orders.all\",",
@@ -21044,7 +21750,7 @@
 					"    };",
 					"",
 					"    /**",
-					"     * Sends GET request and uses passed handler to handle result",
+					"     * Sends request with specified Method and uses passed handler to handle result",
 					"     */",
 					"    utils.buildPmRequest = function(path, method, xokapitoken) {",
 					"        return {",
@@ -22649,6 +23355,8 @@
 					"        pm.environment.unset(\"uniqueProductId\");",
 					"        pm.environment.unset(\"ledgerId\");",
 					"        pm.environment.unset(\"fundId\");",
+					"         pm.environment.unset(\"temp-orders-configs\");",
+					"        pm.environment.unset(\"current-orders-configs\");",
 					"    };",
 					"",
 					"    /**",
@@ -22716,57 +23424,63 @@
 	],
 	"variable": [
 		{
-			"id": "f3a07cd4-00d2-4718-b084-9a77b97ceafb",
+			"id": "7ba1d86c-9a25-4cfd-85ab-ce903279071d",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "aee07858-88ca-46ca-8664-b3a109cf5644",
+			"id": "da4983d5-172e-4674-bbaa-ebc88a69c0f7",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "f99a89ff-ad5f-45f8-8109-68240f5d8520",
+			"id": "15559aa8-b117-405a-95a3-4321b0317d13",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "7b305622-a740-4644-881b-c60e600b1d7d",
+			"id": "8041ff5f-bff4-4894-9552-04c7dc0538f9",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "5dabb817-d3f7-4dcd-843f-e79ba45a87db",
+			"id": "34e426f6-984e-45d9-a07d-8bd592d9155e",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "a985e04d-6b29-4a60-8850-f418caa62798",
+			"id": "010eee67-b99f-4692-9e89-844a6f1c93bc",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "eb0c6bc2-5ce0-4656-9984-86acce38b5fd",
+			"id": "2a0ff733-f2ac-4d75-8ba3-a773fff596a3",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "a2911901-6f47-4949-b2a2-32f298fced1e",
+			"id": "44163560-ffc9-4faf-a1ae-3fdb945e6559",
 			"key": "finance-ledgerCode",
 			"value": "ordersApiTestsLedgerCode",
 			"type": "string"
 		},
 		{
-			"id": "9e8df62b-6137-4509-a4be-58a95a11e2a0",
+			"id": "96fed43d-dbe3-482a-9356-94b10f1659b3",
 			"key": "finance-fundCode",
 			"value": "ordersApiTestsFundCode",
+			"type": "string"
+		},
+		{
+			"id": "4ea7e680-3431-46df-8c29-171d3aca562b",
+			"key": "approvals",
+			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
 		}
 	]
