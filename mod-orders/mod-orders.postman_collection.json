@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "11e63090-4e94-4876-9a23-2036cb8b56c3",
+		"_postman_id": "232f1afb-9cbd-4f39-a127-d0b7e297045e",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -14862,100 +14862,7 @@
 						},
 						{
 							"name": "Encumbrance creation failure",
-							"item": [
-								{
-									"name": "Create Open order with lines pointing to unexisting fund",
-									"event": [
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"var uuid = require('uuid');",
-													"",
-													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
-													"    let order  = utils.prepareOrder(res.json());",
-													"    order.workflowStatus = \"Open\";",
-													"    // Setting specific PO Number to delete this order in cleanup",
-													"    order.poNumber = \"APIFAILENCUMB1\";",
-													"    order.compositePoLines.forEach(poLine => {",
-													"        poLine.receiptStatus = \"Receipt Not Required\";",
-													"        // Setting random fund id",
-													"        poLine.fundDistribution.forEach(distrib => distrib.fundId = uuid.v4());",
-													"    });",
-													"    pm.variables.set(\"order_with_unexisting_fund\", JSON.stringify(order));",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "test",
-											"script": {
-												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"",
-													"pm.test(\"Server error is expected: encumbranceCreationFailure\", function () {",
-													"    pm.response.to.have.status(500);",
-													"    let errors = pm.response.json().errors;",
-													"    pm.expect(errors).to.have.lengthOf(1);",
-													"    pm.expect(errors[0].code).to.equal(\"encumbranceCreationFailure\");",
-													"});",
-													"",
-													"utils.sendGetRequest(\"/orders/order-lines?query=poNumber==APIFAILENCUMB1\", function (err, res) {",
-													"    pm.expect(err).to.equal(null);",
-													"",
-													"    res.json().poLines.forEach(poLine => {",
-													"        utils.validateEncumbranceRecords(poLine, \"Pending\");",
-													"        pm.globals.set(\"negativeTestsFailedEncumbrances\", poLine.purchaseOrderId);",
-													"    });",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"name": "Content-Type",
-												"type": "text",
-												"value": "application/json"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{{order_with_unexisting_fund}}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"orders",
-												"composite-orders"
-											]
-										},
-										"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
-									},
-									"response": []
-								}
-							],
+							"item": [],
 							"_postman_isSubFolder": true
 						},
 						{
@@ -18166,6 +18073,7 @@
 											"",
 											"let line = utils.buildPoLineWithMinContent(null);",
 											"line.physical.createInventory = \"Instance\";",
+											"delete line.purchaseOrderId;",
 											"order.compositePoLines = [line];",
 											"order.vendor = pm.globals.get(\"testTenantActiveVendorId\");",
 											"pm.variables.set(\"orderBody\", JSON.stringify(order));"
@@ -18198,6 +18106,11 @@
 									{
 										"key": "x-okapi-tenant",
 										"value": "{{testTenant}}"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
 									}
 								],
 								"body": {
@@ -20120,72 +20033,6 @@
 							"response": []
 						},
 						{
-							"name": "Delete Pending order (encumbrance creation failure)",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"pm.test(\"Order has been successfully deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});",
-											"",
-											"let utils = eval(globals.loadUtils);",
-											"utils.verifyAllPieceRecordsDeleted();"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsFailedEncumbrances}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"orders",
-										"composite-orders",
-										"{{negativeTestsFailedEncumbrances}}"
-									]
-								},
-								"description": "GET /orders/composite-orders/id requests that return 204"
-							},
-							"response": []
-						},
-						{
 							"name": "Delete Pending order Copy",
 							"event": [
 								{
@@ -22051,7 +21898,8 @@
 					"     * Validate encumbrances for PO Line",
 					"     */",
 					"    utils.validateEncumbranceRecords = function(poLine, orderStatus) {",
-					"        let expectedQuantity = orderStatus === \"Pending\" ? 0 : poLine.fundDistribution.length;",
+					"//MODORDERS-298 Temporarily disable interaction with encumbrance APIs",
+					"/*        let expectedQuantity = orderStatus === \"Pending\" ? 0 : poLine.fundDistribution.length;",
 					"        utils.sendGetRequest(\"/finance-storage/encumbrances?limit=\" + expectedQuantity + \"&query=poLineId==\" + poLine.id, (err, res) => {",
 					"            let testMsg = expectedQuantity > 0 ? expectedQuantity : \"No\";",
 					"            pm.test(testMsg + \" encumbrance record(s) found for PO Line with number=\" + poLine.poLineNumber, function() {",
@@ -22061,7 +21909,7 @@
 					"                    res.json().encumbrances.forEach(encumbrance => utils.validateEncumbrance(encumbrance, poLine.fundDistribution));",
 					"                }",
 					"            });",
-					"        });",
+					"        });*/",
 					"    };",
 					"",
 					"    /**",
@@ -23424,61 +23272,61 @@
 	],
 	"variable": [
 		{
-			"id": "7ba1d86c-9a25-4cfd-85ab-ce903279071d",
+			"id": "d7e12280-3123-4061-8bbf-638956c23393",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "da4983d5-172e-4674-bbaa-ebc88a69c0f7",
+			"id": "31955458-cc96-47af-829c-5f7be79446b4",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "15559aa8-b117-405a-95a3-4321b0317d13",
+			"id": "65d3bf0b-2e0c-4435-aeb8-4e1dcea7971c",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "8041ff5f-bff4-4894-9552-04c7dc0538f9",
+			"id": "e4cd874b-1943-4f12-a1dd-19ce0185340e",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "34e426f6-984e-45d9-a07d-8bd592d9155e",
+			"id": "0703ad52-ccf8-49da-82df-1bdb26635fc4",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "010eee67-b99f-4692-9e89-844a6f1c93bc",
+			"id": "19f3d4d9-4978-4c31-9711-8aec195d47dd",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "2a0ff733-f2ac-4d75-8ba3-a773fff596a3",
+			"id": "bfa4d9d1-c5cc-4586-8c22-2a0e4ed465c9",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "44163560-ffc9-4faf-a1ae-3fdb945e6559",
+			"id": "c1fe4f1e-9398-451c-88f5-cd2bfbb391fe",
 			"key": "finance-ledgerCode",
 			"value": "ordersApiTestsLedgerCode",
 			"type": "string"
 		},
 		{
-			"id": "96fed43d-dbe3-482a-9356-94b10f1659b3",
+			"id": "09a24f67-3cc7-4342-b2db-a845dfa0e91f",
 			"key": "finance-fundCode",
 			"value": "ordersApiTestsFundCode",
 			"type": "string"
 		},
 		{
-			"id": "4ea7e680-3431-46df-8c29-171d3aca562b",
+			"id": "c3884d24-8b22-45bb-b7be-d921941bc435",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
