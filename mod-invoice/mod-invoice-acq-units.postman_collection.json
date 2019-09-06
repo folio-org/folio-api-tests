@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "8de4a2e3-5275-4138-a9b2-0e7bd48fcaca",
+		"_postman_id": "7eb9f23a-0c1a-4c49-b11b-42535062c879",
 		"name": "mod-invoice-acq-units",
 		"description": "Tests for mod-invoice module to verify acqusition unit protections",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -5224,6 +5224,858 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Test protectDelete",
+					"item": [
+						{
+							"name": "Create invoice with delete protect unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ed2a9c1-8c08-4771-831b-dce0f9f65d98",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"var invoice = utils.buildInvoiceWithMinContent();",
+											"invoice.acqUnitIds = [pm.environment.get(\"deleteProtectUnitId\")];",
+											"// order.acqUnitIds.push(pm.environment.get(\"fullyProtectedUnitId\"));",
+											"",
+											"pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "0ea9f553-9c22-49c4-86df-7636eb85bce3",
+										"exec": [
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    let jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.environment.set(\"invoiceForDeleteId\", jsonData.id); ",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								},
+								"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders"
+							},
+							"response": []
+						},
+						{
+							"name": "Create delete protect invoice line",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"minimal_content_line\", JSON.stringify(utils.buildInvoiceLineWithMinContent(pm.environment.get(\"invoiceForDeleteId\"))));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Line is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    let jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.environment.set(\"lineForDeleteId\", jsonData.id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{minimal_content_line}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+							},
+							"response": []
+						},
+						{
+							"name": "Try to delete \"delete protected\" line by not assigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Line deletion is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{lineForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{lineForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Try to delete \"delete protected\" invoice by not assigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Invoice deletion is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Try to delete \"delete protected\" line by user assigned to another units",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Line deletion is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{lineForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{lineForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Try to delete \"delete protected\" invoice by user assigned to another units",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Invoice deletion is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign \"delete protect\" and \"fully protected\" units to invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForDeleteId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"",
+											"        // Assign unit to an Invoice",
+											"        let invoice = res.json();",
+											"         invoice.acqUnitIds = [pm.environment.get(\"deleteProtectUnitId\"), pm.environment.get(\"fullyProtectedUnitId\")];",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));",
+											"    });",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete \"delete protected\" and \"fully protected\" line by user assigned to fully protected unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Line is deleted successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines/{{lineForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoice-lines",
+										"{{lineForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete invoice-line which does not exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Line not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"pm.variables.set(\"lineIdNotExists\", \"74f307e3-9e51-4eac-a667-d0a4bf112d5e\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines/{{lineIdNotExists}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoice-lines",
+										"{{lineIdNotExists}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete \"delete protected\" and \"fully protected\" invoice by user assigned to fully protected unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is deleted successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices/{{invoiceForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoices",
+										"{{invoiceForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create invoice with delete open unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "e0e31459-5477-4f72-a9d3-9cc347090686",
+										"exec": [
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    let jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.environment.set(\"invoiceForDeleteId\", jsonData.id); ",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "2e7a1cdc-439f-42da-bbea-3f23e6e474e9",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"var invoice = utils.buildInvoiceWithMinContent();",
+											"invoice.acqUnitIds = [pm.environment.get(\"deleteOpenUnitId\"), pm.environment.get(\"createOpenUnitId\")];",
+											"",
+											"pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								},
+								"description": "Create a purchase order in `Open` status based on `po_listed_print_monograph.json` from mod-orders"
+							},
+							"response": []
+						},
+						{
+							"name": "Create delete open invoice line",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"minimal_content_line\", JSON.stringify(utils.buildInvoiceLineWithMinContent(pm.environment.get(\"invoiceForDeleteId\"))));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Line is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    let jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.environment.set(\"lineForDeleteId\", jsonData.id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{minimal_content_line}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete \"delete open\" line by not assigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Line is deleted successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{lineForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{lineForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete \"delete open\" invoice by not assigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is deleted successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForDeleteId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForDeleteId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -5660,7 +6512,8 @@
 					"                \"userId\": \"00000001-1111-5555-9999-999999999999\",",
 					"                \"permissions\": [",
 					"                    \"invoice.all\",",
-					"                    \"invoices.acquisitions-units-assignments.assign\"",
+					"                    \"invoice-storage.invoices.item.delete\",",
+					"                    \"invoice-storage.invoice-lines.item.delete\"",
 					"                ]",
 					"            }",
 					"        },",
@@ -5678,17 +6531,16 @@
 					"                \"username\": \"mod-invoices-limited\",",
 					"                \"password\": \"mod-invoices-limited-password\"",
 					"            },",
-					"              permissions: {",
+					"            permissions: {",
 					"                \"userId\": \"00000002-1111-5555-9999-999999999999\",",
 					"                \"permissions\": [",
-					"                    \"invoice.invoices.collection.get\",",
 					"                    \"invoice.invoices.item.get\",",
-					"                    \"invoice.invoices.item.put\",",
 					"                    \"invoice.invoices.item.post\",",
-					"                    \"invoice.invoices.item.delete\",",
-					"                    \"invoice.invoice-lines.collection.get\",",
+					"                    \"invoice.invoices.item.put\",",
+					"                    \"invoice.invoices.item.delete\",                    ",
 					"                    \"invoice.invoice-lines.item.get\",",
 					"                    \"invoice.invoice-lines.item.put\",",
+					"                    \"invoice.invoice-lines.item.delete\",",
 					"                    \"invoice.invoice-lines.item.post\"",
 					"                ]",
 					"            }",
@@ -5936,13 +6788,13 @@
 	],
 	"variable": [
 		{
-			"id": "e6bbbb51-6f21-4470-8340-09987e76c812",
+			"id": "bc491de4-8f0c-4f42-a708-7a2d66f455c1",
 			"key": "mod-invoicesResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "cda4c244-5edb-4475-bbf7-ddf8642b5954",
+			"id": "fccc2b65-8b84-496d-ba1f-7acd3035f23e",
 			"key": "testTenant",
 			"value": "invoices_acq_units_test",
 			"type": "string"
