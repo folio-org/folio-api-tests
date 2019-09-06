@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "0d07d379-1eb2-44b3-afa8-2fee3f664cf2",
+		"_postman_id": "8de4a2e3-5275-4138-a9b2-0e7bd48fcaca",
 		"name": "mod-invoice-acq-units",
 		"description": "Tests for mod-invoice module to verify acqusition unit protections",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -4139,6 +4139,1091 @@
 						}
 					],
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Test protectUpdate",
+					"item": [
+						{
+							"name": "Create invoice with 1 line without acq units",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"invoiceBody\", JSON.stringify(utils.buildInvoiceWithMinContent()));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    let jsonData = pm.response.json();",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.environment.set(\"invoiceForUpdateId\", jsonData.id);",
+											"",
+											"    createLine(jsonData.id, (line) => pm.environment.set(\"invoiceLineForUpdate\", line.id));",
+											"});",
+											"",
+											"function createLine(invoiceId, bodyHandler) {",
+											"",
+											"    let invoiceLine = utils.buildInvoiceLineWithMinContent(invoiceId);",
+											"",
+											"    // Now creating invoice line",
+											"    utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
+											"        pm.test(\"Invoice line is created in storage\", () => {",
+											"          pm.expect(err).to.equal(null);",
+											"          pm.expect(response).to.have.property('code', 201);",
+											"          bodyHandler(response.json());",
+											"        });",
+											"    });",
+											"",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								},
+								"description": "Create a purchase invoice in `Open` status based on `po_listed_print_monograph.json` from mod-invoices"
+							},
+							"response": []
+						},
+						{
+							"name": "Update unsassigned invoice by  unassigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update unassigned invoice line by unassigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Line is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoice-lines/\" + pm.environment.get(\"invoiceLineForUpdate\"), (err, res) => {",
+											"    pm.test(\"Line is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"lineBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{lineBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineForUpdate}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{invoiceLineForUpdate}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign regular user to fully protected unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "92915c1b-6bde-4a36-9433-bc8f257b567d",
+										"exec": [
+											"var jsonData = {};",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    pm.environment.set(\"protectedUnitMembershipId\", jsonData.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "0f1a616f-fd38-4215-96ab-50a48a033dec",
+										"exec": [
+											"let body = {};",
+											"",
+											"body.userId = globals.testData.users.regular.user.id;",
+											"body.acquisitionsUnitId = pm.environment.get(\"fullyProtectedUnitId\");",
+											"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{membershipBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign regular user to update open unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "92915c1b-6bde-4a36-9433-bc8f257b567d",
+										"exec": [
+											"var jsonData = {};",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    pm.environment.set(\"updateOpenUnitMembershipId\", jsonData.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "0f1a616f-fd38-4215-96ab-50a48a033dec",
+										"exec": [
+											"let body = {};",
+											"",
+											"body.userId = globals.testData.users.regular.user.id;",
+											"body.acquisitionsUnitId = pm.environment.get(\"updateOpenUnitId\");",
+											"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{membershipBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units/memberships",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"acquisitions-units",
+										"memberships"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign update protected unit to invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"",
+											"        // Assign unit to an invoice",
+											"        let invoice = res.json();",
+											"        invoice.acqUnitIds = [pm.environment.get(\"updateProtectUnitId\")];",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Try to update \"update protected\" invoice by user assigned to another units",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Invoice update is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Try to update \"update protected\" line by user assigned to another units",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Line update is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoice-lines/\" + pm.environment.get(\"invoiceLineForUpdate\"), (err, res) => {",
+											"    pm.test(\"Line is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"lineBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{lineBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineForUpdate}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{invoiceLineForUpdate}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign fully protected unit to invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice-storage/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"",
+											"        // Assign unit to an invoice",
+											"        let invoice = res.json();",
+											"        invoice.acqUnitIds.push(pm.environment.get(\"fullyProtectedUnitId\"));",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update fully and update protected invoice by user assigned to fully protected unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update fully and update protected line by user assigned to fully protected unit",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Line is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoice-lines/\" + pm.environment.get(\"invoiceLineForUpdate\"), (err, res) => {",
+											"    pm.test(\"Line is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"lineBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{lineBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineForUpdate}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{invoiceLineForUpdate}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign \"delete protect\" and fully protected units to invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice-storage/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"",
+											"        // Assign unit to an invoice",
+											"        let invoice = res.json();",
+											"         invoice.acqUnitIds = [pm.environment.get(\"deleteProtectUnitId\"), pm.environment.get(\"fullyProtectedUnitId\")];",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice-storage",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update  invoice assigned to delete protect unit by not assigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Invoice is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update  line assigned to delete protect unit by not assigned user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"pm.test(\"Line is updated successfully\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoice-lines/\" + pm.environment.get(\"invoiceLineForUpdate\"), (err, res) => {",
+											"    pm.test(\"Line is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"        pm.variables.set(\"lineBody\", JSON.stringify(res.json()));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{lineBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoice-lines/{{invoiceLineForUpdate}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoice-lines",
+										"{{invoiceLineForUpdate}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update  order assigned changing acqUnitIds by user without acq-manage permission",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "22db4a42-1333-4e75-8b19-cd0a22abd3bf",
+										"exec": [
+											"var error = {};",
+											"pm.test(\"Invoice creation is restricted\", function () {",
+											"    pm.response.to.be.forbidden;",
+											"});",
+											"",
+											"pm.test(\"Response contains error with userHasNoAcqUnitsPermission code\", function () {",
+											"    pm.expect(pm.response.json().errors.length).to.eql(1);",
+											"    error = pm.response.json().errors[0];",
+											"    pm.expect(error.code).to.eql(\"userHasNoAcqUnitsPermission\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88e653b2-8f2e-4418-95a5-144412c51786",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"invoiceForUpdateId\"), (err, res) => {",
+											"    pm.test(\"Invoice is successfully retrieved and ready for updates\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res).to.have.property('code', 200);",
+											"",
+											"        // Change an invoice",
+											"        let invoice = res.json();",
+											"        invoice.acqUnitIds = [];",
+											"",
+											"        pm.variables.set(\"invoiceBody\", JSON.stringify(invoice));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-limitedUser}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceForUpdateId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceForUpdateId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -4575,9 +5660,7 @@
 					"                \"userId\": \"00000001-1111-5555-9999-999999999999\",",
 					"                \"permissions\": [",
 					"                    \"invoice.all\",",
-					"                    \"invoices.acquisitions-units-assignments.assign\",",
-					"                    \"acquisitions-units.units.collection.get\",",
-					"                    \"acquisitions-units.memberships.collection.get\"",
+					"                    \"invoices.acquisitions-units-assignments.assign\"",
 					"                ]",
 					"            }",
 					"        },",
@@ -4600,13 +5683,13 @@
 					"                \"permissions\": [",
 					"                    \"invoice.invoices.collection.get\",",
 					"                    \"invoice.invoices.item.get\",",
+					"                    \"invoice.invoices.item.put\",",
 					"                    \"invoice.invoices.item.post\",",
-					"                    \"invoice.invoice-lines.item.post\",",
 					"                    \"invoice.invoices.item.delete\",",
 					"                    \"invoice.invoice-lines.collection.get\",",
 					"                    \"invoice.invoice-lines.item.get\",",
-					"                    \"acquisitions-units.units.collection.get\",",
-					"                    \"acquisitions-units.memberships.collection.get\"",
+					"                    \"invoice.invoice-lines.item.put\",",
+					"                    \"invoice.invoice-lines.item.post\"",
 					"                ]",
 					"            }",
 					"        }",
@@ -4830,6 +5913,8 @@
 					"        pm.environment.unset(\"xokapitoken-limitedUesr\");",
 					"        pm.environment.unset(\"protectedUnitMembershipId\");",
 					"        pm.environment.unset(\"createProtectUnitId\");",
+					"        pm.environment.unset(\"unvoiceForUpdateId\");",
+					"        pm.environment.unset(\"unvoiceLineForUpdateId\");",
 					"    };",
 					"",
 					"    return utils;",
@@ -4851,13 +5936,13 @@
 	],
 	"variable": [
 		{
-			"id": "5911384d-e50d-42ce-9a96-a8eba185158d",
+			"id": "e6bbbb51-6f21-4470-8340-09987e76c812",
 			"key": "mod-invoicesResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "0f7088af-e5b5-4ecd-89b8-23edc992dc71",
+			"id": "cda4c244-5edb-4475-bbf7-ddf8642b5954",
 			"key": "testTenant",
 			"value": "invoices_acq_units_test",
 			"type": "string"
