@@ -39,13 +39,14 @@ The collection verifies `orders` APIs and different workflows
 Folder | Description  
 --- | --- 
 `Setup` | Contains various preparation requests/operations required for test runs
-`- Auth` | Authorize user
-`- Verify required modules enabled` | Validate that required modules enabled i.e. mod-orders, mod-configuration etc.
+`- Create tenant and enable modules` | Creates new tenant for API tests, enables required modules and creates admin user for this tenant
 `- Update configs` | Update PO Lines limit (based on variable with default value 10);
 `- Load all schemas for validation` | Loads various schemas for validation
+`- Prepare global data` | Prepares data like `institution`, `campus` etc.
 `- Prepare vendors` | Prepares active and inactive vendors
+`- Prepare finance data` | Prepares active and inactive vendors
 `- Prepare inventory types` | Prepares inventory types to not rely on reference data presence
-`- Setup new tenant` | Create new tenant to verify tenant-specific logic
+`- Create regular user` | Creates user with `acquisitions-units` permissions only
 `Positive Tests` | Contains various requests and tests to verify success cases
 `- Empty Order` | Verifies that an order can be created and deleted without order lines
 `- Pending Order` | Verifies that an order in `Pending` status can be created. Verifies that existing PO Lines can be updated/deleted; new PO Lines can be added/updated/deleted.
@@ -61,6 +62,8 @@ Folder | Description
 `- Receiving History` | Verifies receiving history endpoint
 `- Create Inventory` | Various tests to verify order creation in `Open` status with different tenant configs
 `- Check-in` | Verifies that resources can be successfully checked-in for `Open` orders and item records updated in the Inventory.
+`- Check Order automatically changes workflowStatus` | Various tests to verify automatic workflow transition from Open to Closed based on different PO line's statuses
+`- ISBN validation` | ISBN numbers validation
 `Negative Tests` | Contains various requests and tests to verify expected negative cases e.g. validation of the request etc.
 `- Create Order for tests` | Create order and PO line with content required for negative tests
 `- Order` | Various requests and tests to verify expected negative cases for endpoints managing order 
@@ -73,11 +76,14 @@ Folder | Description
 
 Variable | Initial Value | Description  
  --- | --- | --- 
+`testTenant` | orders_api_tests | Tenant identifier which is going to be used (created) for API tests
 `mod-ordersResourcesURL` | https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources | Path to mod-orders test resources
 `poLines-limit` | 10 | Purchase Order Lines Limit to be used for configuration update
+`inventory-identifierTypeName` | ordersApiTestsIdentifierTypeName | Inventory identifier type name which is going to be used for PO Lines product type
 `inventory-instanceTypeCode` | ordersApiTestsInstanceTypeCode | Inventory instance type code which is going to be used for instance creation when order transits to `Open` status
 `inventory-instanceStatusCode` | ordersApiTestsInstanceStatusCode | Inventory instance status code which is going to be used for instance creation when order transits to `Open` status
 `inventory-loanTypeName` | ordersApiTestsLoanTypeName | Inventory loan type name which is going to be used for item creation when order transits to `Open` status
+`tenant.addresses` | `{"address": "sample address", "name": "sample name"}` | Tenant address
 
 ## [mod-orders-acq-units](mod-orders-acq-units.postman_collection.json)
 The collection verifies `orders` APIs behavior depending on acquisition unit(s) assignment
