@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "832c2899-ec69-42b9-ae6c-3ff56e3cc2f7",
+		"_postman_id": "6e6dc676-4119-4161-93ee-dbface137e49",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -9,10 +9,10 @@
 			"name": "Setup",
 			"item": [
 				{
-					"name": "Auth",
+					"name": "Create tenant and enable modules",
 					"item": [
 						{
-							"name": "Login by admin",
+							"name": "Login by existing admin",
 							"event": [
 								{
 									"listen": "test",
@@ -23,8 +23,7 @@
 											"    pm.response.to.have.status(201);",
 											"});",
 											"",
-											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));",
-											""
+											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));"
 										],
 										"type": "text/javascript"
 									}
@@ -60,22 +59,18 @@
 								}
 							},
 							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Verify required modules enabled",
-					"item": [
+						},
 						{
-							"name": "mod-invoices is deployed",
+							"name": "Create new tenant",
 							"event": [
 								{
 									"listen": "prerequest",
 									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
+										"id": "458e788d-f4f1-4a2e-bf7f-dce99511f09a",
 										"exec": [
-											""
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"tenantData\", JSON.stringify(globals.testData.tenant));"
 										],
 										"type": "text/javascript"
 									}
@@ -83,19 +78,14 @@
 								{
 									"listen": "test",
 									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
+										"id": "9b46996e-04ac-475d-8d3a-fe8947e8db87",
 										"exec": [
-											"var jsonData = {};",
+											"// In case the tenant was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
 											"",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    jsonData = pm.response.json();",
-											"});",
-											"",
-											"pm.test(\"modules exist\", function () {",
-											"    // In case there is no module no sense to run further requests",
-											"    postman.setNextRequest(null);",
-											"    pm.expect(jsonData).to.have.lengthOf.at.least(1);",
+											"pm.test(\"Tenant created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
 											"    postman.setNextRequest();",
 											"});"
 										],
@@ -104,23 +94,25 @@
 								}
 							],
 							"request": {
-								"method": "GET",
+								"method": "POST",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
-										"value": "application/json"
+										"value": "application/json",
+										"type": "text"
 									},
 									{
 										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-admin}}",
+										"type": "text"
 									}
 								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{tenantData}}"
+								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/modules?filter=mod-invoice",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -129,28 +121,36 @@
 									"path": [
 										"_",
 										"proxy",
-										"modules"
-									],
-									"query": [
-										{
-											"key": "filter",
-											"value": "mod-invoice"
-										}
+										"tenants"
 									]
-								},
-								"description": "Check if mod-invoices is deployed. If no module available, do not proceed to the next request."
+								}
 							},
 							"response": []
 						},
 						{
-							"name": "mod-configuration is deployed",
+							"name": "Enable modules for new tenant",
 							"event": [
 								{
 									"listen": "prerequest",
 									"script": {
-										"id": "98be8798-dde9-4048-a8f5-b1e0ae4de535",
+										"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
 										"exec": [
-											""
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.getModuleId(\"mod-invoice\", bodyHandler);",
+											"utils.getModuleId(\"mod-login\", bodyHandler);",
+											"utils.getModuleId(\"mod-permissions\", bodyHandler);",
+											"utils.getModuleId(\"mod-configuration\", bodyHandler);",
+											"",
+											"var modulesToEnable = [];",
+											"",
+											"function bodyHandler(moduleId) {",
+											"\tmodulesToEnable.push({",
+											"\t\t\"id\" : moduleId,",
+											"\t\t\"action\": \"enable\"",
+											"\t});",
+											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));",
+											"}"
 										],
 										"type": "text/javascript"
 									}
@@ -158,19 +158,15 @@
 								{
 									"listen": "test",
 									"script": {
-										"id": "d9c7eb4d-544c-4d6e-9e0a-d9d495065b37",
+										"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
 										"exec": [
-											"var jsonData = {};",
+											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.test(\"Status code is 200\", function () {",
+											"postman.setNextRequest(null);",
+											"pm.test(\"Enabled required modules\", function () {",
 											"    pm.response.to.have.status(200);",
-											"    jsonData = pm.response.json();",
-											"});",
-											"",
-											"pm.test(\"modules exist\", function () {",
-											"    // In case there is no module no sense to run further requests",
-											"    postman.setNextRequest(null);",
-											"    pm.expect(jsonData).to.have.lengthOf.at.least(1);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"enabledModules\", pm.response.json());",
 											"    postman.setNextRequest();",
 											"});"
 										],
@@ -179,23 +175,25 @@
 								}
 							],
 							"request": {
-								"method": "GET",
+								"method": "POST",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
+										"type": "text",
 										"value": "application/json"
 									},
 									{
 										"key": "x-okapi-token",
+										"type": "text",
 										"value": "{{xokapitoken-admin}}"
 									}
 								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modulesToEnable}}"
+								},
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/modules?filter=mod-configuration",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -204,20 +202,603 @@
 									"path": [
 										"_",
 										"proxy",
-										"modules"
-									],
-									"query": [
-										{
-											"key": "filter",
-											"value": "mod-configuration"
-										}
+										"tenants",
+										"{{testTenant}}",
+										"install"
 									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create admin user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.admin.user));"
+										],
+										"type": "text/javascript"
+									}
 								},
-								"description": "Check if mod-configuration is deployed. If no module available, do not proceed to the next request."
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create credentials for admin user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5542417e-4b64-431c-8b07-7f5b5e9179ff",
+										"exec": [
+											"pm.test(globals.testData.users.admin.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "de3203a8-0abe-4599-aee0-b34306d051de",
+										"exec": [
+											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.users.admin.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add all permissions to admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
+										"exec": [
+											"pm.test(globals.testData.users.admin.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "dded3598-c238-487d-b06c-721c60509cf4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let pmRq = {",
+											"    url: utils.buildOkapiUrl('/perms/permissions?length=1000&query=(subPermissions=\"\" NOT subPermissions ==/respectAccents []) and (cql.allRecords=1 NOT childOf <>/respectAccents [])'),",
+											"    method: \"GET\",",
+											"    header: {\"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")}",
+											"};",
+											"pm.sendRequest(pmRq, (err, res) => {",
+											"    let userPermissions = globals.testData.users.admin.permissions;",
+											"    userPermissions.permissions = res.json().permissions.map(perm => perm.permissionName);",
+											"    pm.variables.set(\"userPermissions\", JSON.stringify(userPermissions));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userPermissions}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Enable mod-authtoken for new tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.getModuleId(\"mod-authtoken\", bodyHandler);",
+											"",
+											"var modulesToEnable = [];",
+											"",
+											"function bodyHandler(moduleId) {",
+											"\tmodulesToEnable.push({",
+											"\t\t\"id\" : moduleId,",
+											"\t\t\"action\": \"enable\"",
+											"\t});",
+											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"postman.setNextRequest(null);",
+											"pm.test(\"Enabled mod-finance with all dependencies\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"enabledModules\", pm.response.json());",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-admin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modulesToEnable}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}",
+										"install"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login by new admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"// In case the new user cannot be logged in no sense to run further tests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken-testAdmin\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a59f5097-d5cb-4e46-8bf6-3bddff268e65",
+										"exec": [
+											"pm.variables.set(\"newUserCreds\", JSON.stringify(globals.testData.users.admin.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{testTenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{newUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
 							},
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Create regular user",
+					"item": [
+						{
+							"name": "Create user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.regular.user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create credentials for user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5542417e-4b64-431c-8b07-7f5b5e9179ff",
+										"exec": [
+											"pm.test(globals.testData.users.regular.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "de3203a8-0abe-4599-aee0-b34306d051de",
+										"exec": [
+											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.users.regular.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add invoice permissions to user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
+										"exec": [
+											"pm.test(globals.testData.users.regular.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "dded3598-c238-487d-b06c-721c60509cf4",
+										"exec": [
+											"pm.variables.set(\"userPermissions\", JSON.stringify(globals.testData.users.regular.permissions));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userPermissions}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login by new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"// In case the new user cannot be logged in no sense to run further tests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a59f5097-d5cb-4e46-8bf6-3bddff268e65",
+										"exec": [
+											"pm.variables.set(\"newUserCreds\", JSON.stringify(globals.testData.users.regular.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{testTenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{newUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -274,7 +855,7 @@
 									{
 										"key": "x-okapi-token",
 										"type": "text",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-testAdmin}}"
 									}
 								],
 								"url": {
@@ -350,7 +931,7 @@
 									{
 										"key": "x-okapi-token",
 										"type": "text",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-testAdmin}}"
 									}
 								],
 								"url": {
@@ -397,6 +978,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -440,9 +1022,9 @@
 											"\r",
 											"function fetchSchema(path) {\r",
 											"    let getRequest = buildGetSchemaRequest(path);\r",
+											"\r",
 											"    return new Promise((resolve, reject) => {\r",
 											"        pm.sendRequest(getRequest, (err, response) => {\r",
-											"\r",
 											"            if (!err) {\r",
 											"                if (response.code === 200) {\r",
 											"                    let content = replaceResponseRefWithName(response.text());\r",
@@ -488,12 +1070,12 @@
 											"let utils = eval(globals.loadUtils);\r",
 											"const moduleName = 'mod-invoice';\r",
 											"\r",
-											"utils.sendGetRequest('/_/proxy/tenants/' + pm.variables.get(\"xokapitenant\") + '/interfaces/_jsonSchemas', (err, response) => {\r",
-											"    pm.test(\"jsonSchemas provided by \" + moduleName, function () {\r",
+											"pm.sendRequest(utils.buildOkapiUrl(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\") + \"/interfaces/_jsonSchemas\"), (err, response) => {\r",
+											"    pm.test(\"jsonSchemas provided by \" + moduleName, function() {\r",
 											"        pm.expect(err).to.equal(null);\r",
 											"        pm.expect(response.text()).to.include(moduleName);\r",
 											"        let moduleId = response.json().map(element => element.id).filter(modId => modId.includes(moduleName))[0];\r",
-											"    \tpm.variables.set('modInvoiceId', moduleId);\r",
+											"        pm.variables.set('modInvoiceId', moduleId);\r",
 											"    });\r",
 											"});"
 										],
@@ -512,7 +1094,7 @@
 									{
 										"key": "X-Okapi-Tenant",
 										"type": "text",
-										"value": "{{xokapitenant}}"
+										"value": "{{testTenant}}"
 									}
 								],
 								"url": {
@@ -553,6 +1135,267 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Prepare inventory data",
+					"item": [
+						{
+							"name": "Identifier Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"Record is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"identifierTypeId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"id\": \"6d6f642d-0010-1111-aaaa-6f7264657273\",\r\n  \"name\": \"{{inventory-identifierTypeName}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/identifier-types",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"identifier-types"
+									]
+								},
+								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "ISBN Identifier Type",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"Record is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"isbnIdentifierTypeId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"id\": \"8261054f-be78-422d-bd51-4ed9f33c3422\",\r\n  \"name\": \"ISBN\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/identifier-types",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"identifier-types"
+									]
+								},
+								"description": "Gets or creates ISBN identifier type to be used for ISBN validation"
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Prepare finance data",
+					"item": [
+						{
+							"name": "Ledger",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"Ledger is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"ledgerId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n\t\"id\": \"5e4fbdab-f1b1-4be8-9c33-d3c41ec9a695\",\r\n\t\"code\": \"TST-LDG\",\r\n\t\"ledgerStatus\": \"Active\",\r\n\t\"name\": \"Test ledger\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/ledgers",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance-storage",
+										"ledgers"
+									]
+								},
+								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Fund",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"Fund is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"fundId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"code\": \"TST-FND\",\r\n  \"description\": \"Fund for orders API Tests\",\r\n  \"externalAccountNo\": \"1111111111111111111111111\",\r\n  \"fundStatus\": \"Active\",\r\n  \"ledgerId\": \"{{ledgerId}}\",\r\n  \"name\": \"Fund for orders API Tests\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/funds",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance-storage",
+										"funds"
+									]
+								},
+								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -608,10 +1451,6 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
 										"name": "Content-Type",
 										"type": "text",
@@ -619,7 +1458,7 @@
 									},
 									{
 										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-testAdmin}}"
 									}
 								],
 								"body": {
@@ -643,520 +1482,11 @@
 							"response": []
 						}
 					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Prepare finance data",
-					"item": [
-						{
-							"name": "Get or create ledger",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
-										"exec": [
-											"pm.test(\"GET ledger response is ok\", function () {",
-											"    pm.response.to.be.ok;",
-											"    let jsonData = pm.response.json();",
-											"    if (jsonData.ledgers.length == 1) {",
-											"        useAlreadyExistingType(jsonData.ledgers[0]);",
-											"    } else {",
-											"        createNewRecord();",
-											"    }",
-											"});  ",
-											"",
-											"function useAlreadyExistingType(identifierType) {",
-											"    pm.test(\"Ledger already exists\", function () {",
-											"        pm.expect(identifierType.id).to.exist;",
-											"        rememberId(identifierType.id);",
-											"    });",
-											"}",
-											"",
-											"function createNewRecord() {",
-											"    const type = {",
-											"        \"name\": \"Ledger for invoicing API Tests\",",
-											"        \"code\": pm.variables.get(\"finance-ledgerCode\"),",
-											"        \"description\": \"Ledger for invoicing API Tests\",",
-											"        \"ledgerStatus\": \"Active\"",
-											"    };",
-											"",
-											"    eval(globals.loadUtils).sendPostRequest(\"/finance-storage/ledgers\", type, (err, res) => {",
-											"        pm.test(\"Ledger created\", () => {",
-											"            pm.expect(err).to.equal(null);",
-											"            pm.expect(res).to.have.property('code', 201);",
-											"            rememberId(res.json().id);",
-											"        });",
-											"    });",
-											"}",
-											"",
-											"function rememberId(id) {",
-											"    pm.environment.set(\"ledgerId\", id);",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/ledgers?query=code=={{finance-ledgerCode}}&limit=1",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance-storage",
-										"ledgers"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "code=={{finance-ledgerCode}}"
-										},
-										{
-											"key": "limit",
-											"value": "1"
-										}
-									]
-								},
-								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
-							},
-							"response": []
-						},
-						{
-							"name": "Get or create fund",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
-										"exec": [
-											"pm.test(\"GET funds response is ok\", function () {",
-											"    pm.response.to.be.ok;",
-											"    let jsonData = pm.response.json();",
-											"    if (jsonData.funds.length == 1) {",
-											"        useAlreadyExistingType(jsonData.funds[0]);",
-											"    } else {",
-											"        createNewRecord();",
-											"    }",
-											"});  ",
-											"",
-											"function useAlreadyExistingType(identifierType) {",
-											"    pm.test(\"Fund already exists\", function () {",
-											"        pm.expect(identifierType.id).to.exist;",
-											"        rememberId(identifierType.id);",
-											"    });",
-											"}",
-											"",
-											"function createNewRecord() {",
-											"    const type = {",
-											"      \"code\": pm.variables.get(\"finance-fundCode\"),",
-											"      \"description\": \"Fund for invoicing API Tests\",",
-											"      \"externalAccountNo\": \"11111122211111111\",",
-											"      \"fundStatus\": \"Active\",",
-											"      \"ledgerId\": pm.variables.get(\"ledgerId\"),",
-											"      \"name\": \"Fund for invoicing API Tests\"",
-											"    };",
-											"",
-											"    eval(globals.loadUtils).sendPostRequest(\"/finance-storage/funds\", type, (err, res) => {",
-											"        pm.test(\"Fund created\", () => {",
-											"            pm.expect(err).to.equal(null);",
-											"            pm.expect(res).to.have.property('code', 201);",
-											"            rememberId(res.json().id);",
-											"        });",
-											"    });",
-											"}",
-											"",
-											"function rememberId(id) {",
-											"    pm.environment.set(\"fundId\", id);",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/funds?query=code=={{finance-fundCode}}&limit=1",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance-storage",
-										"funds"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "code=={{finance-fundCode}}"
-										},
-										{
-											"key": "limit",
-											"value": "1"
-										}
-									]
-								},
-								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Create user",
-					"item": [
-						{
-							"name": "Create new user",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"utils.sendGetRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
-											"    pm.test(\"Check if user for API Tests already exists\", () => {",
-											"        pm.expect(err).to.equal(null);",
-											"        pm.expect(res.code).to.be.oneOf([200, 404]);",
-											"        // If user already exists, check if this is for API Tests and delete it",
-											"        if (res.code === 200 && res.json().username) {",
-											"            utils.sendDeleteRequest(\"/users/\" + globals.testData.user.id, (err, res) => {",
-											"                pm.test(\"User '\" + globals.testData.user.username + \"' deleted\", () => {",
-											"                    pm.expect(res.code).to.eql(204);",
-											"                });",
-											"            });",
-											"        }",
-											"    });",
-											"});",
-											"",
-											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.user));"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
-										"exec": [
-											"// In case the user was not created no sense to run further requests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"User created - Expected Created (201)\", () => {",
-											"    pm.response.to.have.status(201);",
-											"",
-											"    // All is okay so running further requests",
-											"    postman.setNextRequest();",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "content-type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{userData}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"users"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create credentials for new user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "5542417e-4b64-431c-8b07-7f5b5e9179ff",
-										"exec": [
-											"pm.test(globals.testData.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "de3203a8-0abe-4599-aee0-b34306d051de",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + globals.testData.user.id, (err, res) => {",
-											"    // If user already has credentials and delete them to create fresh each time",
-											"    if (res.code === 200 && res.json().totalRecords > 0) {",
-											"        utils.sendDeleteRequest(\"/authn/credentials/\" + res.json().credentials[0].id, (err, res) => {",
-											"            pm.test(globals.testData.user.username + \" user's credentials deleted\", () => {",
-											"                pm.expect(res.code).to.eql(204);",
-											"            });",
-											"        });",
-											"    }",
-											"});",
-											"",
-											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.credentials));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "content-type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-tenant",
-										"type": "text",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{userCreds}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"authn",
-										"credentials"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Add only mod-invoice permissions",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
-										"exec": [
-											"pm.test(globals.testData.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "dded3598-c238-487d-b06c-721c60509cf4",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.user.id, (err, res) => {",
-											"    // If user already has permissions and delete them to create fresh each time",
-											"    if (res.code === 200 && res.json().totalRecords > 0) {",
-											"        utils.sendDeleteRequest(\"/perms/users/\" + res.json().permissionUsers[0].id, (err, res) => {",
-											"            pm.test(globals.testData.user.username + \" user's permissions deleted\", () => {",
-											"                pm.expect(res.code).to.eql(204);",
-											"            });",
-											"        });",
-											"    }",
-											"});",
-											"",
-											"pm.variables.set(\"orgsUserPermissions\", JSON.stringify(globals.testData.permissions));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "content-type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-tenant",
-										"type": "text",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{orgsUserPermissions}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"perms",
-										"users"
-									]
-								},
-								"description": "Adding all mod-invoice permissions and as vouchers do not have POST endpoints, adding \"voucher-storage.vouchers.item.post\" and \"voucher-storage.vouchers.item.delete\" permission to test voucher GET endpoint and cleanup"
-							},
-							"response": []
-						},
-						{
-							"name": "Login by new user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"// In case the new user cannot be logged in no sense to run further tests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"Status code is 201\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    // All is okay so running further requests",
-											"    postman.setNextRequest();",
-											"});",
-											"",
-											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));",
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "a59f5097-d5cb-4e46-8bf6-3bddff268e65",
-										"exec": [
-											"pm.variables.set(\"modInvoiceUserCreds\", JSON.stringify(globals.testData.credentials));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "x-okapi-tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{modInvoiceUserCreds}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"authn",
-										"login"
-									]
-								}
-							},
-							"response": []
-						}
-					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "Positive Tests",
@@ -1292,10 +1622,6 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
 												"key": "Content-Type",
 												"name": "Content-Type",
 												"type": "text",
@@ -1398,6 +1724,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -1615,6 +1942,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -1830,6 +2158,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -2014,10 +2343,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -2075,10 +2400,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -2140,10 +2461,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -2208,10 +2525,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -2275,10 +2588,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -2300,6 +2609,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -2421,10 +2731,6 @@
 								"method": "PUT",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
 										"name": "Content-Type",
 										"type": "text",
@@ -2480,6 +2786,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -2604,14 +2911,6 @@
 										"method": "GET",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
-											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
 											}
@@ -2670,14 +2969,6 @@
 									"request": {
 										"method": "GET",
 										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
@@ -2742,14 +3033,6 @@
 									"request": {
 										"method": "GET",
 										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
@@ -2904,6 +3187,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -3227,10 +3511,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"body": {
@@ -3255,6 +3535,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						}
 					],
@@ -3281,6 +3562,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -4952,6 +5234,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -5112,6 +5395,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -5335,6 +5619,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -5540,6 +5825,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -5830,6 +6116,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -6108,6 +6395,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -6394,6 +6682,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -6775,6 +7064,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -7139,6 +7429,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -7502,6 +7793,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -7539,10 +7831,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -7780,6 +8068,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -8063,6 +8352,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -8126,6 +8416,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -8190,10 +8481,6 @@
 									{
 										"key": "x-okapi-token",
 										"value": "{{xokapitoken}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
 									}
 								],
 								"body": {
@@ -8263,10 +8550,6 @@
 									{
 										"key": "x-okapi-token",
 										"value": "{{xokapitoken}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
 									}
 								],
 								"body": {
@@ -8319,6 +8602,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -8378,14 +8662,6 @@
 										"method": "GET",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
-											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
 											}
@@ -8441,14 +8717,6 @@
 									"request": {
 										"method": "GET",
 										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
@@ -8511,14 +8779,6 @@
 									"request": {
 										"method": "GET",
 										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											},
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
@@ -8591,16 +8851,13 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
 											},
 											{
 												"key": "Content-Type",
-												"value": "application/json"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
+												"value": "application/json",
+												"type": "text"
 											}
 										],
 										"body": {
@@ -8625,6 +8882,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						}
 					],
@@ -8651,6 +8909,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -8790,6 +9049,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -8912,6 +9172,7 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								},
 								{
@@ -8977,10 +9238,6 @@
 												"method": "PUT",
 												"header": [
 													{
-														"key": "X-Okapi-Tenant",
-														"value": "{{xokapitenant}}"
-													},
-													{
 														"key": "Content-Type",
 														"name": "Content-Type",
 														"type": "text",
@@ -9012,6 +9269,7 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								},
 								{
@@ -9079,10 +9337,6 @@
 												"method": "PUT",
 												"header": [
 													{
-														"key": "X-Okapi-Tenant",
-														"value": "{{xokapitenant}}"
-													},
-													{
 														"key": "Content-Type",
 														"name": "Content-Type",
 														"type": "text",
@@ -9114,9 +9368,11 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -9174,7 +9430,7 @@
 													{
 														"key": "x-okapi-token",
 														"type": "text",
-														"value": "{{xokapitoken-admin}}"
+														"value": "{{xokapitoken-testAdmin}}"
 													}
 												],
 												"url": {
@@ -9199,6 +9455,7 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								},
 								{
@@ -9309,6 +9566,7 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								},
 								{
@@ -9374,10 +9632,6 @@
 												"method": "PUT",
 												"header": [
 													{
-														"key": "X-Okapi-Tenant",
-														"value": "{{xokapitenant}}"
-													},
-													{
 														"key": "Content-Type",
 														"name": "Content-Type",
 														"type": "text",
@@ -9409,6 +9663,7 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								},
 								{
@@ -9460,7 +9715,7 @@
 													{
 														"key": "x-okapi-token",
 														"type": "text",
-														"value": "{{xokapitoken-admin}}"
+														"value": "{{xokapitoken-testAdmin}}"
 													}
 												],
 												"url": {
@@ -9485,13 +9740,16 @@
 											"response": []
 										}
 									],
+									"protocolProfileBehavior": {},
 									"_postman_isSubFolder": true
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						}
 					],
 					"description": "This directory contains various tests related to transition of the invoices/vouchers through the workflow",
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				}
 			],
@@ -9516,7 +9774,8 @@
 						]
 					}
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "Negative Tests",
@@ -9626,6 +9885,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -9849,10 +10109,6 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
 											}
 										],
 										"url": {
@@ -9872,9 +10128,11 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -9943,6 +10201,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -9996,10 +10255,6 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
 												"key": "Content-Type",
 												"name": "Content-Type",
 												"type": "text",
@@ -10032,6 +10287,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -10480,10 +10736,6 @@
 								"method": "POST",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
 										"value": "application/json"
 									},
@@ -10802,10 +11054,6 @@
 								"method": "PUT",
 								"header": [
 									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
 										"key": "Content-Type",
 										"name": "Content-Type",
 										"type": "text",
@@ -10877,10 +11125,6 @@
 							"request": {
 								"method": "PUT",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
 									{
 										"key": "Content-Type",
 										"name": "Content-Type",
@@ -10955,10 +11199,6 @@
 							"request": {
 								"method": "PUT",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
 									{
 										"key": "Content-Type",
 										"name": "Content-Type",
@@ -11214,6 +11454,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -11267,10 +11508,6 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
 												"key": "Content-Type",
 												"name": "Content-Type",
 												"type": "text",
@@ -11303,6 +11540,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -11355,10 +11593,6 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
 									{
 										"key": "Content-Type",
 										"value": "application/json"
@@ -11679,14 +11913,6 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
 									{
 										"key": "x-okapi-token",
 										"value": "{{xokapitoken}}"
@@ -12044,7 +12270,7 @@
 								"header": [
 									{
 										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-testAdmin}}"
 									},
 									{
 										"key": "Content-Type",
@@ -12071,6 +12297,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -12109,14 +12336,6 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
 									{
 										"key": "x-okapi-token",
 										"value": "{{xokapitoken}}"
@@ -12186,6 +12405,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -12224,14 +12444,6 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
 									{
 										"key": "x-okapi-token",
 										"value": "{{xokapitoken}}"
@@ -12287,10 +12499,6 @@
 							"request": {
 								"method": "PUT",
 								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
 									{
 										"key": "Content-Type",
 										"value": "application/json"
@@ -12368,6 +12576,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -12508,6 +12717,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -12557,7 +12767,7 @@
 											{
 												"key": "x-okapi-token",
 												"type": "text",
-												"value": "{{xokapitoken-admin}}"
+												"value": "{{xokapitoken-testAdmin}}"
 											}
 										],
 										"url": {
@@ -12629,10 +12839,6 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
 												"key": "Content-Type",
 												"name": "Content-Type",
 												"type": "text",
@@ -12665,6 +12871,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -12718,10 +12925,6 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
 												"key": "Content-Type",
 												"name": "Content-Type",
 												"type": "text",
@@ -12753,6 +12956,7 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -12882,12 +13086,7 @@
 											},
 											{
 												"key": "x-okapi-token",
-												"value": "{{xokapitoken-admin}}",
-												"type": "text"
-											},
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}",
+												"value": "{{xokapitoken-testAdmin}}",
 												"type": "text"
 											}
 										],
@@ -12958,10 +13157,6 @@
 									"request": {
 										"method": "PUT",
 										"header": [
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
 											{
 												"key": "Content-Type",
 												"name": "Content-Type",
@@ -13038,12 +13233,7 @@
 											},
 											{
 												"key": "x-okapi-token",
-												"value": "{{xokapitoken-admin}}",
-												"type": "text"
-											},
-											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}",
+												"value": "{{xokapitoken-testAdmin}}",
 												"type": "text"
 											}
 										],
@@ -13107,10 +13297,6 @@
 										"method": "PUT",
 										"header": [
 											{
-												"key": "X-Okapi-Tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
 												"key": "Content-Type",
 												"name": "Content-Type",
 												"type": "text",
@@ -13164,6 +13350,7 @@
 									}
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						},
 						{
@@ -13363,1417 +13550,164 @@
 									"response": []
 								}
 							],
+							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "Cleanup",
 			"item": [
 				{
-					"name": "Delete Voucher Line",
-					"item": [
-						{
-							"name": "Delete  Voucher Line from storage",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Voucher Line is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/voucher-lines/{{voucherLineId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"voucher-storage",
-										"voucher-lines",
-										"{{voucherLineId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
+					"name": "Purge and disable all module for created tenant",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
-								"id": "ef2b027e-72f0-48ae-baf5-757c1cfe2a21",
-								"type": "text/javascript",
+								"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
 								"exec": [
-									""
-								]
+									"let utils = eval(globals.loadUtils);",
+									"pm.sendRequest(utils.buildOkapiUrl(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\") + \"/modules\"), (err, res) => {",
+									"    pm.test(\"Preparing request to disable modules\", () => {",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res.code).to.equal(200);",
+									"        let modulesToDisable = res.json();",
+									"        modulesToDisable.forEach(entry => entry.action = \"disable\");",
+									"",
+									"        console.log(modulesToDisable);",
+									"        pm.variables.set(\"modulesToDisable\", JSON.stringify(modulesToDisable));",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
-								"id": "dbcc12fb-0cc8-4852-8217-1d84933fd023",
-								"type": "text/javascript",
+								"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
 								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"",
+									"pm.test(\"Disable all modules for test tenant\", function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.be.withBody;",
+									"});",
+									"",
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
-					"_postman_isSubFolder": true
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Okapi-Token",
+								"value": "{{xokapitoken-admin}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{modulesToDisable}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install?purge=true",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testTenant}}",
+								"install"
+							],
+							"query": [
+								{
+									"key": "purge",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
 				},
 				{
-					"name": "Delete Vouchers",
-					"item": [
-						{
-							"name": "Delete  Voucher from storage",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Voucher is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher-storage/vouchers/{{voucherId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"voucher-storage",
-										"vouchers",
-										"{{voucherId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Delete invoices for positive tests",
-					"item": [
-						{
-							"name": "Delete  invoice with minimal content",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{minInvoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{minInvoiceId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete filter by invoice",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{filterInvoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{filterInvoiceId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invoice with 4 lines",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"    pm.environment.unset(\"workflow-invoiceWith4LinesId\");",
-											"    pm.environment.unset(\"workflow-invoiceWith4LinesContent\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											"eval(globals.loadUtils).deleteVouchersForInvoice(pm.variables.get(\"workflow-invoiceWith4LinesId\"));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{workflow-invoiceWith4LinesId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{workflow-invoiceWith4LinesId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invoice with 1 line",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"    pm.environment.unset(\"emptyConfigWorkflow-invoiceWith1LineId\");",
-											"    pm.environment.unset(\"emptyConfigWorkflow-invoiceWith1LineContent\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											"eval(globals.loadUtils).deleteVouchersForInvoice(pm.variables.get(\"emptyConfigWorkflow-invoiceWith1LineId\"));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{emptyConfigWorkflow-invoiceWith1LineId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{emptyConfigWorkflow-invoiceWith1LineId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete  invoice",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{invoiceId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
+					"name": "Delete test tenant",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
-								"id": "3576b999-c386-481e-8364-6f3c0b5523f2",
-								"type": "text/javascript",
+								"id": "458e788d-f4f1-4a2e-bf7f-dce99511f09a",
 								"exec": [
 									""
-								]
+								],
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
-								"id": "83dafb48-cc84-4d0b-abdb-8c5457beba28",
-								"type": "text/javascript",
+								"id": "9b46996e-04ac-475d-8d3a-fe8947e8db87",
 								"exec": [
-									""
-								]
+									"pm.test(\"Tenant deleted - Expected Created (204)\", () => {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"// Remove all created variables",
+									"eval(globals.loadUtils).unsetTestVariables();"
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Delete invoices for negative tests",
-					"item": [
-						{
-							"name": "Delete Negative Approved to Paid invoice",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeApprovedToPaidInvoice}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{negativeApprovedToPaidInvoice}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete Negative Reviewed to Approved invoice Copy",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeReviewedToApprovedInvoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{negativeReviewedToApprovedInvoiceId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete Invoice with locked total",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice line is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"    pm.environment.unset(\"negativeApprovedInvoiceWithLockedTotalId\");",
-											"    pm.environment.unset(\"negativeApprovedInvoiceWithLockedTotalContent\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeApprovedInvoiceWithLockedTotalId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{negativeApprovedInvoiceWithLockedTotalId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete Invoice with empty FundDistributions",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{InvoiceWithEmptyFundDistrosId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete Invoice with incompatible fields",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-										"exec": [
-											"pm.test(\"Invoice is deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{incompatibleFieldsInvoiceId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice",
-										"invoices",
-										"{{incompatibleFieldsInvoiceId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "ef2b027e-72f0-48ae-baf5-757c1cfe2a21",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken-admin}}",
+								"type": "text"
 							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
 						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "cd78a8af-536b-403b-8dda-d1f2a64c70c7",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"_",
+								"proxy",
+								"tenants",
+								"{{testTenant}}"
+							]
 						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Delete user with mod-invoice permissions only",
-					"item": [
-						{
-							"name": "Delete user's credentials",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "d4e68cd5-eca2-4427-ba8b-6f059a5fc130",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"utils.sendGetRequest(\"/authn/credentials?query=userId=\" + globals.testData.user.id, (err, res) => {",
-											"    // If user already has credentials and delete them to create fresh each time",
-											"    if (res.code === 200 && res.json().totalRecords > 0) {",
-											"        pm.variables.set(\"credentialsId\", res.json().credentials[0].id);",
-											"    }",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "1ff89363-4db6-40bc-a848-e7532b2a7bc0",
-										"exec": [
-											"let testFunc = pm.variables.get(\"credentialsId\") ? pm.test : pm.test.skip;",
-											"testFunc(\"Credentials deleted - Expected No Content (204)\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials/{{credentialsId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"authn",
-										"credentials",
-										"{{credentialsId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete user's permissions",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "234a882a-edd7-4bac-8bc2-7f89c8a7a713",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"utils.sendGetRequest(\"/perms/users?query=userId==\" + globals.testData.user.id, (err, res) => {",
-											"    // If user already has permissions and delete them to create fresh each time",
-											"    if (res.code === 200 && res.json().totalRecords > 0) {",
-											"        pm.variables.set(\"permissionsId\", res.json().permissionUsers[0].id);",
-											"    }",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "f74eb5c8-1652-480c-9fac-356b3a3ffc56",
-										"exec": [
-											"let testFunc = pm.variables.get(\"permissionsId\") ? pm.test : pm.test.skip;",
-											"testFunc(\"Permissions deleted - Expected No Content (204)\", function () {",
-											"    pm.response.to.have.status(204);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{permissionsId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"perms",
-										"users",
-										"{{permissionsId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete user",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "123459a0-b737-4767-a32c-1c5692b8d920",
-										"exec": [
-											"pm.variables.set(\"userId\", pm.globals.get(\"testData\").user.id);"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "ac493f0c-3e8c-4c07-94d2-6105617f0384",
-										"exec": [
-											"pm.test(\"User deleted - Expected No Content (204)\", () => pm.response.to.have.status(204));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "X-Okapi-Token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users/{{userId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"users",
-										"{{userId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "51550a77-35a8-45ab-bf74-f093a8202d42",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "0decf5ff-c87f-4041-a8cd-ef1a9f2003bd",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Verify Delete in Storage",
-					"item": [
-						{
-							"name": "Verify that invoices are deleted in storage",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"invoiceTestNote\", utils.INVOICE_NOTE);"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"pm.test(\"Verify that no invoices are found\", function () {",
-											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoices?query=note=\"{{invoiceTestNote}}\"",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"invoice-storage",
-										"invoices"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "note=\"{{invoiceTestNote}}\""
-										}
-									]
-								},
-								"description": "GET /invoice-storage/invoices returns a 404 after delete"
-							},
-							"response": []
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"id": "39a9eea1-1e0e-4ce0-879d-09fb42d4558d",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"id": "d3291b4b-85b4-427a-ba76-85228594cd62",
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Delete orders",
-					"item": [
-						{
-							"name": "Delete order with 2 lines",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"pm.test(\"Order has been successfully deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"    pm.globals.unset(\"completeOrderId\"); ",
-											"    pm.globals.unset(\"poLine1Id\");",
-											"    pm.globals.unset(\"poLine2Id\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "X-Okapi-Tenant",
-										"value": "{{xokapitenant}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{completeOrderId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"orders",
-										"composite-orders",
-										"{{completeOrderId}}"
-									]
-								},
-								"description": "GET /orders/composite-orders/id requests that return 204"
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Finance data",
-					"item": [
-						{
-							"name": "Delete fund",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"pm.test(\"Test fund deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"    pm.environment.unset(\"fundId\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/funds/{{fundId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance-storage",
-										"funds",
-										"{{fundId}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete ledger",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
-										"exec": [
-											"pm.test(\"Test ledger deleted\", function () {",
-											"    pm.response.to.have.status(204);",
-											"    pm.environment.unset(\"ledgerId\");",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": ""
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/ledgers/{{ledgerId}}",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance-storage",
-										"ledgers",
-										"{{ledgerId}}"
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
-				},
-				{
-					"name": "Revert configs",
-					"item": [
-						{
-							"name": "Get orders configs and revert",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "eed87d63-620c-49f8-9d98-6d9bc7400617",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"let currentConfigs;",
-											"pm.test(\"Storing current configs\", function() {",
-											"    pm.response.to.be.ok;",
-											"",
-											"    currentConfigs = pm.response.json().configs;",
-											"    console.log(\"Current configs: \", currentConfigs);",
-											"});",
-											"",
-											"let configsToProcess = globals.testData.ordersConfigs.configNames;",
-											"",
-											"let originalConfigs = pm.environment.get(\"mod-orders-configs\") ? JSON.parse(pm.environment.get(\"mod-orders-configs\")) : [];",
-											"for (var i = 0; i < configsToProcess.length; i++) {",
-											"    let configName = configsToProcess[i];",
-											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
-											"",
-											"    if (originalConfig) {",
-											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
-											"        utils.updateConfig(originalConfig);",
-											"    } else if (currentConfigs.length > 0) {",
-											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
-											"        utils.deleteConfig(configId);",
-											"    } else {",
-											"        console.log(\"The config cannot be reverted. Config name =\" + configName);",
-											"    }",
-											"}"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "1bfdef49-0a3f-494e-8ad5-c86b5b228a30",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==ORDERS",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"configurations",
-										"entries"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "module==ORDERS"
-										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get invoices configs and revert",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"let currentConfigs;",
-											"pm.test(\"Storing current configs\", function() {",
-											"    pm.response.to.be.ok;",
-											"",
-											"    currentConfigs = pm.response.json().configs;",
-											"    console.log(\"Current configs: \", currentConfigs);",
-											"});",
-											"",
-											"let configsToProcess = globals.testData.invoicesConfigs.configNames;",
-											"",
-											"let originalConfigs = pm.environment.get(\"mod-invoices-configs\") ? JSON.parse(pm.environment.get(\"mod-invoices-configs\")) : [];",
-											"for (var i = 0; i < configsToProcess.length; i++) {",
-											"    let configName = configsToProcess[i];",
-											"    let originalConfig = utils.getConfigByName(originalConfigs, configName);",
-											"",
-											"    if (originalConfig) {",
-											"        originalConfig.id = utils.getConfigByName(currentConfigs, configName).id;",
-											"        utils.updateConfig(originalConfig);",
-											"    } else if (currentConfigs.length > 0) {",
-											"        let configId = utils.getConfigByName(currentConfigs, configName).id;",
-											"        utils.deleteConfig(configId);",
-											"    } else {",
-											"        console.log(\"The config cannot be reverted. Config name =\" + configName);",
-											"    }",
-											"}",
-											"",
-											"// Remove all created variables",
-											"eval(globals.loadUtils).unsetTestVariables();"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-admin}}"
-									}
-								],
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/configurations/entries?query=module==INVOICE",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"configurations",
-										"entries"
-									],
-									"query": [
-										{
-											"key": "query",
-											"value": "module==INVOICE"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					],
-					"_postman_isSubFolder": true
+					},
+					"response": []
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		}
 	],
 	"event": [
@@ -14797,7 +13731,10 @@
 					"        }",
 					"    },",
 					"    ordersConfigs: {",
-					"        configNames: [\"poLines-limit\"],",
+					"        configNames: [",
+					"            \"poLines-limit\",",
+					"            \"inventory-instanceTypeCode\"",
+					"        ],",
 					"        bodyTemplate: {",
 					"            \"module\": \"ORDERS\",",
 					"            \"configName\": \"Test Config\",",
@@ -14808,22 +13745,52 @@
 					"        }",
 					"    },",
 					"    // User template with hardcoded id",
-					"    user: {",
-					"        \"id\": \"00000000-1111-5555-9999-999999999999\",",
-					"        \"username\": \"mod-invoice-user\",",
-					"        \"active\": true,",
-					"        \"personal\": {",
-					"            \"firstName\": \"Invoice First Name\",",
-					"            \"lastName\": \"Invoice Last Name\"",
+					"    users: {",
+					"        admin: {",
+					"            user: {",
+					"                \"id\": \"00000000-1111-5555-9999-999999999999\",",
+					"                \"username\": \"admin-user\",",
+					"                \"active\": true,",
+					"                \"personal\": {",
+					"                    \"firstName\": \"Invoices API - Admin\",",
+					"                    \"lastName\": \"Invoices Tests - Admin\"",
+					"                }",
+					"            },",
+					"            credentials: {",
+					"                \"username\": \"admin-user\",",
+					"                \"password\": \"admin-user-password\"",
+					"            },",
+					"            permissions: {",
+					"                \"userId\": \"00000000-1111-5555-9999-999999999999\",",
+					"                \"permissions\": [ ]",
+					"            }",
+					"        },",
+					"        regular: {",
+					"            user: {",
+					"                \"id\": \"00000001-1111-5555-9999-999999999999\",",
+					"                \"username\": \"mod-invoices-user\",",
+					"                \"active\": true,",
+					"                \"personal\": {",
+					"                    \"firstName\": \"Regular\",",
+					"                    \"lastName\": \"API Tests\"",
+					"                }",
+					"            },",
+					"            credentials: {",
+					"                \"username\": \"mod-invoices-user\",",
+					"                \"password\": \"mod-invoices-user-password\"",
+					"            },",
+					"            permissions: {",
+					"                \"userId\": \"00000001-1111-5555-9999-999999999999\",",
+					"                \"permissions\": [",
+					"                    \"invoice.all\"",
+					"                ]",
+					"            }",
 					"        }",
 					"    },",
-					"    credentials: {",
-					"        \"username\": \"mod-invoice-user\",",
-					"        \"password\": \"mod-invoice-user-password\"",
-					"    },",
-					"    permissions: {",
-					"        \"userId\": \"00000000-1111-5555-9999-999999999999\",",
-					"        \"permissions\": [\"invoice.all\"]",
+					"    tenant: {",
+					"        \"id\": pm.variables.get(\"testTenant\"),",
+					"        \"name\": \"Test invoices tenant\",",
+					"        \"description\": \"Tenant for test purpose\"",
 					"    }",
 					"};",
 					"",
@@ -14862,16 +13829,16 @@
 					"    utils.copyJsonObj = function(obj) {",
 					"        return JSON.parse(JSON.stringify(obj));",
 					"    };",
-					"    ",
+					"",
 					"    utils.getMockInvoiceLine = function() {",
 					"        return JSON.parse(pm.globals.get(\"mock-invoiceLine\"));",
-					"    }",
-					"    ",
+					"    };",
+					"",
 					"    utils.getMockInvoice = function(i) {",
 					"        let invoices = JSON.parse(pm.globals.get(\"mock-invoices\"));",
 					"        return invoices.invoices[i];",
-					"    }",
-					"    ",
+					"    };",
+					"",
 					"",
 					"    /**",
 					"     * Creates OKAPI URL endpoint based on provided path",
@@ -14879,7 +13846,7 @@
 					"    utils.buildOkapiUrl = function(path) {",
 					"        return pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path;",
 					"    };",
-					"    ",
+					"",
 					"",
 					"    /**",
 					"     * Validates sequence number against schema",
@@ -14927,6 +13894,11 @@
 					"        delete poLine.receiptDate;",
 					"        delete poLine.alerts;",
 					"        delete poLine.reportingCodes;",
+					"",
+					"        if (poLine.hasOwnProperty(\"details\") && poLine.details.hasOwnProperty(\"productIds\")) {",
+					"            poLine.details.productIds.forEach(prod => prod.productIdType = pm.environment.get(\"identifierTypeId\"));",
+					"        }",
+					"",
 					"        return poLine;",
 					"    };",
 					"",
@@ -14993,7 +13965,7 @@
 					"        pm.expect(invoiceLine.total, \"Invoice line: total expected\").to.exist;",
 					"        pm.expect(invoiceLine.vendorRefNo, \"Invoice line: vendorRefNo not expected\").to.not.exist;",
 					"    };",
-					"    ",
+					"",
 					"",
 					"    /**",
 					"     * Build Invoice line with minimal required fields.",
@@ -15085,9 +14057,9 @@
 					"    utils.deleteVouchers = function(vouchers) {",
 					"        if (vouchers.length !== 0) {",
 					"            const timerId = setTimeout(() => {}, 60000);",
-					"    ",
+					"",
 					"            let promises = vouchers.map(voucher => utils.deleteVoucherLines(voucher.id).then(ok => utils.deleteVoucher(voucher.id)));",
-					"    ",
+					"",
 					"            Promise.all(promises)",
 					"                .then(result => clearTimeout(timerId))",
 					"                .catch(err => {",
@@ -15162,12 +14134,12 @@
 					"            body.configName = configName;",
 					"            body.value = value;",
 					"            utils.createConfig(body);",
-					"        ",
+					"",
 					"            // store new config",
 					"            configs.push(body);",
 					"        }",
 					"    };",
-					"    ",
+					"",
 					"    utils.updateOrCreateInvoicesConfig = function(configs, configName, value) {",
 					"        let bodyTemplate = globals.testData.invoicesConfigs.bodyTemplate;",
 					"        utils.updateOrCreateConfig(configs, configName, value, bodyTemplate);",
@@ -15179,17 +14151,8 @@
 					"    };",
 					"",
 					"    utils.createConfig = function(body) {",
-					"        pm.sendRequest({",
-					"            url: utils.buildOkapiUrl(\"/configurations/entries\"),",
-					"            method: \"POST\",",
-					"            header: {",
-					"                \"X-Okapi-Token\": pm.variables.get(\"xokapitoken-admin\"),",
-					"                \"Content-type\": \"application/json\",",
-					"                \"Accept-Encoding\": \"identity\"",
-					"            },",
-					"            body: JSON.stringify(body)",
-					"        }, function(err, response) {",
-					"            pm.test(\"Config created\", function() {",
+					"        utils.sendPostRequest(\"/configurations/entries\", body, function(err, response) {",
+					"            pm.test(\"Config created. Config name = \" + body.configName, function() {",
 					"                pm.expect(response.code).to.eql(201);",
 					"            });",
 					"        });",
@@ -15199,7 +14162,7 @@
 					"     * @param body with updated data",
 					"     */",
 					"    utils.updateConfig = function(body) {",
-					"        utils.sendPutRequest(\"/configurations/entries/\" + body.id, body, pm.environment.get(\"xokapitoken-admin\"), (err, response) => {",
+					"        utils.sendPutRequest(\"/configurations/entries/\" + body.id, body, (err, response) => {",
 					"            pm.test(\"Config updated. Config name = \" + body.configName, function() {",
 					"                pm.expect(response.code).to.eql(204);",
 					"            });",
@@ -15208,18 +14171,7 @@
 					"",
 					"    utils.deleteConfig = function(id) {",
 					"        const timerId = setTimeout(() => {}, 60000);",
-					"        utils.processDeleteRequest(\"/configurations/entries/\" + id, pm.environment.get(\"xokapitoken-admin\"))",
-					"            .then(code => utils.validateResultOfDeleteRequest(code))",
-					"            .then(result => clearTimeout(timerId))",
-					"            .catch(err => {",
-					"                console.log(\"Error happened on Inventory Records deletion:\", err);",
-					"                clearTimeout(timerId);",
-					"            });",
-					"    };",
-					"",
-					"    utils.deleteRecord = function(path) {",
-					"        const timerId = setTimeout(() => {}, 60000);",
-					"        utils.processDeleteRequest(path)",
+					"        utils.processDeleteRequest(\"/configurations/entries/\" + id)",
 					"            .then(code => utils.validateResultOfDeleteRequest(code))",
 					"            .then(result => clearTimeout(timerId))",
 					"            .catch(err => {",
@@ -15260,20 +14212,29 @@
 					"        pm.environment.unset(\"documentWithUrlId\");",
 					"        pm.environment.unset(\"documentWithBase64Content\");",
 					"        pm.environment.unset(\"documentWithBase64Id\");",
+					"        pm.environment.unset(\"emptyConfigWorkflow-invoiceWith1LineContent\");",
+					"        pm.environment.unset(\"emptyConfigWorkflow-invoiceWith1LineId\");",
+					"        pm.environment.unset(\"enabledModules\");",
 					"        pm.environment.unset(\"folioInvoiceNo\");",
 					"        pm.environment.unset(\"filterInvoiceId\");",
+					"        pm.environment.unset(\"fundId\");",
+					"        pm.environment.unset(\"identifierTypeId\");",
 					"        pm.environment.unset(\"incompatibleFieldsInvoiceId\");",
 					"        pm.environment.unset(\"InvoiceIdForDelete\");",
 					"        pm.environment.unset(\"InvoiceLineIdForDelete\");",
 					"        pm.environment.unset(\"InvoiceWithEmptyFundDistrosContent\");",
 					"        pm.environment.unset(\"InvoiceWithEmptyFundDistrosId\");",
 					"        pm.environment.unset(\"invoiceId\");",
+					"        pm.environment.unset(\"isbnIdentifierTypeId\");",
 					"        pm.environment.unset(\"lineWithoutFundDistros\");",
+					"        pm.environment.unset(\"ledgerId\");",
 					"        pm.environment.unset(\"minInvoiceId\");",
 					"        pm.environment.unset(\"mod-invoices-configs\");",
 					"        pm.environment.unset(\"mod-orders-configs\");",
-					"        pm.environment.unset(\"negativeApprovedToPaidInvoiceLineId\");",
 					"        pm.environment.unset(\"negativeAdjInLineId\");",
+					"        pm.environment.unset(\"negativeApprovedInvoiceWithLockedTotalContent\");",
+					"        pm.environment.unset(\"negativeApprovedInvoiceWithLockedTotalId\");",
+					"        pm.environment.unset(\"negativeApprovedToPaidInvoiceLineId\");",
 					"        pm.environment.unset(\"negativeInvoiceLineContent\");",
 					"        pm.environment.unset(\"negativeReviewedToApprovedInvoiceContent\");",
 					"        pm.environment.unset(\"negativeReviewedToApprovedInvoiceId\");",
@@ -15281,11 +14242,17 @@
 					"        pm.environment.unset(\"UUIDDoesNotExists\");",
 					"        pm.environment.unset(\"voucherId\");",
 					"        pm.environment.unset(\"voucherLineId\");",
+					"        pm.environment.unset(\"workflow-invoiceWith4LinesContent\");",
+					"        pm.environment.unset(\"workflow-invoiceWith4LinesId\");",
 					"        pm.environment.unset(\"xokapitoken\");",
 					"        pm.environment.unset(\"xokapitoken-admin\");",
-					"        ",
+					"        pm.environment.unset(\"xokapitoken-testAdmin\");",
+					"",
+					"        pm.globals.unset(\"completeOrderId\");",
 					"        pm.globals.unset(\"mock-invoices\");",
 					"        pm.globals.unset(\"mock-invoiceLine\");",
+					"        pm.globals.unset(\"poLine1Id\");",
+					"        pm.globals.unset(\"poLine2Id\");",
 					"        pm.globals.unset(\"testData\");",
 					"        pm.globals.unset(\"loadUtils\");",
 					"    };",
@@ -15374,15 +14341,32 @@
 					"    /**",
 					"     * Sends GET request and uses passed handler to handle result",
 					"     */",
-					"    utils.buildPmRequest = function(path, method) {",
+					"    utils.buildPmRequest = function(path, method, xokapitoken) {",
 					"        return {",
 					"            url: utils.buildOkapiUrl(path),",
 					"            method: method,",
 					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"testTenant\"),",
+					"                \"X-Okapi-Token\": xokapitoken || pm.environment.get(\"xokapitoken-testAdmin\")",
+					"            }",
+					"        };",
+					"    };",
+					"",
+					"    utils.getModuleId = function(moduleName, bodyHandler) {",
+					"        pm.sendRequest({",
+					"            url: utils.buildOkapiUrl(\"/_/proxy/modules?latest=1&filter=\" + moduleName),",
+					"            method: \"GET\",",
+					"            header: {",
 					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
 					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\")",
 					"            }",
-					"        };",
+					"        }, (err, res) => {",
+					"            pm.test(moduleName + \" module is available\", () => {",
+					"                pm.expect(err).to.equal(null);",
+					"                pm.expect(res.code).to.equal(200);",
+					"                bodyHandler(res.json()[0].id);",
+					"            });",
+					"        });",
 					"    };",
 					"",
 					"    /**",
@@ -15478,11 +14462,11 @@
 					"",
 					"        pm.sendRequest(pmRq, handler);",
 					"    };",
-					"    ",
-					"    ",
+					"",
+					"",
 					"    /**",
-					"    * Check if two arrays are equal",
-					"    */",
+					"     * Check if two arrays are equal",
+					"     */",
 					"    utils.arraysOfStringsAreEqual = function(array1, array2) {",
 					"        return JSON.stringify(array1)==JSON.stringify(array2);",
 					"    };",
@@ -15507,40 +14491,53 @@
 	],
 	"variable": [
 		{
-			"id": "335c2666-5a71-4a92-b3ba-6c027bbc8a75",
+			"id": "8e237de0-4585-4b6c-8596-d176bdf26913",
+			"key": "testTenant",
+			"value": "invoicing_api_tests",
+			"type": "string"
+		},
+		{
+			"id": "de948849-f65f-4cee-b349-c0155a29ee42",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "41e5b04f-8975-4ef9-9663-a4859b52cd77",
-			"key": "poLines-limit",
-			"value": "10",
-			"type": "string"
-		},
-		{
-			"id": "576be366-c263-44be-b9a7-fda06ac4ab42",
+			"id": "a2268a47-dc8f-413c-9d04-f1005ab01edd",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "8f9e373c-e5b6-4bb4-a077-31c228b647fb",
+			"id": "120884b6-682f-4d21-b7c9-35bd34dde9c7",
+			"key": "poLines-limit",
+			"value": "10",
+			"type": "string"
+		},
+		{
+			"id": "2b41cda0-8592-41d8-bd06-211665c3b531",
+			"key": "inventory-instanceTypeCode",
+			"value": "invoicingApiTestsIdentifierType",
+			"type": "string"
+		},
+		{
+			"id": "7cb3bcca-cf2a-451e-8bc5-1b0efea35e5b",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "bd9c85a1-acb7-4c18-b78a-14f429930780",
+			"id": "b332528c-67d7-4063-9840-9c2d8b3ec387",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "0e5184d2-5f0c-4ef1-a0c6-4eef7c4a9578",
+			"id": "47b010ef-3fb1-4479-81ea-2337fa7884db",
 			"key": "voucherNumber",
 			"value": "{\"voucherNumberPrefix\": \"testPrefix\"}",
 			"type": "string"
 		}
-	]
+	],
+	"protocolProfileBehavior": {}
 }
