@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "20f26fe0-5bf6-4577-9147-aa72e3f10179",
+		"_postman_id": "74b9bb99-2f82-4e2b-b051-d3219c42b163",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -10849,6 +10849,402 @@
 										}
 									},
 									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Paid",
+							"item": [
+								{
+									"name": "Create paid invoice",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"    pm.environment.set(\"negativePaidStatusInvoiceId\", invoice.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = utils.prepareInvoice(utils.getMockInvoice(1));",
+													"",
+													"invoice.note += \" - transition to Approved\";",
+													"invoice.status = \"Paid\";",
+													"delete invoice.adjustments;",
+													"delete invoice.voucherNumber;",
+													"delete invoice.approvalDate;",
+													"delete invoice.approvedBy;",
+													"",
+													"pm.environment.set(\"negativePaidStatusInvoiceContent\", JSON.stringify(invoice));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativePaidStatusInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update paid invoice to Approved 422",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(\"Unprocessable Entity\");",
+													"    var errors = pm.response.json().errors;",
+													"    pm.test(\"Required properties are missing\", function () {",
+													"        pm.expect(errors).to.have.lengthOf(1);",
+													"",
+													"    pm.expect(errors[0].code).to.equal(\"invalidInvoiceStatusTransitionOnPaidStatus\");",
+													"    pm.expect(errors[0].parameters[0].key).to.equal(\"invoiceId\");",
+													"    pm.expect(errors[0].parameters[0].value).to.equal(pm.environment.get(\"negativePaidStatusInvoiceId\"));",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativePaidStatusInvoiceId\"), (err, res) => {",
+													"    let invoice  = res.json();",
+													"    invoice.status = \"Approved\";",
+													"    pm.variables.set(\"updatedInvoice\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedInvoice}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativePaidStatusInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativePaidStatusInvoiceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update paid invoice to Reviewed 422",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(\"Unprocessable Entity\");",
+													"    var errors = pm.response.json().errors;",
+													"    pm.test(\"Test once an invoice is Paid it should no longer transition to other statuses\", function () {",
+													"        pm.expect(errors).to.have.lengthOf(1);",
+													"        pm.expect(errors[0].code).to.equal(\"invalidInvoiceStatusTransitionOnPaidStatus\");",
+													"        pm.expect(errors[0].parameters[0].key).to.equal(\"invoiceId\");",
+													"        pm.expect(errors[0].parameters[0].value).to.equal(pm.environment.get(\"negativePaidStatusInvoiceId\"));",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativePaidStatusInvoiceId\"), (err, res) => {",
+													"    let invoice  = res.json();",
+													"    invoice.status = \"Reviewed\";",
+													"    pm.variables.set(\"updatedInvoice\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedInvoice}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativePaidStatusInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativePaidStatusInvoiceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update paid invoice to Cancelled 422",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(\"Unprocessable Entity\");",
+													"    var errors = pm.response.json().errors;",
+													"    pm.test(\"Test once an invoice is Paid it should no longer transition to other statuses\", function () {",
+													"        pm.expect(errors).to.have.lengthOf(1);",
+													"        pm.expect(errors[0].code).to.equal(\"invalidInvoiceStatusTransitionOnPaidStatus\");",
+													"        pm.expect(errors[0].parameters[0].key).to.equal(\"invoiceId\");",
+													"        pm.expect(errors[0].parameters[0].value).to.equal(pm.environment.get(\"negativePaidStatusInvoiceId\"));",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativePaidStatusInvoiceId\"), (err, res) => {",
+													"    let invoice  = res.json();",
+													"    invoice.status = \"Cancelled\";",
+													"    pm.variables.set(\"updatedInvoice\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedInvoice}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativePaidStatusInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativePaidStatusInvoiceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update paid invoice to Open 422",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(\"Unprocessable Entity\");",
+													"    var errors = pm.response.json().errors;",
+													"    pm.test(\"Test once an invoice is Paid it should no longer transition to other statuses\", function () {",
+													"        pm.expect(errors).to.have.lengthOf(1);",
+													"        pm.expect(errors[0].code).to.equal(\"invalidInvoiceStatusTransitionOnPaidStatus\");",
+													"        pm.expect(errors[0].parameters[0].key).to.equal(\"invoiceId\");",
+													"        pm.expect(errors[0].parameters[0].value).to.equal(pm.environment.get(\"negativePaidStatusInvoiceId\"));",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativePaidStatusInvoiceId\"), (err, res) => {",
+													"    let invoice  = res.json();",
+													"    invoice.status = \"Open\";",
+													"    pm.variables.set(\"updatedInvoice\", JSON.stringify(invoice));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{updatedInvoice}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativePaidStatusInvoiceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativePaidStatusInvoiceId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d7287fa2-62d4-433c-ba5b-37d308c64eb9",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "41168d58-2c73-4612-95d4-207b24a54c2d",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
 								}
 							],
 							"protocolProfileBehavior": {},
