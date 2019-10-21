@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "74b9bb99-2f82-4e2b-b051-d3219c42b163",
+		"_postman_id": "f273fc6b-e2e0-462b-9b30-9d1c751d8175",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -3283,10 +3283,13 @@
 													"",
 													"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoiceLines/e0d08448-343b-118a-8c2f-4fb50248d672.json\", function (err, res) {",
 													"    let invoiceLine = res.json();",
-													"    pm.globals.set(\"mock-invoiceLine\",  JSON.stringify(invoiceLine));",
 													"    delete invoiceLine.id;",
 													"    delete invoiceLine.invoiceLineNumber;",
+													"    pm.globals.set(\"mock-invoiceLine\",  JSON.stringify(invoiceLine));",
+													"    ",
+													"    ",
 													"    delete invoiceLine.adjustments;",
+													"    ",
 													"    invoiceLine.comment = \"Adding line for API testing adjustment\";",
 													"    invoiceLine.invoiceId = pm.environment.get(\"invoiceId\");",
 													"",
@@ -3387,6 +3390,7 @@
 													"delete invoiceLine.id;",
 													"delete invoiceLine.invoiceLineNumber;",
 													"delete invoiceLine.adjustments;",
+													"delete invoiceLine.fundDistribution;",
 													"invoiceLine.comment = \"Adding line for API testing adjustment\";",
 													"invoiceLine.invoiceId = pm.environment.get(\"invoiceId\");",
 													"",
@@ -3882,8 +3886,7 @@
 											"",
 											"let invoiceLine = utils.getMockInvoiceLine();",
 											"",
-											"delete invoiceLine.id;",
-											"delete invoiceLine.invoiceLineNumber;",
+											"",
 											"invoiceLine.adjustments = [];",
 											"invoiceLine.comment = \"Adding line for API testing adjustment\";",
 											"invoiceLine.invoiceId = pm.environment.get(\"invoiceWithLockedTotalId\");",
@@ -10068,6 +10071,7 @@
 															"    // Now creating 4 invoice lines",
 															"    for (let i = 1; i < 5; i++) {",
 															"        invoiceLine.poLineId = i % 2 === 0 ? pm.globals.get(\"poLine1Id\") : pm.globals.get(\"poLine2Id\");",
+															"        invoiceLine.poLineId = i % 2 === 0 ? pm.globals.get(\"poLine1Id\") : pm.globals.get(\"poLine2Id\");",
 															"        invoiceLine.releaseEncumbrance = i === 4;",
 															"        ",
 															"        utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
@@ -10464,7 +10468,10 @@
 															"function createLine(invoiceId) {",
 															"   ",
 															"    let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), invoiceId);",
-															"",
+															"    invoiceLine.subTotal = 101;",
+															"    invoiceLine.fundDistributions[0].value = 50;",
+															"    let amoutDistribution = {\"fundId\": invoiceLine.fundDistributions[0].fundId, \"distributionType\": \"amount\", \"value\": 55.6};",
+															"    invoiceLine.fundDistributions.push(amoutDistribution);",
 															"    // Now creating invoice line",
 															"    utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
 															"        pm.test(\"Invoice line is created in storage\", () => {",
@@ -14409,10 +14416,9 @@
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
 													"",
-													"",
 													"let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"));",
 													"",
-													"invoiceLine.fundDistributions[0].percentage=50;",
+													"invoiceLine.fundDistributions[0].value=50;",
 													"pm.environment.set(\"lineWithoutFundDistros\", JSON.stringify(invoiceLine));",
 													""
 												],
@@ -14473,6 +14479,305 @@
 								},
 								{
 									"name": "Transit to approved. FundDistros percantage !=100",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"    //delete invalid line",
+													"    let lineToDelete = pm.environment.get(\"InvoiceLineWithePercentageNot100Id\");",
+													"    utils.sendDeleteRequest(\"/invoice-storage/invoice-lines/\" + lineToDelete, (err, res) => {",
+													"        pm.expect(res).to.have.property('code', 204);",
+													"    });",
+													"    pm.environment.unset(\"InvoiceLineWithePercentageNot100Id\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update line  FundDistros amount !=invoiceLine.total",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"));",
+													"",
+													"invoiceLine.fundDistributions[0].distributionType = \"amount\";",
+													"pm.environment.set(\"lineWithoutFundDistros\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice is created\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"    pm.environment.set(\"InvoiceLineWithePercentageNot100Id\", invoiceLine.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{lineWithoutFundDistros}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice-storage",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. FundDistros amount != invoiceLine.total",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"    //delete invalid line",
+													"    let lineToDelete = pm.environment.get(\"InvoiceLineWithePercentageNot100Id\");",
+													"    utils.sendDeleteRequest(\"/invoice-storage/invoice-lines/\" + lineToDelete, (err, res) => {",
+													"        pm.expect(res).to.have.property('code', 204);",
+													"    });",
+													"    pm.environment.unset(\"InvoiceLineWithePercentageNot100Id\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update line  FundDistros mixed distr type != invoiceLine.total",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"));",
+													"",
+													"invoiceLine.fundDistributions[0].distributionType = \"amount\";",
+													"invoiceLine.fundDistributions[0].value = 50;",
+													"let percentageDistr = {\"fundId\":  invoiceLine.fundDistributions[0].fundId, \"distributionType\": \"percentage\", \"value\": 50};",
+													"invoiceLine.fundDistributions.push(percentageDistr);",
+													"pm.environment.set(\"lineWithoutFundDistros\", JSON.stringify(invoiceLine));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice is created\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"    pm.environment.set(\"InvoiceLineWithePercentageNot100Id\", invoiceLine.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{lineWithoutFundDistros}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice-storage",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. FundDistros mixed type != invoiceLine.total",
 									"event": [
 										{
 											"listen": "prerequest",
@@ -15256,6 +15561,7 @@
 					"        delete poLine.receiptDate;",
 					"        delete poLine.alerts;",
 					"        delete poLine.reportingCodes;",
+					"        delete poLine.fundDistribution;",
 					"",
 					"        if (poLine.hasOwnProperty(\"details\") && poLine.details.hasOwnProperty(\"productIds\")) {",
 					"            poLine.details.productIds.forEach(prod => prod.productIdType = pm.environment.get(\"identifierTypeId\"));",
@@ -15353,7 +15659,8 @@
 					"            \"fundDistributions\": [",
 					"                {",
 					"                    \"fundId\": pm.environment.get(\"fundId\"),",
-					"                    \"percentage\": 50",
+					"                    \"distributionType\": \"percentage\",",
+					"                    \"value\": 50",
 					"                }",
 					"            ],",
 					"            \"sourceIds\": [\"0726fc17-38c3-4249-81d3-97ffddada92b\"],",
@@ -15853,49 +16160,49 @@
 	],
 	"variable": [
 		{
-			"id": "8e237de0-4585-4b6c-8596-d176bdf26913",
+			"id": "07598768-dd31-4b63-8435-db19b63938de",
 			"key": "testTenant",
 			"value": "invoicing_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "de948849-f65f-4cee-b349-c0155a29ee42",
+			"id": "5e50a4a0-dbaf-478b-8df7-976cd80c3c74",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "a2268a47-dc8f-413c-9d04-f1005ab01edd",
+			"id": "68133a3e-8934-41ff-a33d-5261c2258b06",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "120884b6-682f-4d21-b7c9-35bd34dde9c7",
+			"id": "e8961e74-9130-4c90-8b67-ff67e70bbcff",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "2b41cda0-8592-41d8-bd06-211665c3b531",
+			"id": "5f0c1d2e-0a89-4415-aeca-de9f25457150",
 			"key": "inventory-instanceTypeCode",
 			"value": "invoicingApiTestsIdentifierType",
 			"type": "string"
 		},
 		{
-			"id": "7cb3bcca-cf2a-451e-8bc5-1b0efea35e5b",
+			"id": "db5799c2-6e65-48bc-bf7e-0daa30ab1005",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "b332528c-67d7-4063-9840-9c2d8b3ec387",
+			"id": "54f1655c-5ce5-4ed9-91f3-491673972445",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "47b010ef-3fb1-4479-81ea-2337fa7884db",
+			"id": "171153e5-d40d-4eb2-9b60-3461001272c8",
 			"key": "voucherNumber",
 			"value": "{\"voucherNumberPrefix\": \"testPrefix\"}",
 			"type": "string"
