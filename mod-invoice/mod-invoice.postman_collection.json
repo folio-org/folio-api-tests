@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "f273fc6b-e2e0-462b-9b30-9d1c751d8175",
+		"_postman_id": "0a7aa9b2-fe50-4c9f-8e0a-06a73ca0229a",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -5256,6 +5256,142 @@
 										"invoice",
 										"invoices",
 										"{{invoiceWithLockedTotalId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create invoice with adjustments without lines and verify adjustmentTotal",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5ad7d58e-c223-4e15-a362-29e49c972f3d",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let inv = utils.buildInvoiceWithMinContent();",
+											"inv.status = \"Reviewed\";",
+											"inv.adjustments = [];",
+											"",
+											"inv.adjustments.push(utils.buildAdjustmentObject(10, \"Amount\", \"Not prorated\"));",
+											"inv.adjustments.push(utils.buildAdjustmentObject(10, \"Amount\", \"By line\"));",
+											"inv.adjustments.push(utils.buildAdjustmentObject(10, \"Amount\", \"By quantity\"));",
+											"",
+											"pm.variables.set(\"invoiceContent\", JSON.stringify(inv));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d30a0dbb-bd13-400b-9f39-687730665090",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let invoice = {};",
+											"",
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    invoice = pm.response.json();",
+											"    pm.environment.set(\"invoiceWithAdjustmentTotalId\", invoice.id);",
+											"",
+											"    utils.validateInvoice(invoice);",
+											"",
+											"    // MODINVOICE-103",
+											"    // validate calculated adjustment totals: 10(Not prorate) + 10(By line) = 20 ",
+											"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(30);",
+											"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
+											"    pm.expect(invoice.total, \"total\").to.equal(30);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{invoiceContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								},
+								"description": "Invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete invoice by id for adjustment total calculation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Success response expected\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{invoiceWithAdjustmentTotalId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices",
+										"{{invoiceWithAdjustmentTotalId}}"
 									]
 								}
 							},
