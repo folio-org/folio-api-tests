@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "9606391c-c38f-4163-87cf-4b299e0a8607",
+		"_postman_id": "795dc8cd-96ed-4d78-8413-90faf0a84301",
 		"name": "mod-finance",
 		"description": "Tests for mod-finance",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -2404,9 +2404,9 @@
 											"});",
 											"",
 											"pm.test(\"Fund content is valid\", function() {",
-											"    utils.validateFund(record);",
-											"    pm.environment.set(\"fundId\", record.id); ",
-											"    pm.expect(record.code).to.eql(\"FRST-FND\");",
+											"    utils.validateCompositeFund(record);",
+											"    pm.environment.set(\"fundId\", record.fund.id); ",
+											"    pm.expect(record.fund.code).to.eql(\"FRST-FND\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -2418,7 +2418,7 @@
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildFundMinContent(\"FRST-FND\")));"
+											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"FRST-FND\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -2467,7 +2467,7 @@
 											"",
 											"pm.test(\"Fund is retrieved\", function () {",
 											"    pm.response.to.be.ok;",
-											"    utils.validateFund(pm.response.json());",
+											"    utils.validateCompositeFund(pm.response.json());",
 											"});"
 										],
 										"type": "text/javascript"
@@ -2529,10 +2529,10 @@
 											"});",
 											"",
 											"pm.test(\"Fund content is valid\", function() {",
-											"    utils.validateFund(record);",
-											"    pm.environment.set(\"fundId2\", record.id);",
+											"    utils.validateCompositeFund(record);",
+											"    pm.environment.set(\"fundId2\", record.fund.id);",
 											"    pm.environment.set(\"fundContent2\", record);",
-											"    pm.expect(record.fundTypeId).to.eql(pm.variables.get(\"fundTypeId\"));",
+											"    pm.expect(record.fund.fundTypeId).to.eql(pm.variables.get(\"fundTypeId\"));",
 											"});",
 											""
 										],
@@ -2547,7 +2547,8 @@
 											"let utils = eval(globals.loadUtils);",
 											"let fund = utils.buildFundMinContent(\"SCND-FND\");",
 											"fund.fundTypeId = pm.variables.get(\"fundTypeId\");",
-											"pm.variables.set(\"fundContent\", JSON.stringify(fund));"
+											"let compositeFund = utils.buildCompositeFund(fund);",
+											"pm.variables.set(\"fundContent\", JSON.stringify(compositeFund));"
 										],
 										"type": "text/javascript"
 									}
@@ -2668,7 +2669,7 @@
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
 											"let record = pm.environment.get(\"fundContent2\");",
-											"record.name = \"Updated\";",
+											"record.fund.name = \"Updated\";",
 											"pm.variables.set(\"fundContent\", JSON.stringify(record));"
 										],
 										"type": "text/javascript"
@@ -2720,8 +2721,8 @@
 											"pm.test(\"Fund is retrieved\", function () {",
 											"    pm.response.to.be.ok;",
 											"    let record = pm.response.json();",
-											"    utils.validateFund(record);",
-											"    pm.expect(record.name).to.eql(\"Updated\");",
+											"    utils.validateCompositeFund(record);",
+											"    pm.expect(record.fund.name).to.eql(\"Updated\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -3885,7 +3886,7 @@
 							"response": []
 						},
 						{
-							"name": "Get group fund fiscal year by query",
+							"name": "Verify created group fund fiscal years",
 							"event": [
 								{
 									"listen": "test",
@@ -4058,6 +4059,775 @@
 										{
 											"key": "query",
 											"value": "id=={{groupFundFiscalYearId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Assign funds to groups",
+					"item": [
+						{
+							"name": "Prepare data for testing",
+							"item": [
+								{
+									"name": "Create group 1 - required for funds",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Group is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"groupId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"groupContent\", JSON.stringify(utils.buildGroupMinContent()));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{groupContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/groups",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"groups"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create fiscal year one - test current fy",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"testCurrentFiscalYearOneId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"const moment = require('moment');",
+													"",
+													"var fiscalYear = utils.buildFiscalYearMinContent();",
+													"var start = moment().startOf('year').subtract(2, 'year');",
+													"var end = moment().endOf('year').subtract(2, 'year');",
+													"",
+													"fiscalYear.periodStart = start.format('YYYY-MM-DD');",
+													"fiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+													"fiscalYear.series = \"TESTCURRENT\";",
+													"fiscalYear.code = \"TESTCURRENT2018\";",
+													"",
+													"pm.variables.set(\"fyContent\", JSON.stringify(fiscalYear));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{fyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create fiscal year one - test next fy",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"testNextFiscalYearOneId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"const moment = require('moment');",
+													"",
+													"var fiscalYear = utils.buildFiscalYearMinContent();",
+													"var start = moment().startOf('year').subtract(2, 'year');",
+													"var end = moment().endOf('year').subtract(2, 'year');",
+													"",
+													"fiscalYear.periodStart = start.format('YYYY-MM-DD');",
+													"fiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+													"fiscalYear.series = \"TESTNEXT\";",
+													"fiscalYear.code = \"TESTNEXT2018\";",
+													"",
+													"pm.variables.set(\"fyContent\", JSON.stringify(fiscalYear));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{fyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create current fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"currentFiscalYearId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"const moment = require('moment');",
+													"var fiscalYear = utils.buildFiscalYearMinContent();",
+													"var start = moment().startOf('year');",
+													"var end = moment().endOf('year');",
+													"fiscalYear.periodStart = start.format('YYYY-MM-DD');",
+													"fiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+													"fiscalYear.series = \"TESTCURRENT\";",
+													"fiscalYear.code = \"TESTCURRENT2019\";",
+													"pm.variables.set(\"fyContent\", JSON.stringify(fiscalYear));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{fyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create next fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"nextFiscalYearId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"const moment = require('moment');",
+													"",
+													"var fiscalYear = utils.buildFiscalYearMinContent();",
+													"var start = moment().startOf('year').add(1, 'year');",
+													"var end = moment().endOf('year').add(1, 'year');",
+													"",
+													"fiscalYear.periodStart = start.format('YYYY-MM-DD');",
+													"fiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+													"fiscalYear.series = \"TESTNEXT\";",
+													"fiscalYear.code = \"TESTNEXT2020\";",
+													"pm.variables.set(\"fyContent\", JSON.stringify(fiscalYear));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{fyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create ledger current",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"currentFyLedgerId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let ledger = utils.buildLedgerMinContent();",
+													"ledger.fiscalYearOneId = pm.environment.get(\"testCurrentFiscalYearOneId\");",
+													"ledger.name = \"Current\";",
+													"ledger.code = \"TEST_CURRENT\";",
+													"pm.variables.set(\"ledgerContent\", JSON.stringify(ledger));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{ledgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create ledger next",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"nextFyLedgerId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let ledger = utils.buildLedgerMinContent();",
+													"ledger.fiscalYearOneId = pm.environment.get(\"testNextFiscalYearOneId\");",
+													"ledger.name = \"Next\";",
+													"ledger.code = \"TEST_NEXT\";",
+													"pm.variables.set(\"ledgerContent\", JSON.stringify(ledger));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{ledgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Create fund with groups - current fiscal year",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let record = {};",
+											"",
+											"pm.test(\"Fund is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    record = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Fund content is valid\", function() {",
+											"    utils.validateCompositeFund(record);",
+											"    pm.environment.set(\"currentFyFundId\", record.fund.id);",
+											"    pm.expect(record.fund.fundTypeId).to.eql(pm.variables.get(\"fundTypeId\"));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let fund = utils.buildFundMinContent(\"TEST_CURRENT\");",
+											"fund.fundTypeId = pm.variables.get(\"fundTypeId\");",
+											"fund.ledgerId = pm.environment.get(\"currentFyLedgerId\");",
+											"",
+											"let compositeFund = utils.buildCompositeFund(fund);",
+											"compositeFund.groupIds.push(pm.environment.get(\"groupId\"));",
+											"pm.variables.set(\"fundContent\", JSON.stringify(compositeFund));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fundContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"funds"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get group fund fiscal year by query - current FY",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let records = {}; ",
+											"",
+											"pm.test(\"Group fund fiscal years founded\", function () {",
+											"    pm.response.to.be.ok;",
+											"    records = pm.response.json();",
+											"    pm.expect(records.groupFundFiscalYears).to.have.lengthOf(1);",
+											"    pm.expect(records.totalRecords).to.equal(1);",
+											"});",
+											"",
+											"pm.test(\"Group fund fiscal years contain expected year id\", function () {",
+											"    records.groupFundFiscalYears.forEach(gffy => {",
+											"        pm.expect(gffy.fiscalYearId).to.equal(pm.environment.get(\"currentFiscalYearId\"));",
+											"    });",
+											"",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=fundId={{currentFyFundId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"group-fund-fiscal-years"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "fundId={{currentFyFundId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create fund with groups - next fiscal year",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let record = {};",
+											"",
+											"pm.test(\"Fund is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    record = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Fund content is valid\", function() {",
+											"    utils.validateCompositeFund(record);",
+											"    pm.environment.set(\"nextFyFundId\", record.fund.id);",
+											"    pm.expect(record.fund.fundTypeId).to.eql(pm.variables.get(\"fundTypeId\"));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let fund = utils.buildFundMinContent(\"TEST_NEXT\");",
+											"fund.fundTypeId = pm.variables.get(\"fundTypeId\");",
+											"fund.ledgerId = pm.environment.get(\"nextFyLedgerId\");",
+											"",
+											"let compositeFund = utils.buildCompositeFund(fund);",
+											"compositeFund.groupIds.push(pm.environment.get(\"groupId\"));",
+											"pm.variables.set(\"fundContent\", JSON.stringify(compositeFund));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fundContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"funds"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get group fund fiscal year by query - next FY",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let records = {}; ",
+											"",
+											"pm.test(\"Group fund fiscal years founded\", function () {",
+											"    pm.response.to.be.ok;",
+											"    records = pm.response.json();",
+											"    pm.expect(records.groupFundFiscalYears).to.have.lengthOf(1);",
+											"    pm.expect(records.totalRecords).to.equal(1);",
+											"});",
+											"",
+											"pm.test(\"Group fund fiscal years contain expected year id\", function () {",
+											"    records.groupFundFiscalYears.forEach(gffy => {",
+											"        pm.expect(gffy.fiscalYearId).to.equal(pm.environment.get(\"nextFiscalYearId\"));",
+											"    });",
+											"",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=fundId={{nextFyFundId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"group-fund-fiscal-years"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "fundId={{nextFyFundId}}"
 										}
 									]
 								}
@@ -4472,7 +5242,7 @@
 										"exec": [
 											"pm.test(\"Fund is created\", function () {",
 											"    pm.response.to.have.status(201);",
-											"    pm.environment.set(\"fundId\", pm.response.json().id); ",
+											"    pm.environment.set(\"fundId\", pm.response.json().fund.id); ",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4484,7 +5254,7 @@
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildFundMinContent(\"TST1\")));"
+											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"TST1\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -4532,7 +5302,7 @@
 											"pm.test(\"Fund is created\", function () {",
 											"    pm.response.to.have.status(201);",
 											"    let record = pm.response.json();",
-											"    pm.environment.set(\"fundId2\", record.id);",
+											"    pm.environment.set(\"fundId2\", record.fund.id);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4544,7 +5314,7 @@
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildFundMinContent(\"TST2\")));"
+											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"TST2\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -4591,7 +5361,7 @@
 										"exec": [
 											"pm.test(\"Fund is not created\", function () {",
 											"    pm.response.to.have.status(422).and.to.be.json;",
-											"    pm.expect(pm.response.json().errors).to.have.lengthOf(4);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4662,7 +5432,7 @@
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildFundMinContent(\"TST1\")));"
+											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"TST1\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -4724,7 +5494,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"var uuid = require('uuid');",
 											"",
-											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildFundMinContent(\"TST3\", uuid.v4())));"
+											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"TST3\", uuid.v4()))));"
 										],
 										"type": "text/javascript"
 									}
@@ -4786,8 +5556,8 @@
 											"let utils = eval(globals.loadUtils);",
 											"var uuid = require('uuid');",
 											"",
-											"let record = utils.buildFundMinContent(\"TST3\");",
-											"record.fundTypeId = uuid.v4();",
+											"let record = utils.buildCompositeFund(utils.buildFundMinContent(\"TST3\"));",
+											"record.fund.fundTypeId = uuid.v4();",
 											"pm.variables.set(\"fundContent\", JSON.stringify(record));"
 										],
 										"type": "text/javascript"
@@ -4848,7 +5618,7 @@
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
-											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildFundMinContent(\"TST1\")));"
+											"pm.variables.set(\"fundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"TST1\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -5750,6 +6520,292 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Assign funds to groups",
+					"item": [
+						{
+							"name": "Prepare data for testing",
+							"item": [
+								{
+									"name": "Create fiscal year one",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"testNegativeFiscalYearOneId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"const moment = require('moment');",
+													"const today = moment.utc();",
+													"",
+													"var fiscalYear = utils.buildFiscalYearMinContent();",
+													"var start = today.startOf('year').subtract(1, 'years');",
+													"var end = today.endOf('year').subtract(1, 'years');",
+													"",
+													"fiscalYear.periodStart = start.format('YYYY-MM-DD');",
+													"fiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+													"fiscalYear.series = \"TESTNEGATIVE\";",
+													"fiscalYear.code = \"TESTNEGATIVE2018\";",
+													"",
+													"pm.variables.set(\"fyContent\", JSON.stringify(fiscalYear));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{fyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create  after next fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"afterNextFiscalYearId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"const moment = require('moment');",
+													"const today = moment.utc();",
+													"",
+													"var fiscalYear = utils.buildFiscalYearMinContent();",
+													"var start = today.startOf('year').add(2, 'years');",
+													"var end = today.endOf('year').add(2, 'years');",
+													"",
+													"fiscalYear.periodStart = start.format('YYYY-MM-DD');",
+													"fiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+													"fiscalYear.series = \"TESTNEGATIVE\";",
+													"fiscalYear.code = \"TESTNEGATIVE2021\";",
+													"pm.variables.set(\"fyContent\", JSON.stringify(fiscalYear));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{fyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create ledger",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"negativeyLedgerId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let ledger = utils.buildLedgerMinContent();",
+													"ledger.fiscalYearOneId = pm.environment.get(\"testNegativeFiscalYearOneId\");",
+													"ledger.name = \"Negative\";",
+													"ledger.code = \"TESTNEGATIVE\";",
+													"pm.variables.set(\"ledgerContent\", JSON.stringify(ledger));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{ledgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Create fund with groups - current fiscal year not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let record = {};",
+											"",
+											"pm.test(\"Fund is created\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let fund = utils.buildFundMinContent(\"TESTNEGATIVE\");",
+											"fund.fundTypeId = pm.variables.get(\"fundTypeId\");",
+											"fund.ledgerId = pm.environment.get(\"negativeFyLedgerId\");",
+											"",
+											"let compositeFund = utils.buildCompositeFund(fund);",
+											"compositeFund.groupIds.push(pm.environment.get(\"groupId\"));",
+											"pm.variables.set(\"fundContent\", JSON.stringify(compositeFund));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fundContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"funds"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -6118,6 +7174,17 @@
 					"    /* END - Functions to work with mod-configuration */",
 					"",
 					"    /**",
+					"     * Build group record with minimal required fields.",
+					"     */",
+					"    utils.buildGroupMinContent = function(code) {",
+					"        return {",
+					"            \"code\": code || \"TST-GRP\",",
+					"            \"status\": \"Active\",",
+					"            \"name\": \"Test group\"",
+					"        };",
+					"        ",
+					"    };",
+					"    /**",
 					"     * Build ledger record with minimal required fields.",
 					"     */",
 					"    utils.buildLedgerMinContent = function(code) {",
@@ -6149,6 +7216,16 @@
 					"            \"fundStatus\": \"Active\",",
 					"            \"ledgerId\": ledgerId || pm.variables.get(\"ledgerId\"),",
 					"            \"name\": \"Test fund\"",
+					"        };",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Build Composite Fund record.",
+					"     */",
+					"    utils.buildCompositeFund = function(fund, groupIds) {",
+					"        return {",
+					"            \"fund\": fund || buildFundMinContent(),",
+					"            \"groupIds\": groupIds || []",
 					"        };",
 					"    };",
 					"",
@@ -6184,6 +7261,15 @@
 					"        pm.expect(jsonData.ledgerId).to.exist;",
 					"        pm.expect(jsonData.name).to.exist;",
 					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"fund.json\")));",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Validates the content of the composite fund record",
+					"     */",
+					"    utils.validateCompositeFund = function(jsonData) {",
+					"        pm.expect(jsonData.fund).to.exist;",
+					"        utils.validateFund(jsonData.fund);",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"composite_fund.json\")));",
 					"    };",
 					"",
 					"    /**",
@@ -6309,13 +7395,13 @@
 	],
 	"variable": [
 		{
-			"id": "5bf27b70-7879-40e3-8510-6a14bb9d709f",
+			"id": "65ed2ddd-fa3c-44b2-8ca1-b27054a6d4d7",
 			"key": "mod-financeResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-finance/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "de7398a5-5efd-4143-bb4b-d9ca33aa63a9",
+			"id": "874352a9-a54f-429f-b2f7-61491d9d4442",
 			"key": "testTenant",
 			"value": "finance_api_tests",
 			"type": "string"
