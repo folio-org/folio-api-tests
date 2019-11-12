@@ -4135,6 +4135,68 @@
 									"response": []
 								},
 								{
+									"name": "Create group 2 - required for funds",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Group is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"groupId2\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let group = utils.buildGroupMinContent();",
+													"group.code = \"tst-grp-2\";",
+													"group.name = \"Test group 2\";",
+													"pm.variables.set(\"groupContent\", JSON.stringify(group));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{groupContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/groups",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"groups"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Create fiscal year one - test current fy",
 									"event": [
 										{
@@ -4829,6 +4891,84 @@
 											"key": "query",
 											"value": "fundId={{nextFyFundId}}"
 										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update fund with groups - next fiscal year",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let records = {};",
+											"",
+											"pm.test(\"Composite Fund is updated\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"utils.sendGetRequest('/finance/group-fund-fiscal-years?query=fundId=' + pm.environment.get(\"nextFyFundId\"), (err, res) => {",
+											"        pm.test(\"Group fund fiscal year deleted\", function () {",
+											"            pm.expect(res).to.be.ok;",
+											"             records = res.json();",
+											"             pm.expect(records.totalRecords).to.equal(1);",
+											"             pm.expect(records.groupFundFiscalYears[0].groupId).to.equal(pm.environment.get(\"groupId2\"));",
+											"        });",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let fund = utils.buildFundMinContent(\"TEST_UPDATE_NEXT\");",
+											"fund.fundTypeId = pm.variables.get(\"fundTypeId\");",
+											"fund.ledgerId = pm.environment.get(\"nextFyLedgerId\");",
+											"",
+											"let compositeFund = utils.buildCompositeFund(fund);",
+											"compositeFund.groupIds.push(pm.environment.get(\"groupId2\"));",
+											"pm.variables.set(\"fundContent\", JSON.stringify(compositeFund));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fundContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{nextFyFundId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"funds",
+										"{{nextFyFundId}}"
 									]
 								}
 							},
@@ -6746,7 +6886,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"let record = {};",
 											"",
-											"pm.test(\"Fund is created\", function () {",
+											"pm.test(\"Fund is not created\", function () {",
 											"    pm.response.to.have.status(422);",
 											"});",
 											""
@@ -6798,6 +6938,75 @@
 									"path": [
 										"finance",
 										"funds"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update fund with groups - current fiscal year not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let record = {};",
+											"",
+											"pm.test(\"Fund is not updated\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let fund = utils.buildFundMinContent(\"TESTNEGATIVE\");",
+											"fund.fundTypeId = pm.variables.get(\"fundTypeId\");",
+											"fund.ledgerId = pm.environment.get(\"negativeFyLedgerId\");",
+											"",
+											"let compositeFund = utils.buildCompositeFund(fund);",
+											"compositeFund.groupIds.push(pm.environment.get(\"groupId2\"));",
+											"pm.variables.set(\"fundContent\", JSON.stringify(compositeFund));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fundContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{nextFyFundId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"funds",
+										"{{nextFyFundId}}"
 									]
 								}
 							},
