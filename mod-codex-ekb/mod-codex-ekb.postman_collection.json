@@ -7,6 +7,238 @@
 	},
 	"item": [
 		{
+			"name": "authentication",
+			"item": [
+				{
+					"name": "/authn/login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var token = postman.getResponseHeader(\"x-okapi-token\")",
+									"pm.environment.set(\"xokapitoken\", token);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"username\":\"{{username}}\",\"password\":\"{{password}}\"}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"authn",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "set up permission",
+			"item": [
+				{
+					"name": "Get user id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b6a548cd-23a5-4b8c-9bf9-622e404e5f04",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response must be valid and have a body\", function () {",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"pm.environment.set(\"userId\", jsonData.user.id);",
+									"",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "d665ae85-57e5-40c5-a197-48a2b098fc0a",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken-codex-ekb}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/bl-users/by-username/{{username}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"bl-users",
+								"by-username",
+								"{{username}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add permission if it doesn't exist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "b6a548cd-23a5-4b8c-9bf9-622e404e5f04",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response must be valid and have a body\", function () {",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"var permissionExists = jsonData!==null && jsonData.permissions.filter(permission => (permission === \"codex-ekb.all\")).length > 0;",
+									"pm.environment.set(\"permissionExists\", permissionExists);",
+									"",
+									"if(!permissionExists) {",
+									"    jsonData.permissions.push(\"codex-ekb.all\")",
+									"    ",
+									"    const permissionsPutRequest = {",
+									"      url:  pm.variables.get(\"protocol\") + \"://\" +  pm.variables.get(\"url\") + \":\" + pm.variables.get(\"okapiport\") + '/perms/users/' + jsonData.id,",
+									"      method: 'PUT',",
+									"      header: {",
+									"        'Content-Type' : 'application/json',",
+									"        'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token' : pm.variables.get(\"xokapitoken-codex-ekb\")",
+									"          ",
+									"      },",
+									"      body: {",
+									"        mode: 'application/json',",
+									"        raw: JSON.stringify(jsonData)",
+									"      }",
+									"    };",
+									"    ",
+									"    pm.sendRequest(permissionsPutRequest, function (err, res) {",
+									"      if (err) { console.log(err); }",
+									"      pm.test('Response must be valid', function () {",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 200);",
+									"        pm.expect(res).to.have.property('status', 'OK');",
+									"      });",
+									"    });",
+									"    ",
+									"    postman.setNextRequest(\"/authn/login\");",
+									"}",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "d665ae85-57e5-40c5-a197-48a2b098fc0a",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken-codex-ekb}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{userId}}?indexField=userId",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"perms",
+								"users",
+								"{{userId}}"
+							],
+							"query": [
+								{
+									"key": "indexField",
+									"value": "userId"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
 			"name": "Setup Configuration",
 			"item": [
 				{
@@ -3709,7 +3941,111 @@
 						]
 					}
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "tear-down permission",
+			"item": [
+				{
+					"name": "Delete permission if it was added",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "f89139b1-5bc1-47f2-82e4-7dcaf0513b1f",
+								"exec": [
+									"pm.test(\"Status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response must be valid and have a body\", function () {",
+									"    pm.response.to.be.withBody;",
+									"    pm.response.to.be.json; ",
+									"});",
+									"",
+									"var jsonData = pm.response.json();",
+									"",
+									"if(!pm.variables.get(\"permissionExists\")) {",
+									"    jsonData.permissions = jsonData.permissions.filter(permission => (permission !== \"codex-ekb.all\"));",
+									"",
+									"    const permissionsPutRequest = {",
+									"      url:  pm.variables.get(\"protocol\") + \"://\" +  pm.variables.get(\"url\") + \":\" + pm.variables.get(\"okapiport\") + '/perms/users/' + jsonData.id,",
+									"      method: 'PUT',",
+									"      header: {",
+									"        'Content-Type' : 'application/json',",
+									"        'X-Okapi-Tenant' : pm.variables.get(\"xokapitenant\"),",
+									"        'X-Okapi-Token' : pm.variables.get(\"xokapitoken-codex-ekb\")",
+									"          ",
+									"      },",
+									"      body: {",
+									"        mode: 'application/json',",
+									"        raw: JSON.stringify(jsonData)",
+									"      }",
+									"    };",
+									"    ",
+									"    pm.sendRequest(permissionsPutRequest, function (err, res) {",
+									"      if (err) { console.log(err); }",
+									"      pm.test('Response must be valid', function () {",
+									"        pm.expect(err).to.equal(null);",
+									"        pm.expect(res).to.have.property('code', 200);",
+									"        pm.expect(res).to.have.property('status', 'OK');",
+									"      });",
+									"    });",
+									"}",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "9e850480-32fc-4384-92fb-1faf179e993b",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-okapi-tenant",
+								"value": "{{xokapitenant}}"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken-codex-ekb}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users/{{userId}}?indexField=userId",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"perms",
+								"users",
+								"{{userId}}"
+							],
+							"query": [
+								{
+									"key": "indexField",
+									"value": "userId"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
 		}
 	],
 	"event": [
