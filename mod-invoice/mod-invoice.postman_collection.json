@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "c7a60bf5-439d-490f-8563-8b0da394d2cb",
+		"_postman_id": "c2d7bbd1-71fc-4efc-9ff1-d6a06f84d889",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1319,6 +1319,64 @@
 					"name": "Prepare finance data",
 					"item": [
 						{
+							"name": "Fiscal year",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Fiscal year is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"fiscalYearId\", pm.response.json().id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"name\": \"Fiscal Year 2020\",\r\n  \"code\": \"FY2020\",\r\n  \"description\": \"January 1 - December 30\",\r\n  \"periodStart\": \"2020-01-01T00:00:00Z\",\r\n  \"periodEnd\": \"2020-12-30T23:59:59Z\",\r\n  \"series\": \"FY\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/fiscal-years",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance-storage",
+										"fiscal-years"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Ledger",
 							"event": [
 								{
@@ -1362,7 +1420,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n\t\"id\": \"5e4fbdab-f1b1-4be8-9c33-d3c41ec9a695\",\r\n\t\"code\": \"TST-LDG\",\r\n\t\"ledgerStatus\": \"Active\",\r\n\t\"name\": \"Test ledger\",\r\n\t\"fiscalYearOneId\": \"d54705ca-6f19-4f48-ab05-228190be3235\"\r\n}"
+									"raw": "{\r\n\t\"id\": \"5e4fbdab-f1b1-4be8-9c33-d3c41ec9a695\",\r\n\t\"code\": \"TST-LDG\",\r\n\t\"ledgerStatus\": \"Active\",\r\n\t\"name\": \"Test ledger\",\r\n\t\"fiscalYearOneId\": \"{{fiscalYearId}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/ledgers",
@@ -10568,7 +10626,7 @@
 									"name": "Create Open invoices",
 									"item": [
 										{
-											"name": "Create invoice with 1 line",
+											"name": "Create invoice with 1 line without poLineId",
 											"event": [
 												{
 													"listen": "test",
@@ -10608,6 +10666,7 @@
 															"    invoiceLine.fundDistributions[0].value = 50;",
 															"    let amoutDistribution = {\"fundId\": invoiceLine.fundDistributions[0].fundId, \"distributionType\": \"amount\", \"value\": 55.6};",
 															"    invoiceLine.fundDistributions.push(amoutDistribution);",
+															"    delete invoiceLine.poLineId;",
 															"    // Now creating invoice line",
 															"    utils.sendPostRequest(\"/invoice/invoice-lines\", invoiceLine, (err, response) => {",
 															"        pm.test(\"Invoice line is created in storage\", () => {",
@@ -10729,6 +10788,96 @@
 															"                    pm.expect(utils.arraysOfStringsAreEqual(invoice.acqUnitIds, voucher.acqUnitIds)).to.be.true;",
 															"                });",
 															"            });",
+															"        });",
+															"    });",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "Content-Type",
+														"name": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													},
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{emptyConfigWorkflow-invoiceWith1LineContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{emptyConfigWorkflow-invoiceWith1LineId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"invoice",
+														"invoices",
+														"{{emptyConfigWorkflow-invoiceWith1LineId}}"
+													]
+												}
+											},
+											"response": []
+										}
+									],
+									"protocolProfileBehavior": {},
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "Transition to Paid",
+									"item": [
+										{
+											"name": "Pay invoice with line w/o poLineId",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															"let invoice = JSON.parse(pm.environment.get(\"emptyConfigWorkflow-invoiceWith1LineContent\"));",
+															"invoice.status = \"Paid\";",
+															"pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineContent\", JSON.stringify(invoice));"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"pm.test(\"Status code is 204\", function () {",
+															"    pm.response.to.have.status(\"No Content\");",
+															"",
+															"    // The test can be run only if update succeded",
+															"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"emptyConfigWorkflow-invoiceWith1LineId\"), (err, res) => {",
+															"        pm.test(\"Invoice status updated\", function () {",
+															"            let invoice = res.json();",
+															"            pm.expect(invoice.status).to.equal(\"Paid\");",
+															"",
+															"            // Remember updated invoice",
+															"            pm.environment.set(\"emptyConfigWorkflow-invoiceWith1LineContent\", JSON.stringify(invoice));",
+															"",
+															"            // Validate voucher",
+															"            utils.getVouchersForInvoice(invoice.id, (err, res) => {",
+															"                pm.test(\"Still only one voucher but already Paid\", () => {",
+															"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
+															"                    pm.expect(res.json().vouchers[0].status).to.eql(\"Paid\");",
+															"                });",
+															"            });",
+															"",
 															"        });",
 															"    });",
 															"});"
