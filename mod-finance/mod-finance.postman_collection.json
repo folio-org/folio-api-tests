@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "795dc8cd-96ed-4d78-8413-90faf0a84301",
+		"_postman_id": "9f7a02c4-d160-4ec0-bba4-f03bcaf9dbd3",
 		"name": "mod-finance",
 		"description": "Tests for mod-finance",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -359,6 +359,8 @@
 											"eval(globals.loadUtils).sendGetRequest('/perms/permissions?length=1000&query=(subPermissions=\"\" NOT subPermissions ==/respectAccents []) and (cql.allRecords=1 NOT childOf <>/respectAccents [])', (err, res) => {",
 											"        let userPermissions = globals.testData.users.admin.permissions;",
 											"        userPermissions.permissions = res.json().permissions.map(perm => perm.permissionName);",
+											"        userPermissions.permissions.push(\"finance-storage.transactions.item.delete\");",
+											"        userPermissions.permissions.push(\"finance.order-transaction-summaries.item.post\");",
 											"        pm.variables.set(\"userPermissions\", JSON.stringify(userPermissions));",
 											"});"
 										],
@@ -1084,7 +1086,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"let group = utils.buildGroupMinContent(\"GROUP_GRUD\");",
 											"",
-											"pm.variables.set(\"groupContent\", JSON.stringify(group));"
+											"pm.environment.set(\"groupContent\", JSON.stringify(group));"
 										],
 										"type": "text/javascript"
 									}
@@ -1254,7 +1256,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"let groupForUpdate = JSON.parse(pm.variables.get(\"groupContent\"));",
+											"let groupForUpdate = JSON.parse(pm.environment.get(\"groupContent\"));",
 											"",
 											"groupForUpdate.name = \"newGroupName\";",
 											"",
@@ -1361,7 +1363,7 @@
 										"exec": [
 											"pm.test(\"Ledger is created\", () => {",
 											"    pm.response.to.have.status(201);",
-											"    pm.environment.set(\"fiscalYearId\", pm.response.json().id); ",
+											"    pm.environment.set(\"fiscalYearId\", pm.response.json().id);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1434,7 +1436,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"let fy = utils.buildFiscalYearMinContent(\"FY2020\");",
 											"",
-											"pm.variables.set(\"secondFyContent\", JSON.stringify(fy));"
+											"pm.environment.set(\"secondFyContent\", JSON.stringify(fy));"
 										],
 										"type": "text/javascript"
 									}
@@ -1790,7 +1792,7 @@
 											"let utils = eval(globals.loadUtils);",
 											"let ledger = utils.buildLedgerMinContent();",
 											"ledger.fiscalYearOneId = pm.environment.get(\"fiscalYearId\");",
-											"pm.variables.set(\"ledgerContent\", JSON.stringify(ledger));"
+											"pm.environment.set(\"ledgerContent\", JSON.stringify(ledger));"
 										],
 										"type": "text/javascript"
 									}
@@ -1855,7 +1857,7 @@
 											"secondLedger.name = \"Second Ledger Name\";",
 											"secondLedger.fiscalYearOneId = pm.environment.get(\"secondFiscalYearId\");",
 											"",
-											"pm.variables.set(\"ledgerContent\", JSON.stringify(secondLedger));"
+											"pm.environment.set(\"ledgerContent\", JSON.stringify(secondLedger));"
 										],
 										"type": "text/javascript"
 									}
@@ -2025,7 +2027,7 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"let ledgerForUpdate = JSON.parse(pm.variables.get(\"ledgerContent\"));",
+											"let ledgerForUpdate = JSON.parse(pm.environment.get(\"ledgerContent\"));",
 											"",
 											"ledgerForUpdate.name = \"newLedgerName\";",
 											"",
@@ -3169,7 +3171,7 @@
 							"response": []
 						},
 						{
-							"name": "Get fund records - 1 record",
+							"name": "Get fund records - 2 records",
 							"event": [
 								{
 									"listen": "test",
@@ -5408,6 +5410,2869 @@
 								}
 							},
 							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Transactions",
+					"item": [
+						{
+							"name": "Allocations",
+							"item": [
+								{
+									"name": "Create fiscal year  - required for budgets",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "8c99d17f-1af5-4b91-97f6-83e472944ca2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"allocFyContent\", JSON.stringify(utils.buildFiscalYearMinContent(\"ALLOCFY2019\")));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd0615f0-1de3-42ac-bcfb-f6eb63da0056",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"allocFiscalYearId\", pm.response.json().id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{allocFyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create ledger - required for funds",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"allocLedgerId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let ledger = utils.buildLedgerMinContent(\"ALLOC-LDGR\", \"Test transaction ledger\");",
+													"ledger.fiscalYearOneId = pm.environment.get(\"allocFiscalYearId\");",
+													"pm.environment.set(\"allocLedgerContent\", JSON.stringify(ledger));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{allocLedgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create fund - required for transactions",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Fund is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Fund content is valid\", function() {",
+													"    utils.validateCompositeFund(record);",
+													"    pm.environment.set(\"toFundId\", record.fund.id); ",
+													"    pm.expect(record.fund.code).to.eql(\"ALLOC-FND\");",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"allocFundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"ALLOC-FND\", pm.environment.get(\"allocLedgerId\")))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{allocFundContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create budget",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Budget is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Budget content is valid\", function() {",
+													"    utils.validateBudget(record);",
+													"    pm.environment.set(\"allocBudgetId\", record.id); ",
+													"    pm.expect(record.name).to.eql(\"ALLOC-BDGT\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"allocBudgetContent\", JSON.stringify(utils.buildBudgetMinContent(\"ALLOC-BDGT\", pm.environment.get(\"toFundId\"), pm.environment.get(\"allocFiscalYearId\"))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{allocBudgetContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get fiscal year by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Fiscal year is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateFiscalYear(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years/{{allocFiscalYearId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years",
+												"{{allocFiscalYearId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get fund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Fund is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateCompositeFund(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{toFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{toFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get budget record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Budget is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateBudget(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets/{{allocBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets",
+												"{{allocBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create allocations",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let record = {};",
+													"pm.test(\"Trasaction allocation is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"transactionId\", pm.response.json().id); ",
+													"    record = pm.response.json();",
+													"    pm.expect(record.transactionType).to.eql(\"Allocation\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"allocationContent\", JSON.stringify(utils.buildTransactionMinContent(25, pm.environment.get(\"allocFiscalYearId\"), pm.environment.get(\"toFundId\"), \"Allocation\")));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{allocationContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/allocations",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"allocations"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get transaction by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Transaction allocation is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateTransaction(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions/{{transactionId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transactions",
+												"{{transactionId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get transaction records by query - 1 record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"One transaction record is found\", function () {",
+													"    pm.response.to.be.ok;",
+													"    let records = pm.response.json();",
+													"    pm.expect(records.transactions).to.have.lengthOf(1);",
+													"    utils.validateTransaction(records.transactions[0]);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions?query=id=={{transactionId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transactions"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "id=={{transactionId}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete transaction",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Transaction is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/transactions/{{transactionId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"transactions",
+												"{{transactionId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete budget record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Budget is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets/{{allocBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets",
+												"{{allocBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete fund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fund is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{toFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{toFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete Ledger",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers/{{allocLedgerId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers",
+												"{{allocLedgerId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years/{{allocFiscalYearId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years",
+												"{{allocFiscalYearId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "Create Transaction allocations",
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Encumbrances",
+							"item": [
+								{
+									"name": "Create order transaction summaries",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "8c99d17f-1af5-4b91-97f6-83e472944ca2",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd0615f0-1de3-42ac-bcfb-f6eb63da0056",
+												"exec": [
+													"pm.test(\"Order transaction summary is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"id\": \"e5ae4afd-3fa9-494e-a972-f541df9b877e\",\r\n  \"numTransactions\": 1\r\n}\r\n"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/order-transaction-summaries",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"order-transaction-summaries"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create fiscal year  - required for budgets Copy",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "8c99d17f-1af5-4b91-97f6-83e472944ca2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"encFyContent\", JSON.stringify(utils.buildFiscalYearMinContent(\"ENCFY2019\")));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd0615f0-1de3-42ac-bcfb-f6eb63da0056",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"encFiscalYearId\", pm.response.json().id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{encFyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create ledger - required for funds",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"encLedgerId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let ledger = utils.buildLedgerMinContent(\"ENC-LDGR\", \"Test encumbrance ledger\");",
+													"ledger.fiscalYearOneId = pm.environment.get(\"encFiscalYearId\");",
+													"pm.variables.set(\"encLedgerContent\", JSON.stringify(ledger));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{encLedgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create fromFund - required for transactions",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Encumbrance Fund is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Encumbrance Fund content is valid\", function() {",
+													"    utils.validateCompositeFund(record);",
+													"    pm.environment.set(\"fromFundId\", record.fund.id); ",
+													"    pm.expect(record.fund.code).to.eql(\"ENC-FND\");",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"encFundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"ENC-FND\", pm.environment.get(\"encLedgerId\")))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{encFundContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create toFund - required for transactions",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Encumbrance Fund is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Encumbrance Fund content is valid\", function() {",
+													"    utils.validateCompositeFund(record);",
+													"    pm.environment.set(\"toFundId\", record.fund.id); ",
+													"    pm.expect(record.fund.code).to.eql(\"ENC-FND2\");",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"encFundContent2\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"ENC-FND2\", pm.environment.get(\"encLedgerId\")))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{encFundContent2}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create budget",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Budget is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Budget content is valid\", function() {",
+													"    utils.validateBudget(record);",
+													"    pm.environment.set(\"encBudgetId\", record.id); ",
+													"    pm.expect(record.name).to.eql(\"ENC-BDGT\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"encBudgetContent\", JSON.stringify(utils.buildBudgetMinContent(\"ENC-BDGT\", pm.environment.get(\"fromFundId\"), pm.environment.get(\"encFiscalYearId\"))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{encBudgetContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get fiscal year by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Fiscal year is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateFiscalYear(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years/{{encFiscalYearId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years",
+												"{{encFiscalYearId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get fund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Fund is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateCompositeFund(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{toFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{toFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get budget record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Budget is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateBudget(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets/{{encBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets",
+												"{{encBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create encumbrances",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let record = {};",
+													"pm.test(\"Trasaction encumbrance is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"encumbranceId\", pm.response.json().id);",
+													"    record = pm.response.json();",
+													"    pm.expect(record.transactionType).to.eql(\"Encumbrance\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let encumbranceMinContent = utils.buildEncumbranceMinContent();",
+													"let transactionEncumbrance = utils.buildTransactionMinContent(25, pm.environment.get(\"encFiscalYearId\"), pm.environment.get(\"toFundId\"), \"Encumbrance\");",
+													"",
+													"transactionEncumbrance.encumbrance = encumbranceMinContent;",
+													"transactionEncumbrance.fromFundId = pm.environment.get(\"fromFundId\");",
+													"pm.variables.set(\"encumbranceContent\", JSON.stringify(transactionEncumbrance));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{encumbranceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/encumbrances",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"encumbrances"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get transaction by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Transaction encumbrance is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateTransaction(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions/{{encumbranceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transactions",
+												"{{encumbranceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get transaction records by query - 1 record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"One transaction record is found\", function () {",
+													"    pm.response.to.be.ok;",
+													"    let records = pm.response.json();",
+													"    pm.expect(records.transactions).to.have.lengthOf(1);",
+													"    utils.validateTransaction(records.transactions[0]);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions?query=id=={{encumbranceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transactions"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "id=={{encumbranceId}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete transaction",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Encumbrance is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/transactions/{{encumbranceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"transactions",
+												"{{encumbranceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete budget record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Budget is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets/{{encBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets",
+												"{{encBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete fromFund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fund is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{fromFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{fromFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete toFund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fund is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{toFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{toFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete Ledger",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": ""
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers/{{encLedgerId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers",
+												"{{encLedgerId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years/{{encFiscalYearId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years",
+												"{{encFiscalYearId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "Create Transaction encumbrances",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "c4278051-a6b2-447b-a8a3-8e741d2193f6",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "568d0bc8-3410-4314-8a8b-e10554f92219",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Transfers",
+							"item": [
+								{
+									"name": "Create fiscal year  - required for budgets",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "8c99d17f-1af5-4b91-97f6-83e472944ca2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"transFyContent\", JSON.stringify(utils.buildFiscalYearMinContent(\"TRANSFY2019\")));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd0615f0-1de3-42ac-bcfb-f6eb63da0056",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"transFiscalYearId\", pm.response.json().id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{transFyContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create ledger - required for funds",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"transLedgerId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let ledger = utils.buildLedgerMinContent(\"TRANS-LDGR\", \"Test transaction ledger\");",
+													"ledger.fiscalYearOneId = pm.environment.get(\"transFiscalYearId\");",
+													"pm.variables.set(\"transLedgerContent\", JSON.stringify(ledger));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{transLedgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create fund - required for transactions",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Fund is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Fund content is valid\", function() {",
+													"    utils.validateCompositeFund(record);",
+													"    pm.environment.set(\"toFundId\", record.fund.id); ",
+													"    pm.expect(record.fund.code).to.eql(\"TRANS-FND\");",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"transFundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"TRANS-FND\", pm.environment.get(\"transLedgerId\")))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{transFundContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create budget",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Budget is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    record = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Budget content is valid\", function() {",
+													"    utils.validateBudget(record);",
+													"    pm.environment.set(\"transBudgetId\", record.id); ",
+													"    pm.expect(record.name).to.eql(\"TRANSFER-BDGT\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"transBudgetContent\", JSON.stringify(utils.buildBudgetMinContent(\"TRANSFER-BDGT\", pm.environment.get(\"toFundId\"), pm.environment.get(\"transFiscalYearId\"))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{transBudgetContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get fiscal year by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Fiscal year is retrieved\", function() {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateFiscalYear(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years/{{transFiscalYearId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years",
+												"{{transFiscalYearId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get fund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Fund is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateCompositeFund(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{toFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{toFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get budget record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Budget is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateBudget(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets/{{transBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets",
+												"{{transBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create transfers",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let record = {};",
+													"pm.test(\"Trasaction transfer is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"transferId\", pm.response.json().id); ",
+													"    record = pm.response.json();",
+													"    pm.expect(record.transactionType).to.eql(\"Transfer\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"transferContent\", JSON.stringify(utils.buildTransactionMinContent(25, pm.environment.get(\"transFiscalYearId\"), pm.environment.get(\"toFundId\"), \"Transfer\")));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{transferContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transfers",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transfers"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get transaction by id",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Transaction transfer is retrieved\", function () {",
+													"    pm.response.to.be.ok;",
+													"    utils.validateTransaction(pm.response.json());",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions/{{transferId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transactions",
+												"{{transferId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get transaction records by query - 1 record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"One transaction record is found\", function () {",
+													"    pm.response.to.be.ok;",
+													"    let records = pm.response.json();",
+													"    pm.expect(records.transactions).to.have.lengthOf(1);",
+													"    utils.validateTransaction(records.transactions[0]);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions?query=id=={{transferId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"transactions"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "id=={{transferId}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete transaction",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Transaction is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/transactions/{{transferId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"transactions",
+												"{{transferId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete budget record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Budget is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets/{{transBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"budgets",
+												"{{transBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete fund record",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fund is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds/{{toFundId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"funds",
+												"{{toFundId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete Ledger",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Ledger is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{ledgerContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers/{{transLedgerId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"ledgers",
+												"{{transLedgerId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Fiscal year is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years/{{transFiscalYearId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"fiscal-years",
+												"{{transFiscalYearId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "Create Transaction allocations",
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -7936,6 +10801,438 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Transactions",
+					"item": [
+						{
+							"name": "Create transaction Transfer without required field",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Transfers is not created - missing fiscalYearId field\", function () {",
+											"    pm.response.to.have.status(422).and.to.be.json;",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters[0].key).to.eql(\"fiscalYearId\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"amount\": 25.0,\r\n  \"currency\": \"USD\",\r\n  \"description\": \"PO_Line: History of Incas\",\r\n  \"source\": \"Manual\",\r\n  \"toFundId\": \"0d55e306-d7ab-49a1-ae33-b94249bf95ee\",\r\n  \"transactionType\": \"Transfer\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/allocations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"allocations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create transaction Allocation without required field",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Allocations is not created - missing currency field\", function () {",
+											"    pm.response.to.have.status(422).and.to.be.json;",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters[0].key).to.eql(\"currency\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"amount\": 25.0,\r\n  \"description\": \"PO_Line: History of Incas\",\r\n  \"source\": \"Manual\",\r\n  \"fiscalYearId\": \"c01ea7fa-ffbd-48bc-8b48-67321d9ff205\",\r\n  \"toFundId\": \"0d55e306-d7ab-49a1-ae33-b94249bf95ee\",\r\n  \"transactionType\": \"Transfer\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/allocations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"allocations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create transaction Encumbrance without required field",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Encumbrance is not created - missing transactionType field\", function () {",
+											"    pm.response.to.have.status(422).and.to.be.json;",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters[0].key).to.eql(\"transactionType\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"amount\": 25.0,\r\n  \"currency\": \"USD\",\r\n  \"description\": \"PO_Line: History of Incas\",\r\n  \"source\": \"Manual\",\r\n  \"fiscalYearId\": \"c01ea7fa-ffbd-48bc-8b48-67321d9ff205\",\r\n  \"toFundId\": \"0d55e306-d7ab-49a1-ae33-b94249bf95ee\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/encumbrances",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"encumbrances"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get transaction by id - wrong id, not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Encumbrance not found - wrong id\", function () {",
+											"    pm.response.to.have.status(404).and.to.be.json;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"var uuid = require('uuid');",
+											"pm.variables.set(\"randomId\", uuid.v4());"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions/{{randomId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"transactions",
+										"{{randomId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create transaction Allocation with invalid transactionType",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Allocations is not created - invalid transactionType\", function () {",
+											"    pm.response.to.have.status(422).and.to.be.json;",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters).to.have.lengthOf(0);",
+											"    pm.expect(pm.response.json().errors[0].message).to.eql(\"Invalid transaction type\");",
+											"    pm.expect(pm.response.json().errors[0].code).to.eql(\"invalidTransactionType\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"amount\": 25.0,\r\n  \"currency\": \"USD\",\r\n  \"description\": \"PO_Line: History of Incas\",\r\n  \"source\": \"Manual\",\r\n  \"fiscalYearId\": \"c01ea7fa-ffbd-48bc-8b48-67321d9ff205\",\r\n  \"toFundId\": \"0d55e306-d7ab-49a1-ae33-b94249bf95ee\",\r\n  \"transactionType\": \"Transfer\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/allocations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"allocations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create transaction Transfer with invalid transactionType",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Transfers is not created - invalid transactionType\", function () {",
+											"    pm.response.to.have.status(422).and.to.be.json;",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters).to.have.lengthOf(0);",
+											"    pm.expect(pm.response.json().errors[0].message).to.eql(\"Invalid transaction type\");",
+											"    pm.expect(pm.response.json().errors[0].code).to.eql(\"invalidTransactionType\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"amount\": 25.0,\r\n  \"currency\": \"USD\",\r\n  \"description\": \"PO_Line: History of Incas\",\r\n  \"source\": \"Manual\",\r\n  \"fiscalYearId\": \"c01ea7fa-ffbd-48bc-8b48-67321d9ff205\",\r\n  \"toFundId\": \"0d55e306-d7ab-49a1-ae33-b94249bf95ee\",\r\n  \"transactionType\": \"Allocation\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transfers",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"transfers"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create transaction Encumbrance with invalid transactionType",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Encumbrances is not created - invalid transactionType\", function () {",
+											"    pm.response.to.have.status(422).and.to.be.json;",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].parameters).to.have.lengthOf(0);",
+											"    pm.expect(pm.response.json().errors[0].message).to.eql(\"Invalid transaction type\");",
+											"    pm.expect(pm.response.json().errors[0].code).to.eql(\"invalidTransactionType\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"amount\": 25.0,\r\n  \"currency\": \"USD\",\r\n  \"description\": \"PO_Line: History of Incas\",\r\n  \"source\": \"Manual\",\r\n  \"fiscalYearId\": \"c01ea7fa-ffbd-48bc-8b48-67321d9ff205\",\r\n  \"toFundId\": \"0d55e306-d7ab-49a1-ae33-b94249bf95ee\",\r\n  \"transactionType\": \"Transfer\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/encumbrances",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"encumbrances"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -8130,7 +11427,7 @@
 					"            permissions: {",
 					"                \"id\": \"00000000-1111-5555-9999-999999999999\",",
 					"                \"userId\": \"00000000-1111-5555-9999-999999999999\",",
-					"                \"permissions\": [ ]",
+					"                \"permissions\": [ \"finance-storage.transactions.item.delete\", \"finance.order-transaction-summaries.item.post\" ]",
 					"            }",
 					"        },",
 					"        regular: {",
@@ -8152,7 +11449,9 @@
 					"                \"id\": \"00000001-1111-5555-9999-999999999999\",",
 					"                \"userId\": \"00000001-1111-5555-9999-999999999999\",",
 					"                \"permissions\": [",
-					"                    \"finance.all\"",
+					"                    \"finance.all\",",
+					"                    \"finance.order-transaction-summaries.item.post\",",
+					"                    \"finance-storage.transactions.item.delete\"",
 					"                ]",
 					"            }",
 					"        }",
@@ -8317,11 +11616,11 @@
 					"    /**",
 					"     * Build ledger record with minimal required fields.",
 					"     */",
-					"    utils.buildLedgerMinContent = function(code) {",
+					"    utils.buildLedgerMinContent = function(code, name) {",
 					"        return {",
 					"            \"code\": code || \"TST-LDGR\",",
 					"            \"ledgerStatus\": \"Active\",",
-					"            \"name\": \"Test ledger\"",
+					"            \"name\": name || \"Test ledger\"",
 					"        };",
 					"    };",
 					"",
@@ -8362,15 +11661,46 @@
 					"    /**",
 					"     * Build budget record with minimal required fields.",
 					"     */",
-					"    utils.buildBudgetMinContent = function(name, fundId) {",
+					"    utils.buildBudgetMinContent = function(name, fundId, fiscalYearId) {",
 					"        return {",
 					"            \"allocated\": 0,",
 					"            \"name\": name || \"TST-BDGT\",",
 					"            \"budgetStatus\": \"Active\",",
 					"            \"fundId\": fundId || pm.variables.get(\"fundId\"),",
-					"            \"fiscalYearId\": pm.variables.get(\"fiscalYearId\")",
+					"            \"fiscalYearId\": fiscalYearId || pm.variables.get(\"fiscalYearId\")",
 					"        };",
 					"    };",
+					"    ",
+					"    var uuid = require('uuid');",
+					"    /**",
+					"     * Build encumbrance record with minimal required fields.",
+					"     */",
+					"    utils.buildEncumbranceMinContent = function() {",
+					"        return {",
+					"            \"initialAmountEncumbered\": 1000,",
+					"\t        \"status\": \"Unreleased\",",
+					"\t        \"orderType\":  \"One-Time\",",
+					"\t        \"subscription\": false,",
+					"\t        \"reEncumber\": false,",
+					"\t        \"sourcePurchaseOrderId\": \"e5ae4afd-3fa9-494e-a972-f541df9b877e\",",
+					"\t        \"sourcePoLineId\": uuid.v4()",
+					"        };",
+					"    }; ",
+					"    ",
+					"    /**",
+					"     * Build transaction record with minimal required fields.",
+					"     */",
+					"    utils.buildTransactionMinContent = function(amount, fiscalYearId, toFundId, transactionType) {",
+					"        return {",
+					"            \"amount\": amount || 25.17,",
+					"            \"currency\": \"USD\",",
+					"            \"description\": \"PO_Line: History of Incas\",",
+					"            \"fiscalYearId\": fiscalYearId,",
+					"            \"source\": \"Manual\",",
+					"            \"toFundId\": toFundId || pm.environment.get(\"toFundId\"),",
+					"            \"transactionType\": transactionType",
+					"        };",
+					"    };   ",
 					"",
 					"    /**",
 					"     * Validates the content of the fund type record",
@@ -8413,6 +11743,19 @@
 					"        pm.expect(jsonData.fiscalYearId).to.exist;",
 					"        pm.expect(jsonData.name).to.exist;",
 					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"budget.json\")));",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Validates the content of the transaction record",
+					"     */",
+					"    utils.validateTransaction = function(jsonData) {",
+					"        pm.expect(jsonData.id).to.exist;",
+					"        pm.expect(jsonData.amount).to.exist;",
+					"        pm.expect(jsonData.currency).to.exist;",
+					"        pm.expect(jsonData.source).to.exist;",
+					"        pm.expect(jsonData.fiscalYearId).to.exist;",
+					"        pm.expect(jsonData.transactionType).to.exist;",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"transaction.json\")));",
 					"    };",
 					"    ",
 					"     /**",
@@ -8499,6 +11842,20 @@
 					"        pm.environment.unset(\"groupForCrudId\");",
 					"        pm.environment.unset(\"groupId1\");",
 					"        pm.environment.unset(\"groupId2\");",
+					"        pm.environment.unset(\"allocFiscalYearId\");",
+					"        pm.environment.unset(\"allocLedgerId\");",
+					"        pm.environment.unset(\"toFundId\");",
+					"        pm.environment.unset(\"allocBudgetId\");",
+					"        pm.environment.unset(\"transactionId\");",
+					"        pm.environment.unset(\"encFiscalYearId\");",
+					"        pm.environment.unset(\"encLedgerId\");",
+					"        pm.environment.unset(\"fromFundId\");",
+					"        pm.environment.unset(\"encBudgetId\");",
+					"        pm.environment.unset(\"encumbranceId\");",
+					"        pm.environment.unset(\"transFiscalYearId\");",
+					"        pm.environment.unset(\"transLedgerId\");",
+					"        pm.environment.unset(\"transBudgetId\");",
+					"        pm.environment.unset(\"transferId\");  ",
 					"    };",
 					"",
 					"",
@@ -8552,13 +11909,13 @@
 	],
 	"variable": [
 		{
-			"id": "65ed2ddd-fa3c-44b2-8ca1-b27054a6d4d7",
+			"id": "94ec68e4-7367-4efa-9bb7-c23764900ce2",
 			"key": "mod-financeResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-finance/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "874352a9-a54f-429f-b2f7-61491d9d4442",
+			"id": "f994ef4b-7eab-488b-8580-07ab8d25e0ac",
 			"key": "testTenant",
 			"value": "finance_api_tests",
 			"type": "string"
