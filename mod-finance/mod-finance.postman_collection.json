@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "5e6bb97a-65ce-432b-a0ba-60a8c5e162eb",
+		"_postman_id": "6c317643-6ba4-4f55-9359-d4297209c193",
 		"name": "mod-finance",
 		"description": "Tests for mod-finance",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -1063,6 +1063,68 @@
 					"name": "Groups",
 					"item": [
 						{
+							"name": "Create group - for Group Fund Fiscal Year",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Group is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"groupId\", pm.response.json().id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let group = utils.buildGroupMinContent(\"GROUP_GFFY\");",
+											"group.name = \"Test group for GFFY\";",
+											"",
+											"pm.environment.set(\"groupContent\", JSON.stringify(group));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{groupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/groups",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Create group - for CRUD test",
 							"event": [
 								{
@@ -1361,11 +1423,15 @@
 									"script": {
 										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
 										"exec": [
-											"pm.test(\"Ledger is created\", () => {",
+											"pm.test(\"Fiscal Year is created\", () => {",
 											"    pm.response.to.have.status(201);",
 											"    pm.environment.set(\"fiscalYearId\", pm.response.json().id);",
 											"    // MODFIN-94 Add series field while creating/updating a FiscalYear",
 											"    pm.expect(pm.response.json().series).to.exist;",
+											"});",
+											"",
+											"pm.test(\"Fiscal Year contains Currenct\", () => {",
+											"    pm.expect(pm.response.json().currency).to.exist;",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1388,7 +1454,7 @@
 								"header": [
 									{
 										"key": "x-okapi-token",
-										"value": "{{xokapitoken-testAdmin}}"
+										"value": "{{xokapitoken}}"
 									},
 									{
 										"key": "Content-Type",
@@ -1660,9 +1726,15 @@
 									"script": {
 										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
 										"exec": [
-											"pm.test(\"Ledger is created\", () => {",
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Fiscal Year is created\", () => {",
 											"    pm.response.to.have.status(201);",
 											"    pm.environment.set(\"fyForDeleteId\", pm.response.json().id); ",
+											"});",
+											"",
+											"pm.test(\"Fiscal Year contains Currency from Config\", () => {",
+											"    pm.expect(pm.response.json().currency).to.exist;",
+											"     pm.expect(pm.response.json().currency).to.equal(\"SEK\");",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1676,7 +1748,11 @@
 											"let utils = eval(globals.loadUtils);",
 											"let fy = utils.buildFiscalYearMinContent(\"THRD2020\");",
 											"",
-											"pm.variables.set(\"fyForDelete\", JSON.stringify(fy));"
+											"pm.variables.set(\"fyForDelete\", JSON.stringify(fy));",
+											"",
+											"let localeConfig = globals.testData.localeConfigs.bodyTemplate;",
+											"localeConfig.value = \"{\\\"locale\\\":\\\"en-US\\\",\\\"timezone\\\":\\\"America/New_York\\\",\\\"currency\\\":\\\"SEK\\\"}\";",
+											"utils.createConfig(localeConfig);"
 										],
 										"type": "text/javascript"
 									}
@@ -1709,7 +1785,8 @@
 										"finance",
 										"fiscal-years"
 									]
-								}
+								},
+								"description": "Test Fiscal Year picks currency from configuration while creating"
 							},
 							"response": []
 						},
@@ -3802,318 +3879,6 @@
 					"name": "Group Fund Fiscal Years",
 					"item": [
 						{
-							"name": "Prepare data for testing",
-							"item": [
-								{
-									"name": "Create Group",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-												"exec": [
-													"let record = {};",
-													"",
-													"pm.test(\"Group is created\", function () {",
-													"    pm.response.to.have.status(201);",
-													"    record = pm.response.json();",
-													"    pm.environment.set(\"gffyGroupId\", record.id);",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken-testAdmin}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"code\": \"HIST-Test\",\n    \"description\": \"Test\",\n    \"name\": \"History-Test\",\n    \"status\": \"Active\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/groups",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"finance-storage",
-												"groups"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Create Fiscal Year",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-												"exec": [
-													"let record = {};",
-													"",
-													"pm.test(\"Fiscal year is created\", function () {",
-													"    pm.response.to.have.status(201);",
-													"    record = pm.response.json();",
-													"    pm.environment.set(\"gffyFiscalYearId\", record.id);",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken-testAdmin}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"code\": \"TS2020\",\n    \"name\": \"Test fiscal year\",\n    \"periodStart\": \"2019-01-01\",\n    \"periodEnd\": \"2020-01-01\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/fiscal-years",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"finance-storage",
-												"fiscal-years"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Create Ledger",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-												"exec": [
-													"let record = {};",
-													"",
-													"pm.test(\"Ledger is created\", function () {",
-													"    pm.response.to.have.status(201);",
-													"    record = pm.response.json();",
-													"    pm.environment.set(\"gffyLedgerId\", record.id);",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken-testAdmin}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"code\": \"LDGR-TEST\",\n    \"ledgerStatus\": \"Active\",\n    \"fiscalYearOneId\": \"{{gffyFiscalYearId}}\",\n    \"name\": \"Test ledger for GFFY\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/ledgers",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"finance-storage",
-												"ledgers"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Create Fund Type",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-												"exec": [
-													"let record = {};",
-													"",
-													"pm.test(\"Fund type is created\", function () {",
-													"    pm.response.to.have.status(201);",
-													"    record = pm.response.json();",
-													"    pm.environment.set(\"gffyFundTypeId\", record.id);",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken-testAdmin}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"name\": \"Test fund type\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/fund-types",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"finance-storage",
-												"fund-types"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "Create Fund",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
-												"exec": [
-													"let record = {};",
-													"",
-													"pm.test(\"Fund is created\", function () {",
-													"    pm.response.to.have.status(201);",
-													"    record = pm.response.json();",
-													"    pm.environment.set(\"gffyFundId\", record.id);",
-													"});"
-												],
-												"type": "text/javascript"
-											}
-										},
-										{
-											"listen": "prerequest",
-											"script": {
-												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
-												"exec": [
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken-testAdmin}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"code\": \"TST-FND-GFFY\",\n    \"fundStatus\": \"Active\",\n    \"ledgerId\": \"{{gffyLedgerId}}\",\n    \"fundTypeId\": \"{{gffyFundTypeId}}\",\n    \"name\": \"Test fund for GFFY\"\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/funds",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"finance-storage",
-												"funds"
-											]
-										}
-									},
-									"response": []
-								}
-							],
-							"protocolProfileBehavior": {},
-							"_postman_isSubFolder": true
-						},
-						{
 							"name": "Create group fund fiscal year",
 							"event": [
 								{
@@ -4127,7 +3892,7 @@
 											"pm.test(\"Group fund fiscal year is created\", function () {",
 											"    pm.response.to.have.status(201);",
 											"    record = pm.response.json();",
-											"    pm.environment.set(\"groupFundFiscalYearId\", record.id);",
+											"    pm.environment.set(\"groupFundFiscalYearForCrudId\", record.id);",
 											"});"
 										],
 										"type": "text/javascript"
@@ -4138,7 +3903,9 @@
 									"script": {
 										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 										"exec": [
-											""
+											"let utils = eval(globals.loadUtils);",
+											"pm.variables.set(\"groupFundFiscalYearContent\", ",
+											"JSON.stringify(utils.buildGroupFundFiscalYearMinContent(pm.environment.get(\"groupId\"), pm.environment.get(\"fundId\"), pm.environment.get(\"fiscalYearId\"))));"
 										],
 										"type": "text/javascript"
 									}
@@ -4160,7 +3927,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"groupId\": \"{{gffyGroupId}}\",\r\n  \"fiscalYearId\": \"{{gffyFiscalYearId}}\",\r\n  \"fundId\": \"{{gffyFundId}}\"\r\n}",
+									"raw": "{{groupFundFiscalYearContent}}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -4226,7 +3993,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=id={{groupFundFiscalYearId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=id={{groupFundFiscalYearForCrudId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -4239,7 +4006,7 @@
 									"query": [
 										{
 											"key": "query",
-											"value": "id={{groupFundFiscalYearId}}"
+											"value": "id={{groupFundFiscalYearForCrudId}}"
 										}
 									]
 								}
@@ -4283,7 +4050,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years/{{groupFundFiscalYearId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years/{{groupFundFiscalYearForCrudId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -4292,7 +4059,7 @@
 									"path": [
 										"finance",
 										"group-fund-fiscal-years",
-										"{{groupFundFiscalYearId}}"
+										"{{groupFundFiscalYearForCrudId}}"
 									]
 								}
 							},
@@ -4342,7 +4109,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=id=={{groupFundFiscalYearId}}",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=id=={{groupFundFiscalYearForCrudId}}",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
@@ -4355,7 +4122,7 @@
 									"query": [
 										{
 											"key": "query",
-											"value": "id=={{groupFundFiscalYearId}}"
+											"value": "id=={{groupFundFiscalYearForCrudId}}"
 										}
 									]
 								}
@@ -6893,7 +6660,7 @@
 													"",
 													"transactionEncumbrance.encumbrance = encumbranceMinContent;",
 													"transactionEncumbrance.fromFundId = pm.environment.get(\"fromFundId\");",
-													"pm.variables.set(\"encumbranceContent\", JSON.stringify(transactionEncumbrance));",
+													"pm.environment.set(\"encumbranceContent\", JSON.stringify(transactionEncumbrance));",
 													""
 												],
 												"type": "text/javascript"
@@ -6932,6 +6699,69 @@
 									"response": []
 								},
 								{
+									"name": "Awayting payment request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let record = {};",
+													"pm.test(\"Money were moved to awaitng payment\", () => {",
+													"    pm.response.to.have.status(204);",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"pm.environment.set(\"awaitingPaymentContent\", JSON.stringify({",
+													"    \"encumbranceId\": \"{{encumbranceId}}\",",
+													"    \"amountAwaitingPayment\": \"18.44\",",
+													"    \"releaseEncumbrance\": \"false\"",
+													"}));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{awaitingPaymentContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/awaiting-payment",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"awaiting-payment"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Get transaction by id",
 									"event": [
 										{
@@ -6941,8 +6771,20 @@
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
 													"",
-													"pm.test(\"Transaction encumbrance is retrieved\", function () {",
+													"pm.test(\"Transaction encumbrance is retrieved\", function() {",
 													"    pm.response.to.be.ok;",
+													"    utils.validateTransaction(pm.response.json());",
+													"});",
+													"",
+													"pm.test(\"Verify money were moved to awating payment\", function() {",
+													"    pm.response.to.be.ok;",
+													"    let previousAmountValue = JSON.parse(pm.environment.get(\"encumbranceContent\")).encumbrance.amountAwaitingPayment || 0;",
+													"    let awatingPaymentAmount = JSON.parse(pm.environment.get(\"awaitingPaymentContent\")).amountAwaitingPayment;",
+													"    console.log(awatingPaymentAmount);",
+													"",
+													"    let newAmount = pm.response.json().encumbrance.amountAwaitingPayment;",
+													"    pm.expect(newAmount).to.eql(+previousAmountValue + +awatingPaymentAmount);",
+													"",
 													"    utils.validateTransaction(pm.response.json());",
 													"});"
 												],
@@ -8277,6 +8119,453 @@
 							"description": "Create Transaction allocations",
 							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Current fiscal year",
+					"item": [
+						{
+							"name": "Create current fiscal year for ledger",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Current fiscal year is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"currentFiscalYearId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"const moment = require('moment');",
+											"",
+											"let currentFiscalYear = utils.buildFiscalYearMinContent();",
+											"var start = moment().startOf('year');",
+											"var end = moment().endOf('year');",
+											"",
+											"currentFiscalYear.periodStart = start.format('YYYY-MM-DD');",
+											"currentFiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+											"",
+											"currentFiscalYear.name = \"CurrentFY\";",
+											"currentFiscalYear.code = \"CF1111\";",
+											"currentFiscalYear.series = \"CFYSERIES\";",
+											"",
+											"pm.variables.set(\"fyContent\", JSON.stringify(currentFiscalYear));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fyContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"fiscal-years"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create next fiscal year for ledger",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Next fiscal year is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"nextFiscalYearId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"const moment = require('moment');",
+											"",
+											"let nextFiscalYear = utils.buildFiscalYearMinContent();",
+											"var start = moment().startOf('year').add(1, 'year');",
+											"var end = moment().endOf('year').add(1, 'year');",
+											"",
+											"nextFiscalYear.periodStart = start.format('YYYY-MM-DD');",
+											"nextFiscalYear.periodEnd = end.format('YYYY-MM-DD');",
+											"",
+											"nextFiscalYear.name = \"NextFY\";",
+											"nextFiscalYear.code = \"CF2222\";",
+											"nextFiscalYear.series = \"CFYSERIES\";",
+											"",
+											"pm.variables.set(\"fyContent\", JSON.stringify(nextFiscalYear));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{fyContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/fiscal-years",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"fiscal-years"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create ledger with next fiscal year",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Ledger is created\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"ledgerForCurrentFiscalYearId\", pm.response.json().id); ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let ledger = utils.buildLedgerMinContent(\"n-lgr\", \"Next FY ledger\");",
+											"ledger.fiscalYearOneId = pm.environment.get(\"nextFiscalYearId\");",
+											"pm.variables.set(\"ledgerContent\", JSON.stringify(ledger));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{ledgerContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"ledgers"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get current fiscal year by ledger id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Current fiscal year is retrieved\", function() {",
+											"    pm.response.to.be.ok;",
+											"    let ledger = pm.response.json();",
+											"    pm.expect(ledger.id).to.equal(pm.environment.get(\"currentFiscalYearId\"));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers/{{ledgerForCurrentFiscalYearId}}/current-fiscal-year",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"ledgers",
+										"{{ledgerForCurrentFiscalYearId}}",
+										"current-fiscal-year"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Group FiscalYear Summary",
+					"item": [
+						{
+							"name": "Prepare data for testing",
+							"item": [
+								{
+									"name": "Create group fund fiscal year",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let record = {};",
+													"",
+													"pm.test(\"Group fund fiscal year is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.variables.set(\"groupFundFiscalYearContent\", ",
+													"JSON.stringify(utils.buildGroupFundFiscalYearMinContent(pm.environment.get(\"groupId\"), pm.environment.get(\"fundId\"), pm.environment.get(\"fiscalYearId\"))));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{groupFundFiscalYearContent}}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"group-fund-fiscal-years"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Get group fiscal year summary",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Group fiscal year summary is retrieved\", function() {",
+											"    pm.response.to.be.ok;",
+											"    let summaries = pm.response.json().groupFiscalYearSummaries;",
+											"    pm.expect(summaries.length).to.equal(1);",
+											"    utils.validateGroupFiscalYearSummaries(summaries[0]);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"// let utils = eval(globals.loadUtils);",
+											"",
+											"// let fiscalYear = utils.buildFiscalYearMinContent(\"DD1259\");",
+											"// let group = utils.buildGroupMinContent();",
+											"",
+											"// // Create fiscal year",
+											"// pm.test(\"Fiscal year is created\", function() {",
+											"//     utils.sendPostRequest('/finance/fiscal-years', fiscalYear, (err, res) => {",
+											"//         pm.expect(res).to.have.status(201);",
+											"//         pm.variables.set(\"fiscalYearId\", res.json().id);",
+											"//             // Create group",
+											"//             pm.test(\"Group is created\", function() {",
+											"//                 utils.sendPostRequest('/finance/groups', group, (err, res) => {",
+											"//                 pm.expect(res).to.have.status(201);",
+											"//                 pm.variables.set(\"groupId\", res.json().id);",
+											"//                 pm.variables.set(\"fiscalYearId\", res.json().id);",
+											"//                 // Create fund",
+											"//                 pm.test(\"Fund is created\", function() {",
+											"//                     utils.sendPostRequest('/finance/funds', group, (err, res) => {",
+											"//                     pm.expect(res).to.have.status(201);",
+											"//                     pm.variables.set(\"fundIdId\", res.json().id);",
+											"//                     });",
+											"//                 });",
+											"//             });",
+											"//         });",
+											"//     });",
+											"// });",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fiscal-year-summaries?query=groupFundFY.groupId={{groupId}} or groupId={{groupId}} and fiscalYearId=={{fiscalYearId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"group-fiscal-year-summaries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "groupFundFY.groupId={{groupId}} or groupId={{groupId}} and fiscalYearId=={{fiscalYearId}}"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -10250,7 +10539,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"id\": \"a8bf1036-502c-42e4-8783-00a60beeae24\",\r\n  \"groupId\": \"{{gffyGroupId}}\",\r\n  \"fiscalYearId\": \"{{gffyFiscalYearId}}\",\r\n  \"fundId\": \"{{gffyFundId}}\"\r\n}"
+									"raw": "{\r\n  \"id\": \"a8bf1036-502c-42e4-8783-00a60beeae24\",\r\n  \"groupId\": \"{{groupId}}\",\r\n  \"fiscalYearId\": \"{{fiscalYearId}}\",\r\n  \"fundId\": \"{{fundId}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years",
@@ -10309,7 +10598,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"id\": \"a8bf1036-502c-42e4-8783-00a60beeae24\",\r\n  \"groupId\": \"{{gffyGroupId}}\",\r\n  \"fiscalYearId\": \"{{gffyFiscalYearId}}\",\r\n  \"fundId\": \"{{gffyFundId}}\"\r\n}"
+									"raw": "{\r\n  \"id\": \"a8bf1036-502c-42e4-8783-00a60beeae24\",\r\n  \"groupId\": \"{{groupId}}\",\r\n  \"fiscalYearId\": \"{{fiscalYearId}}\",\r\n  \"fundId\": \"{{fundId}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years",
@@ -10327,14 +10616,14 @@
 							"response": []
 						},
 						{
-							"name": "Update group fund fiscal year - name already exists",
+							"name": "Delete group fund fiscal year - not found",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
 										"exec": [
-											"pm.test(\"Fund type is not updated\", function () {",
+											"pm.test(\"Group fund fiscal year is not deleted\", function () {",
 											"    pm.response.to.have.status(404).and.to.be.json;",
 											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
 											"    pm.expect(pm.response.json().errors[0].message).to.contain(\"Not found\");",
@@ -11237,6 +11526,169 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Current fiscal year",
+					"item": [
+						{
+							"name": "Get current fiscal year for non-existed ledger id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Current fiscal year isn't retrieved\", function() {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/ledgers/{{$guid}}/current-fiscal-year",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"ledgers",
+										"{{$guid}}",
+										"current-fiscal-year"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Group fiscal year summary",
+					"item": [
+						{
+							"name": "Get group fiscal year summary - fiscal year not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Group fiscal year summary is empty\", function() {",
+											"    pm.response.to.be.ok;",
+											"    let summaries = pm.response.json().groupFiscalYearSummaries;",
+											"    pm.expect(summaries.length).to.equal(0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"// let utils = eval(globals.loadUtils);",
+											"",
+											"// let fiscalYear = utils.buildFiscalYearMinContent(\"DD1259\");",
+											"// let group = utils.buildGroupMinContent();",
+											"",
+											"// // Create fiscal year",
+											"// pm.test(\"Fiscal year is created\", function() {",
+											"//     utils.sendPostRequest('/finance/fiscal-years', fiscalYear, (err, res) => {",
+											"//         pm.expect(res).to.have.status(201);",
+											"//         pm.variables.set(\"fiscalYearId\", res.json().id);",
+											"//             // Create group",
+											"//             pm.test(\"Group is created\", function() {",
+											"//                 utils.sendPostRequest('/finance/groups', group, (err, res) => {",
+											"//                 pm.expect(res).to.have.status(201);",
+											"//                 pm.variables.set(\"groupId\", res.json().id);",
+											"//                 pm.variables.set(\"fiscalYearId\", res.json().id);",
+											"//                 // Create fund",
+											"//                 pm.test(\"Fund is created\", function() {",
+											"//                     utils.sendPostRequest('/finance/funds', group, (err, res) => {",
+											"//                     pm.expect(res).to.have.status(201);",
+											"//                     pm.variables.set(\"fundIdId\", res.json().id);",
+											"//                     });",
+											"//                 });",
+											"//             });",
+											"//         });",
+											"//     });",
+											"// });",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fiscal-year-summaries?query=groupFundFY.groupId={{groupId}} or groupId={{groupId}} and fiscalYearId=={{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"group-fiscal-year-summaries"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "groupFundFY.groupId={{groupId}} or groupId={{groupId}} and fiscalYearId=={{$guid}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -11409,6 +11861,18 @@
 					"            \"default\": true,",
 					"            \"enabled\": true,",
 					"            \"value\": \"\"",
+					"        }",
+					"    },",
+					"    localeConfigs: {",
+					"        configNames: [],",
+					"        bodyTemplate: {",
+					"            \"id\": \"00000002-1111-5555-9999-999999999999\",",
+					"            \"module\": \"ORG\",",
+					"            \"configName\": \"localeSettings\",",
+					"            \"description\": \"locale Config for API Tests\",",
+					"            \"default\": true,",
+					"            \"enabled\": true,",
+					"            \"value\": \"{\\\"locale\\\":\\\"en-US\\\",\\\"timezone\\\":\\\"America/New_York\\\",\\\"currency\\\":\\\"USD\\\"}\"",
 					"        }",
 					"    },",
 					"    // User template with hardcoded id",
@@ -11639,6 +12103,17 @@
 					"            \"periodEnd\": \"2025-12-30T23:59:59Z\",",
 					"        };",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Build group fund fiscal year record with minimal required fields.",
+					"     */",
+					"    utils.buildGroupFundFiscalYearMinContent = function(groupId, fundId, fiscalYearId) {",
+					"        return {",
+					"            \"groupId\": groupId,",
+					"            \"fiscalYearId\": fiscalYearId,",
+					"            \"fundId\": fundId",
+					"        };",
+					"    };",
 					"",
 					"    /**",
 					"     * Build Fund record with minimal required fields.",
@@ -11798,6 +12273,19 @@
 					"",
 					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"fiscal_year.json\")));",
 					"    };",
+					"    ",
+					"    /**",
+					"    * Validates the content of the group fiscal year summary record",
+					"    */",
+					"    utils.validateGroupFiscalYearSummaries = function(jsonData) {",
+					"        pm.expect(jsonData.groupId).to.exist;",
+					"        pm.expect(jsonData.fiscalYearId).to.exist;",
+					"        pm.expect(jsonData.allocated).to.exist;",
+					"        pm.expect(jsonData.available).to.exist;",
+					"        pm.expect(jsonData.unavailable).to.exist;",
+					"",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"group_fiscal_year_summary.json\")));",
+					"    };",
 					"",
 					"    /**",
 					"     * Clean up variables",
@@ -11860,7 +12348,10 @@
 					"        pm.environment.unset(\"transFiscalYearId\");",
 					"        pm.environment.unset(\"transLedgerId\");",
 					"        pm.environment.unset(\"transBudgetId\");",
-					"        pm.environment.unset(\"transferId\");  ",
+					"        pm.environment.unset(\"transferId\");",
+					"        pm.environment.unset(\"currentFiscalYearId\");",
+					"        pm.environment.unset(\"nextFiscalYearId\");",
+					"        pm.environment.unset(\"ledgerForCurrentFiscalYearId\");",
 					"    };",
 					"",
 					"",
@@ -11914,13 +12405,13 @@
 	],
 	"variable": [
 		{
-			"id": "6cf6aed6-c233-47e9-a2d8-08775848e817",
+			"id": "8b8d4c71-9278-4f23-b686-1d8ffa00c08e",
 			"key": "mod-financeResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-finance/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "787eb457-1e0e-41bd-a397-97b573201c91",
+			"id": "f68a9830-3078-48ad-8ceb-7123a641fc84",
 			"key": "testTenant",
 			"value": "finance_api_tests",
 			"type": "string"
