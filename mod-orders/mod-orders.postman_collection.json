@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "5694342e-609a-47ec-b8e7-4a821ad39955",
+		"_postman_id": "d46d5149-bece-49b9-9fe5-b57c41eecc7b",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -5235,6 +5235,328 @@
 									]
 								},
 								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Titles",
+					"item": [
+						{
+							"name": "Create title",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/orders/order-lines\", function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let sampleLineId  = res.json().poLines[0].id;",
+											"    ",
+											"    pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(sampleLineId)));",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Title status code is 201\", function() {",
+											"    pm.response.to.have.status(201);",
+											"    let title = pm.response.json();",
+											"    pm.expect(title.id).to.exist;",
+											"    pm.variables.set(\"titleId\", title.id);",
+											"    pm.variables.set(\"titleContent\", JSON.stringify(title));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{titleContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get title by id",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"    let retrievedTitle = pm.response.json();",
+											"    pm.expect(retrievedTitle.id).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles/{{titleId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles",
+										"{{titleId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update title",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let titleBody = JSON.parse(pm.variables.get(\"titleContent\"));",
+											"",
+											"titleBody.title = \"New title name\";",
+											"",
+											"pm.variables.set(\"titleContent\", JSON.stringify(titleBody));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    utils.sendGetRequest(\"/orders/titles/\" + pm.variables.get(\"titleId\"), (err, res) => {",
+											"        pm.test(\"Title is updated\", () => {",
+											"            pm.expect(res.code).to.eql(200);",
+											"            var title = res.json();",
+											"            pm.expect(title.title).to.eql(\"New title name\");",
+											"        });",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{titleContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles/{{titleId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles",
+										"{{titleId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get title collection",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"",
+											"    var titles = pm.response.json();",
+											"",
+											"    pm.test(\"Verify order templates collection contains order templates\", () => {",
+											"        pm.expect(titles.totalRecords).to.be.above(0);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete title",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"    utils.sendGetRequest(\"/orders/titles/\" + pm.variables.get(\"titleId\"), (err, res) => {",
+											"        pm.test(\"title is deleted\", () => {",
+											"             pm.expect(res.code).to.eql(404);",
+											"        });",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles/{{titleId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles",
+										"{{titleId}}"
+									]
+								}
 							},
 							"response": []
 						}
@@ -15177,7 +15499,7 @@
 													"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].title = \"Test title\";",
-													"    order.compositePoLines[0].details.productIds[0].productType = \"Vendor Title Number\";",
+													"    order.compositePoLines[0].details.productIds[0].productIdType = \"ab84bb29-5b2a-475e-b88e-f7a97033e391\";",
 													"    ",
 													"    pm.variables.set(\"orderBody\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -15266,7 +15588,7 @@
 													"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].title = \"Test title\";",
-													"    order.compositePoLines[0].details.productIds[0].productType = \"Vendor Title Number\";",
+													"    order.compositePoLines[0].details.productIds[0].productIdType = \"ab84bb29-5b2a-475e-b88e-f7a97033e391\";",
 													"    ",
 													"    pm.variables.set(\"orderBody\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -19454,6 +19776,17 @@
 					"        productId.productId = newProductId;",
 					"        productId.productIdType = pm.environment.get(\"identifierTypeId\");",
 					"    };",
+					"    ",
+					"    ",
+					"    /**",
+					"     * Build Title with minimal required fields.",
+					"     */",
+					"    utils.buildTitleWithMinContent = function(lineId) {",
+					"        return {",
+					"          \"title\" : \"Test Title\",",
+					"          \"poLineId\" : lineId",
+					"        };",
+					"    };",
 					"",
 					"    /**",
 					"     * Build Order with minimal required fields.",
@@ -20661,55 +20994,55 @@
 	],
 	"variable": [
 		{
-			"id": "87c40512-f95e-40f6-bd48-79fcd6ed4608",
+			"id": "2ac06621-f8fc-4466-a97e-5d2f856383a9",
 			"key": "testTenant",
 			"value": "orders_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "da4d5d2c-1514-4f80-9cae-e4eb27bb7035",
+			"id": "0c5a36b8-2951-4d3f-b4ea-90d96e0ae66d",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "c0de6b91-5ace-4a08-badf-76491a20ff38",
+			"id": "c56c5480-9be2-4b28-aafd-05acc3520753",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "efd75848-11ab-4c44-9585-8cb072b8896e",
+			"id": "fc9bbd98-d9a1-4dce-876f-fb414b872476",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "c6838e54-6b58-4e52-b9f1-8ea5704cad03",
+			"id": "6415a0d2-c769-439b-9eb9-12ef9d7e84db",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "3fa6422e-5cb4-4dca-a827-bb86cc900688",
+			"id": "a64bf038-2f49-4e0f-8e6f-6f9ac65dc9d9",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "e9f14ce6-7f76-4992-848e-795fd8437ae5",
+			"id": "f1e88c37-5927-4f48-ac38-40b61912e675",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "29a49a38-b7b5-4b3a-a120-88505e5dd60c",
+			"id": "637828c8-dfcf-4031-ab5e-92c510968041",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "f0875b71-5056-470a-be7e-551358ac4274",
+			"id": "604c236e-c4e8-43d0-ba5c-3467c4c40e3a",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
