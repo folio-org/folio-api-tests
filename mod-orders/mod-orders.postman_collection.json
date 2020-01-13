@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "4d962b16-0b3c-4fa6-b31a-af445328ef8d",
+		"_postman_id": "0d39991c-1715-467e-9002-9eddebe469d3",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -15177,7 +15177,7 @@
 													"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].title = \"Test title\";",
-													"    order.compositePoLines[0].details.productIds[0].productType = \"Vendor Title Number\";",
+													"    order.compositePoLines[0].details.productIds[0].productIdType = \"Vendor Title Number\";",
 													"    ",
 													"    pm.variables.set(\"orderBody\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -15266,7 +15266,7 @@
 													"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].title = \"Test title\";",
-													"    order.compositePoLines[0].details.productIds[0].productType = \"Vendor Title Number\";",
+													"    order.compositePoLines[0].details.productIds[0].productIdType = \"Vendor Title Number\";",
 													"    ",
 													"    pm.variables.set(\"orderBody\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -18381,6 +18381,79 @@
 								"description": "Create a piece with empty body"
 							},
 							"response": []
+						},
+						{
+							"name": "Create piece with missing receiptDate 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"poLineId\", utils.getLastPoLineId());",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/mockdata/pieces/pieceRecord.json\", function(err, res) {",
+											"    let piece = res.json();",
+											"    delete piece.receiptDate;",
+											"    piece.poLineId = pm.variables.get(\"poLineId\");",
+											"    pm.globals.set(\"pieceRecord\", JSON.stringify(piece));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"",
+											"pm.test(\"Expected errors verification\", function () {",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].code).to.equal(\"missingReceiptDate\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{pieceRecord}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces"
+									]
+								},
+								"description": "Create a piece with empty body"
+							},
+							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -19334,6 +19407,7 @@
 					"        pm.expect(history.pieceFormat, \"Piece format expected\").to.exist;",
 					"        pm.expect(history.poLineReceiptStatus, \"Receipt status expected\").to.exist;",
 					"        pm.expect(history.purchaseOrderId, \"Purchase order id expected\").to.exist;",
+					"        ",
 					"    };",
 					"",
 					"    utils.validatePiece = function(piece) {",
@@ -19732,7 +19806,6 @@
 					"                pm.expect(body.totalRecords, \"Quantity of items received for PO Line should be \" + expectedCount).to.equal(expectedCount);",
 					"                body.items.forEach(function(item) {",
 					"                    pm.expect(item.barcode, \"Barcode should not be empty\").to.not.be.empty;",
-					"                    // MODORDERS-340",
 					"                    pm.expect(item.itemLevelCallNumber, \"Item level call number should not be empty\").to.not.be.empty;",
 					"                });",
 					"            });",
@@ -20337,6 +20410,7 @@
 					"        } else {",
 					"            pieceTemplate.itemId = itemId;",
 					"        }",
+					"        pieceTemplate.receiptDate = new Date();",
 					"        pm.variables.set(\"checkinPoLineId\", compPoLine.id);",
 					"        utils.postRequest(\"/orders/pieces\", pieceTemplate, (err, res) => {",
 					"            pm.test(\"creating piece for check-in \", function() {",
@@ -20665,55 +20739,55 @@
 	],
 	"variable": [
 		{
-			"id": "2c0f5357-718e-41ce-a4b8-56398bfb607d",
+			"id": "8f4db74f-dca6-4273-8bf4-c1d692c7c069",
 			"key": "testTenant",
 			"value": "orders_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "6c2e1245-e09f-4604-be6c-20f389d582c7",
+			"id": "f7d1b8ec-8efd-4b18-87f5-a0c34759ffa8",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "f25cee58-ab96-410b-b930-636e877bdc46",
+			"id": "fa09edcf-6d7b-4401-ab34-79de1ad9bf7a",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "66f46728-4843-478f-9b7a-4a7f5441b31b",
+			"id": "a45c9a0b-cb3e-4f83-bf4a-e909d84fe774",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "574bc17c-08dd-4a69-9839-1dd3016c2c31",
+			"id": "e4213544-c034-40a7-9329-92a87ca60c2e",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "ae650cc4-cdc2-4328-b25e-81ec2b23117d",
+			"id": "6fee3a35-58b9-4953-a437-f05002f7aa79",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "71e6ca1c-285c-41fe-9a14-3f733475492a",
+			"id": "6d9cc39a-b362-4fea-ba4a-b6a1add3ac8b",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "71f9b652-5c7a-4747-8c98-4bf752db2f9e",
+			"id": "6eb34276-0dca-4092-ad62-84933f728e71",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "e2d99abe-4478-42fd-b625-497e224eabd4",
+			"id": "88b46f0e-70e9-4f36-b0aa-3602031b2d27",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
