@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "5694342e-609a-47ec-b8e7-4a821ad39955",
+		"_postman_id": "0d39991c-1715-467e-9002-9eddebe469d3",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -5462,7 +5462,7 @@
 					"_postman_isSubFolder": true
 				},
 				{
-					"name": "Ensure receiptStatus consistency between Pieces PoLine Copy",
+					"name": "Ensure receiptStatus consistency between Pieces PoLine",
 					"item": [
 						{
 							"name": "Verify PoLine Awaiting ReceiptStatus",
@@ -15177,7 +15177,7 @@
 													"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].title = \"Test title\";",
-													"    order.compositePoLines[0].details.productIds[0].productType = \"Vendor Title Number\";",
+													"    order.compositePoLines[0].details.productIds[0].productIdType = \"Vendor Title Number\";",
 													"    ",
 													"    pm.variables.set(\"orderBody\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -15266,7 +15266,7 @@
 													"    order.compositePoLines[0].eresource.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
 													"    order.compositePoLines[0].title = \"Test title\";",
-													"    order.compositePoLines[0].details.productIds[0].productType = \"Vendor Title Number\";",
+													"    order.compositePoLines[0].details.productIds[0].productIdType = \"Vendor Title Number\";",
 													"    ",
 													"    pm.variables.set(\"orderBody\", JSON.stringify(utils.prepareOrder(order)));",
 													"});"
@@ -18381,6 +18381,79 @@
 								"description": "Create a piece with empty body"
 							},
 							"response": []
+						},
+						{
+							"name": "Create piece with missing receiptDate 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"poLineId\", utils.getLastPoLineId());",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/mockdata/pieces/pieceRecord.json\", function(err, res) {",
+											"    let piece = res.json();",
+											"    delete piece.receiptDate;",
+											"    piece.poLineId = pm.variables.get(\"poLineId\");",
+											"    pm.globals.set(\"pieceRecord\", JSON.stringify(piece));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"",
+											"pm.test(\"Expected errors verification\", function () {",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"    pm.expect(pm.response.json().errors[0].code).to.equal(\"missingReceiptDate\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{pieceRecord}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces"
+									]
+								},
+								"description": "Create a piece with empty body"
+							},
+							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -19248,6 +19321,7 @@
 					"                \"received\": 1,",
 					"                \"receivedItems\": [{",
 					"                    \"barcode\": \"11111111111\",",
+					"                    \"callNumber\": \"BF2050 .M335 1999\",",
 					"                    \"comment\": \"Very important note\",",
 					"                    \"caption\": \"Vol. 1\",",
 					"                    \"itemStatus\": \"Received\",",
@@ -19279,6 +19353,7 @@
 					"                        {",
 					"                            \"id\": \"\",",
 					"                            \"barcode\": Math.floor(Math.random() * 1000),",
+					"                            \"callNumber\": \"BF2050 .M335 1999\",",
 					"                            \"comment\": \"checkedin from API test\",",
 					"                            \"caption\": \"Vol. 1\",",
 					"                            \"createItem\": true,",
@@ -19332,6 +19407,7 @@
 					"        pm.expect(history.pieceFormat, \"Piece format expected\").to.exist;",
 					"        pm.expect(history.poLineReceiptStatus, \"Receipt status expected\").to.exist;",
 					"        pm.expect(history.purchaseOrderId, \"Purchase order id expected\").to.exist;",
+					"        ",
 					"    };",
 					"",
 					"    utils.validatePiece = function(piece) {",
@@ -19730,6 +19806,7 @@
 					"                pm.expect(body.totalRecords, \"Quantity of items received for PO Line should be \" + expectedCount).to.equal(expectedCount);",
 					"                body.items.forEach(function(item) {",
 					"                    pm.expect(item.barcode, \"Barcode should not be empty\").to.not.be.empty;",
+					"                    pm.expect(item.itemLevelCallNumber, \"Item level call number should not be empty\").to.not.be.empty;",
 					"                });",
 					"            });",
 					"        });",
@@ -20333,6 +20410,7 @@
 					"        } else {",
 					"            pieceTemplate.itemId = itemId;",
 					"        }",
+					"        pieceTemplate.receiptDate = new Date();",
 					"        pm.variables.set(\"checkinPoLineId\", compPoLine.id);",
 					"        utils.postRequest(\"/orders/pieces\", pieceTemplate, (err, res) => {",
 					"            pm.test(\"creating piece for check-in \", function() {",
@@ -20661,55 +20739,55 @@
 	],
 	"variable": [
 		{
-			"id": "87c40512-f95e-40f6-bd48-79fcd6ed4608",
+			"id": "8f4db74f-dca6-4273-8bf4-c1d692c7c069",
 			"key": "testTenant",
 			"value": "orders_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "da4d5d2c-1514-4f80-9cae-e4eb27bb7035",
+			"id": "f7d1b8ec-8efd-4b18-87f5-a0c34759ffa8",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "c0de6b91-5ace-4a08-badf-76491a20ff38",
+			"id": "fa09edcf-6d7b-4401-ab34-79de1ad9bf7a",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "efd75848-11ab-4c44-9585-8cb072b8896e",
+			"id": "a45c9a0b-cb3e-4f83-bf4a-e909d84fe774",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "c6838e54-6b58-4e52-b9f1-8ea5704cad03",
+			"id": "e4213544-c034-40a7-9329-92a87ca60c2e",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "3fa6422e-5cb4-4dca-a827-bb86cc900688",
+			"id": "6fee3a35-58b9-4953-a437-f05002f7aa79",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "e9f14ce6-7f76-4992-848e-795fd8437ae5",
+			"id": "6d9cc39a-b362-4fea-ba4a-b6a1add3ac8b",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "29a49a38-b7b5-4b3a-a120-88505e5dd60c",
+			"id": "6eb34276-0dca-4092-ad62-84933f728e71",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "f0875b71-5056-470a-be7e-551358ac4274",
+			"id": "88b46f0e-70e9-4f36-b0aa-3602031b2d27",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
