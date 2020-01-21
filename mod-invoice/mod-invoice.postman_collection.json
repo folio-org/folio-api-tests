@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "c2d7bbd1-71fc-4efc-9ff1-d6a06f84d889",
+		"_postman_id": "480552c7-7db9-4883-81ca-d6783412b9f4",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1487,6 +1487,68 @@
 								"body": {
 									"mode": "raw",
 									"raw": "{\n    \"fund\": {\n        \"code\": \"TST-FND\",\n        \"description\": \"Fund for orders API Tests\",\n        \"externalAccountNo\": \"1111111111111111111111111\",\n        \"fundStatus\": \"Active\",\n        \"ledgerId\": \"{{ledgerId}}\",\n        \"name\": \"Fund for orders API Tests\"\n    },\n    \"groupIds\": []\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"finance",
+										"funds"
+									]
+								},
+								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
+							},
+							"response": []
+						},
+						{
+							"name": "Fund - 2",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
+										"exec": [
+											"pm.test(\"Fund is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"fund2Id\", pm.response.json().fund.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"fund\": {\n        \"code\": \"TST2-FND\",\n        \"description\": \"2nd Fund for orders API Tests\",\n        \"externalAccountNo\": \"2222222222222222222222222\",\n        \"fundStatus\": \"Active\",\n        \"ledgerId\": \"{{ledgerId}}\",\n        \"name\": \"2nd Fund for orders API Tests\"\n    },\n    \"groupIds\": []\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/funds",
@@ -10653,9 +10715,9 @@
 															"    createLine(invoice.id);",
 															"",
 															"    pm.expect(invoice.status, \"status\").to.eql(\"Open\");",
-															"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(0);",
+															"    pm.expect(invoice.adjustmentsTotal, \"adjustmentsTotal\").to.equal(10);",
 															"    pm.expect(invoice.subTotal, \"subTotal\").to.equal(0);",
-															"    pm.expect(invoice.total, \"total\").to.equal(0);",
+															"    pm.expect(invoice.total, \"total\").to.equal(10);",
 															"",
 															"    // Verify that voucher has not been created",
 															"    utils.getVouchersForInvoice(invoice.id, (err, res) => {",
@@ -10690,12 +10752,22 @@
 														"exec": [
 															"let utils = eval(globals.loadUtils);",
 															"",
-															"let invoice = utils.prepareInvoice(utils.getMockInvoice(1));",
+															"let invoice = utils.prepareInvoice(utils.getMockInvoice(0));",
 															"",
 															"invoice.note += \" - with 1 line for transition through workflow\";",
 															"invoice.status = \"Open\";",
+															"",
+															"invoice.adjustments[0].fundDistributions = [{",
+															"    \"fundId\": pm.environment.get(\"fund2Id\"),",
+															"    \"distributionType\": \"percentage\",",
+															"    \"value\": 50",
+															"},",
+															"{",
+															"    \"fundId\": pm.environment.get(\"fundId\"),",
+															"    \"distributionType\": \"amount\",",
+															"    \"value\": 5",
+															"}]",
 															"delete invoice.voucherNumber;",
-															"delete invoice.adjustments;",
 															"delete invoice.approvalDate;",
 															"delete invoice.approvedBy;",
 															"",
@@ -10786,6 +10858,7 @@
 															"                    pm.expect(res.json().vouchers).to.have.lengthOf(1);",
 															"                    let voucher = res.json().vouchers[0];",
 															"                    pm.expect(voucher.status).to.eql(\"Awaiting payment\");",
+															"                    pm.environment.set(\"emptyConfigWorkflow-voucherWith1LineId\", voucher.id);",
 															"                    let voucherNumberPrefixValue = JSON.parse(pm.variables.get(\"voucherNumber\")).voucherNumberPrefix;",
 															"                    pm.expect(voucher.voucherNumber).to.not.include(voucherNumberPrefixValue);",
 															"                    //check acqUnitIds list of invoice and created voucher are equal",
@@ -10831,6 +10904,67 @@
 														"{{emptyConfigWorkflow-invoiceWith1LineId}}"
 													]
 												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get voucher lines by query",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let voucherLines = {};",
+															"",
+															"pm.test(\"Successfully get Voucher lines\", function() {",
+															"    pm.response.to.have.status(200);",
+															"    voucherLines = pm.response.json();",
+															"    pm.expect(voucherLines.voucherLines.length).to.equal(2);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/voucher-lines?query=voucherId=={{emptyConfigWorkflow-voucherWith1LineId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"voucher",
+														"voucher-lines"
+													],
+													"query": [
+														{
+															"key": "query",
+															"value": "voucherId=={{emptyConfigWorkflow-voucherWith1LineId}}"
+														}
+													]
+												},
+												"description": "GET /voucher/voucher-lines requests that return 200"
 											},
 											"response": []
 										}
@@ -11657,6 +11791,7 @@
 													"",
 													"delete invoice.approvalDate;",
 													"delete invoice.approvedBy;",
+													"delete invoice.adjustments;",
 													"",
 													"pm.variables.set(\"invoiceContentLockedTotal\", JSON.stringify(invoice));"
 												],
@@ -15244,6 +15379,409 @@
 													"});",
 													"",
 													"pm.globals.unset(\"InvoiceWithEmptyFundDistrosContent\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Add line with FundDistributions percentage = 100",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "94753103-bb6d-46d3-bebd-3ce94cc05fcd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"));",
+													"",
+													"invoiceLine.fundDistributions[0].value=100;",
+													"pm.environment.set(\"lineWithFundDistros\", JSON.stringify(invoiceLine));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "dbfd94db-59c5-4fd9-8467-a284b21fb175",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoiceLine = {};",
+													"",
+													"pm.test(\"Invoice line is created\", function() {",
+													"    pm.response.to.have.status(201);",
+													"    invoiceLine = pm.response.json();",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken-testAdmin}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{lineWithFundDistros}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice-storage/invoice-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice-storage",
+												"invoice-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. Adjustment FundDistros percantage !=100",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"invoice.adjustments = [];",
+													"let adjustment = utils.buildAdjustmentObject(100, \"Percentage\");",
+													"adjustment.fundDistributions = [];",
+													"let fundDistribution = {",
+													"        \"fundId\": pm.environment.get(\"fundId\"),",
+													"        \"distributionType\": \"percentage\",",
+													"        \"value\": 99.99",
+													"    };",
+													"adjustment.fundDistributions.push(fundDistribution);",
+													"invoice.adjustments.push(adjustment);",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. Adjustment FundDistros amount != adjustment total",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"invoice.adjustments = [];",
+													"let adjustment = utils.buildAdjustmentObject(100, \"Amount\");",
+													"adjustment.fundDistributions = [];",
+													"let fundDistribution = {",
+													"        \"fundId\": pm.environment.get(\"fundId\"),",
+													"        \"distributionType\": \"amount\",",
+													"        \"value\": 99.99",
+													"    };",
+													"adjustment.fundDistributions.push(fundDistribution);",
+													"invoice.adjustments.push(adjustment);",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"",
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. Adjustment FundDistros mixed != adjustment total",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"invoice.adjustments = [];",
+													"let adjustment = utils.buildAdjustmentObject(100, \"Amount\");",
+													"adjustment.fundDistributions = [];",
+													"",
+													"adjustment.fundDistributions.push({",
+													"        \"fundId\": pm.environment.get(\"fundId\"),",
+													"        \"distributionType\": \"amount\",",
+													"        \"value\": 99.99",
+													"    });",
+													"    adjustment.fundDistributions.push({",
+													"        \"fundId\": pm.environment.get(\"fundId\"),",
+													"        \"distributionType\": \"percentage\",",
+													"        \"value\": 99.99",
+													"    });",
+													"invoice.adjustments.push(adjustment);",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{InvoiceWithEmptyFundDistrosContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{InvoiceWithEmptyFundDistrosId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{InvoiceWithEmptyFundDistrosId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Transit to approved. Adjustment without fundDistr",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "f17bb1f5-ff53-49f0-8706-0e4c40ac8dfd",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = JSON.parse(pm.environment.get(\"InvoiceWithEmptyFundDistrosContent\"));",
+													"invoice.status = \"Approved\";",
+													"invoice.adjustments = [];",
+													"let adjustment = utils.buildAdjustmentObject(100, \"Amount\");",
+													"adjustment.fundDistributions = [];",
+													"",
+													"invoice.adjustments.push(adjustment);",
+													"pm.environment.set(\"InvoiceWithEmptyFundDistrosContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "238f0667-02ea-4763-972c-b0a6d1e7d3c2",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"pm.test(\"Status code is 400\", function() {",
+													"    pm.response.to.have.status(\"Bad Request\");",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"InvoiceWithEmptyFundDistrosId\"), (err, res) => {",
+													"        invoice = res.json();",
+													"        pm.test(\"Invoice status changed\", function() {",
+													"            pm.expect(invoice.status).to.equal(\"Open\");",
+													"        });",
+													"    });",
+													"",
+													"});"
 												],
 												"type": "text/javascript"
 											}
