@@ -6711,6 +6711,68 @@
 									"response": []
 								},
 								{
+									"name": "Allocate money for budget",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let record = {};",
+													"pm.test(\"Trasaction allocation is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"transactionId\", pm.response.json().id); ",
+													"    record = pm.response.json();",
+													"    pm.expect(record.transactionType).to.eql(\"Allocation\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.environment.set(\"allocationContent\", JSON.stringify(utils.buildTransactionMinContent(2500, pm.environment.get(\"encFiscalYearId\"), pm.environment.get(\"fromFundId\"), \"Allocation\")));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{allocationContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/allocations",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"allocations"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Get budget record",
 									"event": [
 										{
@@ -6914,7 +6976,7 @@
 													"    let ledger = pm.response.json();",
 													"    utils.validateLedger(ledger);",
 													"    let encumbrance = JSON.parse(pm.environment.get(\"encumbranceContent\"));",
-													"    pm.expect(ledger.available).to.equal(-encumbrance.amount);",
+													"    pm.expect(ledger.available).to.equal(2500 - encumbrance.amount);",
 													"    pm.expect(ledger.unavailable).to.equal(encumbrance.amount);",
 													"});"
 												],
@@ -7100,6 +7162,69 @@
 									"response": []
 								},
 								{
+									"name": "Release encumbrance request",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Encumbrance successfully released\", () => {",
+													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"",
+													"utils.sendGetRequest(\"/finance/budgets/\" + pm.environment.get(\"encBudgetId\"), (err, res) => {",
+													"    let budget = res.json();",
+													"    pm.expect(budget.encumbered).to.equal(0);",
+													"    pm.expect(budget.available).to.equal(2481.56);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/release-encumbrance/{{encumbranceId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"release-encumbrance",
+												"{{encumbranceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Delete transaction",
 									"event": [
 										{
@@ -7146,6 +7271,58 @@
 												"finance-storage",
 												"transactions",
 												"{{encumbranceId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete allocation",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Allocation is deleted\", () => pm.response.to.have.status(204));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/transactions/{{transactionId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"transactions",
+												"{{transactionId}}"
 											]
 										}
 									},
@@ -12552,7 +12729,9 @@
 					"            \"name\": name || \"TST-BDGT\",",
 					"            \"budgetStatus\": \"Active\",",
 					"            \"fundId\": fundId || pm.variables.get(\"fundId\"),",
-					"            \"fiscalYearId\": fiscalYearId || pm.variables.get(\"fiscalYearId\")",
+					"            \"fiscalYearId\": fiscalYearId || pm.variables.get(\"fiscalYearId\"),",
+					"            \"allowableEncumbrance\": 100,",
+					"            \"allowableExpenditure\": 100",
 					"        };",
 					"    };",
 					"    ",
@@ -12562,7 +12741,7 @@
 					"     */",
 					"    utils.buildEncumbranceMinContent = function() {",
 					"        return {",
-					"            \"initialAmountEncumbered\": 1000,",
+					"            \"initialAmountEncumbered\": 25,",
 					"\t        \"status\": \"Unreleased\",",
 					"\t        \"orderType\":  \"One-Time\",",
 					"\t        \"subscription\": false,",
