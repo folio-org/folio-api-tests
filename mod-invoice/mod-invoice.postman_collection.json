@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "480552c7-7db9-4883-81ca-d6783412b9f4",
+		"_postman_id": "dbea77bc-c4e3-4596-9353-012f9b819e55",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -11147,6 +11147,360 @@
 					"description": "This directory contains various tests related to transition of the invoices/vouchers through the workflow",
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Batch voucher export configs",
+					"item": [
+						{
+							"name": "Create export config",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a38ef6c2-f4d2-4a2d-bea7-396514e2a05b",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchVoucherExportConfigs/2a2cb998-1437-41d1-88ad-01930aaeadd5.json\", function (err, res) {",
+											"    pm.variables.set(\"exportConfigContent\", JSON.stringify(res.json()));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5cdc5e0c-8060-4455-a956-86f559b9ccaf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let exportConfig = {};",
+											"",
+											"pm.test(\"Export Configuration is created\", function() {",
+											"    pm.response.to.have.status(201);",
+											"    exportConfig = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Export Configuration content is valid\", function() {",
+											"    pm.expect(exportConfig.id).to.exist;",
+											"    pm.environment.set(\"exportConfigId\", exportConfig.id);",
+											"",
+											"    utils.validateExportConfig(exportConfig);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "Application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{exportConfigContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get export config by id",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a38ef6c2-f4d2-4a2d-bea7-396514e2a05b",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5cdc5e0c-8060-4455-a956-86f559b9ccaf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let exportConfig = {};",
+											"",
+											"pm.test(\"Export Configuration is retrieved\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"    exportConfig = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Export Configuration content is valid\", function() {",
+											"    pm.expect(exportConfig.id).to.exist;",
+											"    pm.expect(exportConfig.metadata.createdDate).to.exist;",
+											"    pm.expect(exportConfig.metadata.createdByUserId).to.exist;",
+											"    utils.validateExportConfig(exportConfig);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/{{exportConfigId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"{{exportConfigId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update an existing export config",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a38ef6c2-f4d2-4a2d-bea7-396514e2a05b",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/batch-voucher/export-configurations/\" + pm.environment.get(\"exportConfigId\"), (err, res) => {",
+											"    let exportConfig  = res.json();",
+											"    let uploadURI = \"ftp://ftp.foo.com/updated/uri\";",
+											"    exportConfig.uploadURI = uploadURI;",
+											"    pm.variables.set(\"updatedUploadURI\", uploadURI);",
+											"    pm.variables.set(\"updatedExportConfig\", JSON.stringify(exportConfig));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5cdc5e0c-8060-4455-a956-86f559b9ccaf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/batch-voucher/export-configurations/\" + pm.environment.get(\"exportConfigId\"), (err, res) => {",
+											"        pm.test(\"Verify export config updated with new uploadURI\", () => {",
+											"            let exportConfig = res.json();",
+											"            pm.expect(exportConfig.uploadURI).to.equal(pm.variables.get(\"updatedUploadURI\"));",
+											"            utils.validateExportConfig(exportConfig);",
+											"        });",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "Application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedExportConfig}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/{{exportConfigId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"{{exportConfigId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get export configs by query",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a38ef6c2-f4d2-4a2d-bea7-396514e2a05b",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5cdc5e0c-8060-4455-a956-86f559b9ccaf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let exportConfigCollection = {};",
+											"",
+											"pm.test(\"Export Configurations are retrieved\", function() {",
+											"    pm.response.to.be.ok;",
+											"    pm.response.to.be.json;",
+											"    exportConfigCollection = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Export Configuration Collection content is valid\", function() {",
+											"    pm.expect(exportConfigCollection.exportConfigs).to.exist;",
+											"    pm.expect(exportConfigCollection.exportConfigs[0].id).to.equal(pm.variables.get(\"exportConfigId\"));",
+											"    pm.expect(exportConfigCollectiong.totalRecords).to.equal(1);",
+											"    utils.validateExportConfigCollection(exportConfigCollection);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations?query=id=={{exportConfigId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "id=={{exportConfigId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update an existing export config Copy",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a38ef6c2-f4d2-4a2d-bea7-396514e2a05b",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5cdc5e0c-8060-4455-a956-86f559b9ccaf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});",
+											"",
+											"pm.test(\"Export Config deleted: \", () => {",
+											"    let exportConfigId = pm.environment.get(\"exportConfigId\");",
+											"",
+											"    utils.sendGetRequest(\"/batch-voucher/export-configurations?query=id==\" + exportConfigId , (err, response) => {",
+											"        pm.expect(response).to.have.status(200);",
+											"        pm.expect(response.json().invoiceLines.length).to.be.equal(0);",
+											"    });",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/{{exportConfigId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"{{exportConfigId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -14514,6 +14868,408 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Batch voucher export configs",
+					"item": [
+						{
+							"name": "Get export config by Id - random Id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.exist;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /invoice/invoice-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Get export config by id - bad ID - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "823db5da-29d8-40cd-9e3a-64e832e15184",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create export config w/ missing required fields - 422",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a38ef6c2-f4d2-4a2d-bea7-396514e2a05b",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "5cdc5e0c-8060-4455-a956-86f559b9ccaf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"",
+											"    var jsonData = pm.response.json();",
+											"",
+											"    pm.test(\"Required properties are missing\", function () {",
+											"        pm.expect(jsonData.errors).to.have.lengthOf.at.least(1);",
+											"",
+											"        let requiredProps = utils.getExportConfigSchema().required;",
+											"        let missingRequiredPropsErrors = jsonData.errors.filter(error => requiredProps.includes(error.parameters[0].key));",
+											"",
+											"        missingRequiredPropsErrors.forEach(error => requiredObj(error));",
+											"",
+											"        // Number of filtered errors should be equal to number of required properties",
+											"        pm.expect(missingRequiredPropsErrors).to.have.lengthOf(requiredProps.length);",
+											"    });",
+											"});",
+											"",
+											"function requiredObj(error) {",
+											"    pm.expect(error.message).to.equal(\"may not be null\");",
+											"    pm.expect(error.parameters[0].value).to.equal(\"null\");",
+											"}",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "Application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{ }"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update export config - random Id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{ }"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /invoice/invoice-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Update export config by id - bad ID - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "823db5da-29d8-40cd-9e3a-64e832e15184",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{ }"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete export config - random Id - 404",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"{{$guid}}"
+									]
+								},
+								"description": "GET /invoice/invoice-lines/ requests that return 404"
+							},
+							"response": []
+						},
+						{
+							"name": "Delete export config by id - bad ID - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "823db5da-29d8-40cd-9e3a-64e832e15184",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-voucher/export-configurations/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-voucher",
+										"export-configurations",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Workflows",
 					"item": [
 						{
@@ -16776,7 +17532,29 @@
 					"    utils.getInvoiceSchema = function() {",
 					"        return JSON.parse(pm.environment.get(utils.schemaPrefix + \"invoice.json\"));",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Validates batch voucher export config against schema",
+					"     */",
+					"    utils.validateExportConfig = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, utils.getExportConfigSchema());",
+					"    }",
 					"",
+					"    utils.getExportConfigSchema = function() {",
+					"        return JSON.parse(pm.environment.get(utils.schemaPrefix + \"export_configuration.json\"));",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Validates batch voucher export config collection against schema",
+					"     */",
+					"    utils.validateExportConfigCollection = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, utils.getExportConfigCollectionSchema());",
+					"    }",
+					"",
+					"    utils.getExportConfigCollectionSchema = function() {",
+					"        return JSON.parse(pm.environment.get(utils.schemaPrefix + \"export_configuration_collection.json\"));",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Validates invoice line against schema",
 					"     */",
@@ -16987,49 +17765,49 @@
 	],
 	"variable": [
 		{
-			"id": "07598768-dd31-4b63-8435-db19b63938de",
+			"id": "74cd7b69-c86e-4f12-9d6a-823ec31c1f8e",
 			"key": "testTenant",
 			"value": "invoicing_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "5e50a4a0-dbaf-478b-8df7-976cd80c3c74",
+			"id": "949b146c-5aa2-41d3-aa71-53df99a4ee30",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "68133a3e-8934-41ff-a33d-5261c2258b06",
+			"id": "49ddaa06-cebe-4a1a-abad-c20edb6eb4cb",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "e8961e74-9130-4c90-8b67-ff67e70bbcff",
+			"id": "8c9cd327-1fed-49d0-8b87-b16f44d41622",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "5f0c1d2e-0a89-4415-aeca-de9f25457150",
+			"id": "841b4f48-4d66-4990-add4-925fc5973bd2",
 			"key": "inventory-instanceTypeCode",
 			"value": "invoicingApiTestsIdentifierType",
 			"type": "string"
 		},
 		{
-			"id": "db5799c2-6e65-48bc-bf7e-0daa30ab1005",
+			"id": "006d6527-99e7-40b5-8e32-89b1cd9fbf9f",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "54f1655c-5ce5-4ed9-91f3-491673972445",
+			"id": "a6728066-cdac-4698-bf42-3a9d9b015890",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "171153e5-d40d-4eb2-9b60-3461001272c8",
+			"id": "5d401a84-0678-4c1a-aa21-3e3b72b3b6d0",
 			"key": "voucherNumber",
 			"value": "{\"voucherNumberPrefix\": \"testPrefix\"}",
 			"type": "string"
