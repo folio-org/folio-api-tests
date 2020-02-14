@@ -130,6 +130,7 @@
 											"    data.push(\"raml-util/schemas/errors.schema\");",
 											"    data.push(\"raml-util/schemas/error.schema\");",
 											"    data.push(\"raml-util/schemas/metadata.schema\");",
+											"    data.push(\"raml-util/schemas/uuid.schema\");",
 											"}",
 											"",
 											"var interval = setTimeout(() => {}, 30000);",
@@ -3654,7 +3655,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\r\n  \"type\": \"accessTypes\",\r\n  \"attributes\": {\r\n    \"name\": \"Subscribed\"\r\n  }\r\n}\r\n",
+									"raw": "{\r\n  \"type\": \"accessTypes\",\r\n  \"attributes\": {\r\n    \"name\": \"Subscribed\",\r\n    \"description\": \"some description\"\r\n  }\r\n}\r\n",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -3954,7 +3955,7 @@
 													"if(response) {",
 													"    pm.test('expected one error with title', function() {",
 													"        pm.expect(response.errors[0]).to.be.an('object');",
-													"        pm.expect(response.errors[0].title).to.equal(\"Access type with id '99999999-9999-9999-9999-999999999999' not found\");",
+													"        pm.expect(response.errors[0].title).to.equal(\"Access type not found by id: 99999999-9999-1999-a999-999999999999\");",
 													"    });",
 													"}"
 												],
@@ -3977,7 +3978,7 @@
 											}
 										],
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/access-types/99999999-9999-9999-9999-999999999999",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/access-types/99999999-9999-1999-a999-999999999999",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -3986,7 +3987,7 @@
 											"path": [
 												"eholdings",
 												"access-types",
-												"99999999-9999-9999-9999-999999999999"
+												"99999999-9999-1999-a999-999999999999"
 											]
 										}
 									},
@@ -4000,9 +4001,9 @@
 											"script": {
 												"id": "07dd7f7f-eede-404c-a0d5-4a9ca000802b",
 												"exec": [
-													"//Check that status is 422",
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
+													"//Check that status is 400",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"    pm.response.to.be.clientError;",
 													"});",
 													"",
@@ -4029,7 +4030,7 @@
 													"if(response) {",
 													"    pm.test('expected one error with title', function() {",
 													"        pm.expect(response.errors[0]).to.be.an('object');",
-													"        pm.expect(response.errors[0].title).to.contain(\"Invalid id\");",
+													"        pm.expect(response.errors[0].title).to.contain(\"\\'id\\' parameter is incorrect\");",
 													"    });",
 													"}"
 												],
@@ -4657,9 +4658,9 @@
 											"script": {
 												"id": "9a240e65-ab76-434d-b3cb-755db3df2a02",
 												"exec": [
-													"//Check that status is 422",
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
+													"//Check that status is 400",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"});",
 													"",
 													"let response = pm.response.json();",
@@ -4678,8 +4679,7 @@
 													"",
 													"    //Test that we get expected error message",
 													"    pm.test('Ensure that we get expected error message', function() {",
-													"        pm.expect(response.errors[0].title).to.eq('Invalid id \\'abc\\'');",
-													"        pm.expect(response.errors[0].detail).to.eq('Id should follow UUID format');",
+													"        pm.expect(response.errors[0].title).to.contains('\\'id\\' parameter is incorrect');",
 													"    }); ",
 													"}",
 													""
@@ -4978,8 +4978,8 @@
 												"id": "07dd7f7f-eede-404c-a0d5-4a9ca000802b",
 												"exec": [
 													"//Check that status is 400",
-													"pm.test(\"Status is 422\", function () {",
-													"    pm.response.to.have.status(422);",
+													"pm.test(\"Status is 400\", function () {",
+													"    pm.response.to.have.status(400);",
 													"    pm.response.to.be.clientError;",
 													"});",
 													"",
@@ -5006,7 +5006,7 @@
 													"if(response) {",
 													"    pm.test('expected one error with title', function() {",
 													"        pm.expect(response.errors[0]).to.be.an('object');",
-													"        pm.expect(response.errors[0].title).to.equal(\"Invalid id '9999'\");",
+													"        pm.expect(response.errors[0].title).to.contains(\"\\'id\\' parameter is incorrect\");",
 													"    });",
 													"}"
 												],
@@ -5103,6 +5103,7 @@
 							"tv4.addSchema(\"schema_error.schema\", pm.environment.get(\"schema_error\"));",
 							"tv4.addSchema(\"schema_jsonapiError.json\", JSON.parse(pm.variables.get(\"schema_jsonapiError\")));",
 							"tv4.addSchema(\"schema_jsonapiErrorResponse.json\", JSON.parse(pm.variables.get(\"schema_jsonapiErrorResponse\")));",
+							"tv4.addSchema(\"schema_uuid.schema\", pm.variables.get(\"schema_uuid\"));",
 							""
 						]
 					}
@@ -6708,6 +6709,89 @@
 										}
 									},
 									"response": []
+								},
+								{
+									"name": "update provider token when value is number",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "e099b521-e229-4faf-8efa-882154dae668",
+												"exec": [
+													"pm.test(\"success test\", function() {",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"let response = pm.response.json();",
+													"",
+													"//Check that status is 200",
+													"pm.test(\"Status is 200\", function () {",
+													"    pm.response.to.have.status(200);",
+													"});",
+													"",
+													"//Validate response against json api schema",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_provider\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"//Check that provider id matches value passed in",
+													"pm.test(\"Provider Id matches value passed in\", function () {",
+													"    pm.expect(response.data.id).eq(\"19\");",
+													"});",
+													"",
+													"//Check that provider token value matches value passed in",
+													"if (Object.keys(response.data.attributes.providerToken).length !== 0) {",
+													"    //Test that providerToken has expected keys",
+													"    pm.test(\"Provider Token has expected keys\", function () {",
+													"        pm.expect(response.data.attributes.providerToken).to.include.all.keys(\"value\");",
+													"    });",
+													"    pm.test(\"Provider token value matches value passed in\", function () {",
+													"        pm.expect(response.data.attributes.providerToken.value).eq('123');",
+													"    });",
+													"} else {",
+													"    console.log(\"Provider token value not updated as expected\");",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/vnd.api+json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"data\": {\n    \"type\": \"providers\",\n    \"attributes\": {\n      \"providerToken\": {\n        \"value\": 123\n      },\n      \"packagesSelected\": 1,\n      \"proxy\": {\n        \"id\": \"<n>\"\n      }\n    }\n  }\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"eholdings",
+												"providers",
+												"19"
+											]
+										}
+									},
+									"response": []
 								}
 							],
 							"protocolProfileBehavior": {},
@@ -6778,85 +6862,6 @@
 										"body": {
 											"mode": "raw",
 											"raw": "{\n  \"data\": {\n    \"type\": \"providers\",\n    \"attributes\": {\n      \"providerToken\": {\n        \"value\": null\n      },\n      \"packagesSelected\": 1,\n      \"proxy\": {\n        \"id\": \"invalid\"\n      }\n    }\n  }\n}"
-										},
-										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19",
-											"protocol": "{{protocol}}",
-											"host": [
-												"{{url}}"
-											],
-											"port": "{{okapiport}}",
-											"path": [
-												"eholdings",
-												"providers",
-												"19"
-											]
-										}
-									},
-									"response": []
-								},
-								{
-									"name": "update provider token - error",
-									"event": [
-										{
-											"listen": "test",
-											"script": {
-												"id": "e099b521-e229-4faf-8efa-882154dae668",
-												"exec": [
-													"pm.test(\"success test\", function() {",
-													"    pm.response.to.be.json;",
-													"});",
-													"",
-													"let response = pm.response.json();",
-													"",
-													"//Check that status is 400",
-													"pm.test(\"Status is 400\", function () {",
-													"    pm.response.to.have.status(400);",
-													"});",
-													"",
-													"//Validate response against json api schema",
-													"pm.test(\"Validate schema\", function () {",
-													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_jsonapiError\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
-													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
-													"});",
-													"",
-													"//Ensure that errors array is not empty",
-													"if(response.errors) {",
-													"    pm.test('Ensure that errors array is not empty', function() {",
-													"        pm.expect(response.errors).to.be.an('array').that.is.not.empty;",
-													"    });",
-													"",
-													"    //Ensure that appropriate error message is being returned",
-													"    pm.test('Ensure that appropriate error message is returned', function() {",
-													"        pm.expect(response.errors[0].title).to.eq('Provider does not allow token');",
-													"    });",
-													"}",
-													"",
-													""
-												],
-												"type": "text/javascript"
-											}
-										}
-									],
-									"request": {
-										"method": "PUT",
-										"header": [
-											{
-												"key": "x-okapi-tenant",
-												"value": "{{xokapitenant}}"
-											},
-											{
-												"key": "x-okapi-token",
-												"value": "{{xokapitoken}}"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/vnd.api+json"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n  \"data\": {\n    \"type\": \"providers\",\n    \"attributes\": {\n      \"providerToken\": {\n        \"value\": 123\n      },\n      \"packagesSelected\": 1,\n      \"proxy\": {\n        \"id\": \"<n>\"\n      }\n    }\n  }\n}"
 										},
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/eholdings/providers/19",
@@ -7749,16 +7754,6 @@
 													"//Test that all package tags included in response",
 													"pm.test('package tags included in responce', function() {",
 													"    pm.expect(response.data[0].attributes.tags.tagList.length).to.eql(2); ",
-													"});",
-													"",
-													"",
-													"//Test that total records value as expected",
-													"pm.test('total records as expected', function() {",
-													"    pm.expect(response.meta.totalResults).to.eql(1);",
-													"});",
-													"",
-													"pm.test('One record in response array', function() {",
-													"    pm.expect(response.data.length).eq(1);",
 													"});",
 													""
 												],
@@ -14348,7 +14343,8 @@
 							"tv4.addSchema(\"schema_embargo.json\", JSON.parse(pm.variables.get(\"schema_embargo\")));",
 							"tv4.addSchema(\"schema_jsonapiError.json\", JSON.parse(pm.variables.get(\"schema_jsonapiError\")));",
 							"tv4.addSchema(\"schema_jsonapiErrorResponse.json\", JSON.parse(pm.variables.get(\"schema_jsonapiErrorResponse\")));",
-							"tv4.addSchema(\"schema_tags.schema\", JSON.parse(pm.variables.get(\"schema_tags\")));"
+							"tv4.addSchema(\"schema_tags.schema\", JSON.parse(pm.variables.get(\"schema_tags\")));",
+							"tv4.addSchema(\"schema_uuid.schema\", JSON.parse(pm.variables.get(\"schema_uuid\")));"
 						]
 					}
 				}
@@ -28914,8 +28910,7 @@
 							"tv4.addSchema(\"schema_hasOneRelationship.json\", JSON.parse(pm.variables.get(\"schema_hasOneRelationship\")));",
 							"tv4.addSchema(\"schema_relationshipData.json\", JSON.parse(pm.variables.get(\"schema_relationshipData\")));",
 							"tv4.addSchema(\"schema_jsonapiErrorResponse.json\", JSON.parse(pm.variables.get(\"schema_jsonapiErrorResponse\")));",
-							"",
-							""
+							"tv4.addSchema(\"schema_uuid.schema\", JSON.parse(pm.variables.get(\"schema_uuid\")));"
 						]
 					}
 				}
@@ -31768,31 +31763,31 @@
 	],
 	"variable": [
 		{
-			"id": "fa337117-6586-46b9-90bd-b2ed4f0b41e8",
+			"id": "c37b1e44-d436-4c17-bfb0-1ce2f6b77816",
 			"key": "custid",
 			"value": "apidvgvmt",
 			"type": "string"
 		},
 		{
-			"id": "e90faf1f-d7d9-4d87-8870-03c2336f2ee4",
+			"id": "3f3df550-0bfa-4da2-aa00-4ba3b5db959c",
 			"key": "packageId",
 			"value": "583-4345",
 			"type": "string"
 		},
 		{
-			"id": "e2ce4507-e214-43c8-bd79-778d13510123",
+			"id": "b3d34d40-2599-4389-924b-8e34852a4241",
 			"key": "rmapi_api_key",
 			"value": "",
 			"type": "string"
 		},
 		{
-			"id": "d511d4b1-e4f2-4fd9-af62-a37424b9c939",
+			"id": "ca2009ce-7703-43e2-b49b-52904209f222",
 			"key": "rmapi_url",
 			"value": "https://sandbox.ebsco.io",
 			"type": "string"
 		},
 		{
-			"id": "78e161a5-5235-4315-9ca9-1e22b40ad0a8",
+			"id": "02baf931-2d9b-42b3-ac48-6eec3f6f4519",
 			"key": "default_rmapi_url",
 			"value": "https://sandbox.ebsco.io",
 			"type": "string"
