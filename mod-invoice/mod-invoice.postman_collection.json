@@ -1778,6 +1778,83 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Load mock data",
+					"item": [
+						{
+							"name": "Load mock invoice",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/invoices/invoices.json\", function (err, res) {",
+											"    pm.globals.set(\"mock-invoices\",  JSON.stringify(res.json()));",
+											"",
+											"    let invoice = utils.prepareInvoice(utils.getMockInvoice(1));",
+											"    invoice.note += \" - for batch-group system record delete test\";",
+											"    invoice.status = \"Reviewed\";",
+											"    delete invoice.adjustments;",
+											"    delete invoice.voucherNumber;",
+											"    delete invoice.approvalDate;",
+											"    delete invoice.approvedBy;",
+											"    ",
+											"    pm.environment.set(\"mockInvoice\", JSON.stringify(invoice));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{mockInvoice}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"invoice",
+										"invoices"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -11649,6 +11726,346 @@
 					"description": "This directory contains various tests related to transition of the invoices/vouchers through the workflow",
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Batch groups",
+					"item": [
+						{
+							"name": "Get batch-groups",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let batchGroups = [];",
+											"",
+											"pm.test(\"Successfully get batch-groups\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    pm.expect(pm.response.json().totalRecords).to.be.above(0);",
+											"    batchGroups = pm.response.json().batchGroups;",
+											"});",
+											"",
+											"pm.test(\"Batch-group content is valid\", function() {",
+											"    batchGroups.forEach(batchGroup => utils.validateBatchGroup(batchGroup));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create batch-group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let batchGroup = {};",
+											"",
+											"pm.test(\"Batch-group is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    batchGroup = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Batch-group content is valid\", function() {",
+											"    pm.expect(batchGroup.name).to.exist;",
+											"    pm.environment.set(\"batchGroupId\", batchGroup.id);",
+											"    ",
+											"    utils.validateBatchGroup(batchGroup);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchGroups/batch_group_collection.json\", function (err, res) {",
+											"    let batchGroup = res.json().batchGroups[0];",
+											"    delete batchGroup.metadata;",
+											"    pm.environment.set(\"batchGroupContent\", JSON.stringify(batchGroup));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{batchGroupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get batch-group by Id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let invoice = {};",
+											"",
+											"pm.test(\"Successfully get Batch-group\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    batchGroup = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Batch-group content is valid\", function() {",
+											"    utils.validateBatchGroup(batchGroup);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{batchGroupId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{batchGroupId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Edit batch-group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/batch-groups/\" + pm.environment.get(\"batchGroupId\"), (err, res) => utils.validateBatchGroup(res.json()));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchGroups/batch_group_collection.json\", function (err, res) {",
+											"    let batchGroup = res.json().batchGroups[0];",
+											"    batchGroup.name = \"New Name\";",
+											"    delete batchGroup.metadata;",
+											"    ",
+											"    pm.environment.set(\"batchGroupContent\", JSON.stringify(batchGroup));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{batchGroupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{batchGroupId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{batchGroupId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete batch-group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Batch-group is deleted\", function() {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{batchGroupId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{batchGroupId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -12404,7 +12821,7 @@
 											{
 												"key": "x-okapi-token",
 												"value": "{{xokapitoken}}"
-											}
+                      }
 										],
 										"url": {
 											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeApprovedInvoiceWithLockedTotalId}}",
@@ -16552,6 +16969,855 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Batch groups",
+					"item": [
+						{
+							"name": "Create batch-group missing required fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    batchGroup = pm.response.json();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchGroups/batch_group_collection.json\", function (err, res) {",
+											"    let batchGroup = res.json().batchGroups[0];",
+											"    delete batchGroup.metadata;",
+											"    delete batchGroup.name;",
+											"    pm.environment.set(\"batchGroupContent\", JSON.stringify(batchGroup));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{batchGroupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get batch-groupby id - UUID does not exist",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"404 test - UUID does not exists\", function() {",
+											"    pm.response.to.have.status(404);",
+											"    pm.response.to.have.body();",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.environment.set(\"UUIDDoesNotExists\", \"2cf5d43f-d107-4aaa-a8f4-2e6647f4794a\");"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{UUIDDoesNotExists}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{UUIDDoesNotExists}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get batch-group by id - invalid UUID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - invalid UUID on URL\", function() {",
+											"    pm.response.to.have.status(400);",
+											"    pm.response.to.have.body();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/foo",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"foo"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /batch-groups?limit=-1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - negative limit\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups?limit=-1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "-1"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /batch-groups?limit=-2147483649",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - limit less than Integer.MIN_VALUE\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups?limit=-2147483649",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									],
+									"query": [
+										{
+											"key": "limit",
+											"value": "-2147483649"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /batch-groups?offset=-1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - negative offset\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups?offset=-1",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									],
+									"query": [
+										{
+											"key": "offset",
+											"value": "-1"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Negative limit /batch-groups?offset=-2147483649",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"400 test - offset less than Integer.MIN_VALUE\", function() {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups?offset=-2147483649",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									],
+									"query": [
+										{
+											"key": "offset",
+											"value": "-2147483649"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update batch-group by id with empty body",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update batch-group by id with bad format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchGroups/batch_group_collection.json\", function (err, res) {",
+											"    let batchGroup = res.json().batchGroups[0];",
+											"    batchGroup.name = \"New Name\";",
+											"    delete batchGroup.metadata;",
+											"    ",
+											"    pm.environment.set(\"batchGroupContent\", JSON.stringify(batchGroup));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{batchGroupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update batch-group missing requred fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchGroups/batch_group_collection.json\", function (err, res) {",
+											"    let batchGroup = res.json().batchGroups[0];",
+											"    delete batchGroup.name;",
+											"    delete batchGroup.metadata;",
+											"    ",
+											"    pm.environment.set(\"batchGroupContent\", JSON.stringify(batchGroup));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{batchGroupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{batchGroupId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{batchGroupId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete batch group by id with bad format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete non existent batch-group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete batch-group by random id",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Invoice is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete batch-group with incorrect lang code format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Error response expected\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{$guid}}?lang=english",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{$guid}}"
+									],
+									"query": [
+										{
+											"key": "lang",
+											"value": "english"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete batch-group with UUID in use",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Batch-group is in use\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{batchGroupSystemRecordId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{batchGroupSystemRecordId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -17473,6 +18739,29 @@
 					"    utils.arraysOfStringsAreEqual = function(array1, array2) {",
 					"        return JSON.stringify(array1)==JSON.stringify(array2);",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Build batch-group.",
+					"     */",
+					"    utils.buildBatchGroup = function() {",
+					"        return {",
+					"            \"id\": \"5082b4c2-1504-421e-9da0-0ee8c9e8b07d\",",
+					"            \"name\": \"Marx Library\",",
+					"            \"description\": \"University of South Alabama\"",
+					"            ",
+					"        };",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Validates batch-group against schema",
+					"     */",
+					"    utils.validateBatchGroup = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, utils.getBatchGroupSchema());",
+					"    };",
+					"",
+					"    utils.getBatchGroupSchema = function() {",
+					"        return JSON.parse(pm.environment.get(utils.schemaPrefix + \"batch_group.json\"));",
+					"    };",
 					"",
 					"",
 					"    return utils;",
@@ -17539,6 +18828,12 @@
 			"id": "3089a8ab-3753-4f1e-adae-3479195d86d8",
 			"key": "voucherNumber",
 			"value": "{\"voucherNumberPrefix\": \"testPrefix\"}",
+			"type": "string"
+		},
+		{
+			"id": "c45cb93c-0adb-4140-a300-2835ce2302cb",
+			"key": "batchGroupSystemRecordId",
+			"value": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
 			"type": "string"
 		}
 	],
