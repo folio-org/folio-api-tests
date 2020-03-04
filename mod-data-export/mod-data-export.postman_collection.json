@@ -27,6 +27,18 @@
 										],
 										"type": "text/javascript"
 									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4a1b05a6-b00f-437e-a095-d97113f57b08",
+										"exec": [
+											"pm.test(\"Preparing request to login via existing admin user\", () => {",
+											"    pm.variables.set(\"dikuAdmin\", JSON.stringify(globals.testData.users.dikuadmin.credentials));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
 								}
 							],
 							"request": {
@@ -43,7 +55,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
+									"raw": "{{dikuAdmin}}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
@@ -80,61 +92,62 @@
 									"script": {
 										"id": "9b46996e-04ac-475d-8d3a-fe8947e8db87",
 										"exec": [
-											"// In case the tenant was not created no sense to run further requests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"Tenant created - created (201) or already exists (400 with Duplicate tenant id error)\", () => {",
-											"    pm.expect(pm.response.code).be.oneOf([201, 400]);",
-											"    if (pm.response.code === 400) {",
-											"        pm.expect(pm.response.text()).to.include(\"Duplicate tenant id\");",
-											"        purgeMudulesData();",
-											"    } else {",
-											"        // All is okay, running further requests",
-											"        postman.setNextRequest();",
-											"    }",
-											"});",
-											"",
-											"function purgeMudulesData() {",
-											"    let utils = eval(globals.loadUtils);",
-											"    let tenantBaseUrl = utils.buildOkapiURL(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\"));",
-											"    pm.sendRequest(tenantBaseUrl + \"/modules\", (err, res) => {",
-											"        let modulesToDisable = null;",
-											"        pm.test(\"Preparing request to disable modules if any installed before...\", () => {",
-											"            pm.expect(err).to.equal(null);",
-											"            pm.expect(res.code).to.equal(200);",
-											"",
-											"            modulesToDisable = res.json();",
-											"            modulesToDisable.forEach(entry => entry.action = \"disable\");",
-											"            console.log(modulesToDisable);",
-											"        });",
-											"",
-											"        if (modulesToDisable !== null) {",
-											"            // In case the response indicates that there are some modules are already installed, their data have to be purged first",
-											"            if (modulesToDisable.length > 0) {",
-											"                pm.sendRequest({",
-											"                    url: tenantBaseUrl + \"/install\",",
-											"                    method: \"POST\",",
-											"                    header: {",
-											"                        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),",
-											"                        \"Content-type\": \"application/json\"",
-											"                    },",
-											"                    body: JSON.stringify(modulesToDisable)",
-											"                }, (error, response) => {",
-											"                    pm.test(\"Purging the data for '\" + pm.variables.get(\"testTenant\") + \"' tenant\", () => {",
-											"                        pm.expect(error).to.equal(null);",
-											"                        pm.expect(response).to.be.ok;",
-											"                        // All the data have been purged. Now wait for a minute and run next request",
-											"                        setTimeout(() => postman.setNextRequest(), 61000);",
-											"                    });",
-											"                });",
-											"            } else {",
-											"                pm.test(\"No modules to purge for '\" + pm.variables.get(\"testTenant\") + \"' tenant\", () => {",
-											"                    // Run next request",
-											"                    postman.setNextRequest();",
-											"                });",
-											"            }",
-											"        }",
-											"    });",
+											"// In case the tenant was not created no sense to run further requests\r",
+											"postman.setNextRequest(null);\r",
+											"\r",
+											"pm.test(\"Tenant created - created (201) or already exists (400 with Duplicate tenant id error)\", () => {\r",
+											"    pm.expect(pm.response.code).be.oneOf([201, 400]);\r",
+											"    if (pm.response.code === 400) {\r",
+											"        pm.expect(pm.response.text()).to.include(\"Duplicate tenant id\");\r",
+											"        purgeMudulesData();\r",
+											"    } else {\r",
+											"        // All is okay, running further requests\r",
+											"        postman.setNextRequest();\r",
+											"    }\r",
+											"});\r",
+											"\r",
+											"function purgeMudulesData() {\r",
+											"    let utils = eval(globals.loadUtils);\r",
+											"    let tenantBaseUrl = utils.buildOkapiURL(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\"));\r",
+											"    pm.sendRequest(tenantBaseUrl + \"/modules\", (err, res) => {\r",
+											"        let modulesToDisable = null;\r",
+											"        pm.test(\"Preparing request to disable modules if any installed before...\", () => {\r",
+											"            pm.expect(err).to.equal(null);\r",
+											"            pm.expect(res.code).to.equal(200);\r",
+											"\r",
+											"            modulesToDisable = res.json();\r",
+											"            modulesToDisable.forEach(entry => entry.action = \"disable\");\r",
+											"            console.log(modulesToDisable);\r",
+											"        });\r",
+											"\r",
+											"        if (modulesToDisable !== null) {\r",
+											"            // In case the response indicates that there are some modules are already installed, their data have to be purged first\r",
+											"            if (modulesToDisable.length > 0) {\r",
+											"                pm.sendRequest({\r",
+											"                    url: tenantBaseUrl + \"/install\",\r",
+											"                    method: \"POST\",\r",
+											"                    header: {\r",
+											"                        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"                        \"Content-type\": \"application/json\"\r",
+											"                    },\r",
+											"                    body: JSON.stringify(modulesToDisable)\r",
+											"                }, (error, response) => {\r",
+											"                    pm.test(\"Purging the data for '\" + pm.variables.get(\"testTenant\") + \"' tenant\", () => {\r",
+											"                        pm.expect(error).to.equal(null);\r",
+											"                        pm.expect(response).to.be.ok;\r",
+											"                        // All the data have been purged. Now wait for a minute and run next request\r",
+											"                        setTimeout(() => postman.setNextRequest(), 61000);\r",
+											"                        postman.setNextRequest();\r",
+											"                    });\r",
+											"                });\r",
+											"            } else {\r",
+											"                pm.test(\"No modules to purge for '\" + pm.variables.get(\"testTenant\") + \"' tenant\", () => {\r",
+											"                    // Run next request\r",
+											"                    postman.setNextRequest();\r",
+											"                });\r",
+											"            }\r",
+											"        }\r",
+											"    });\r",
 											"}"
 										],
 										"type": "text/javascript"
@@ -183,21 +196,21 @@
 									"script": {
 										"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
 										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"utils.getModuleId(\"mod-data-export\", bodyHandler);",
-											"utils.getModuleId(\"mod-login\", bodyHandler);",
-											"utils.getModuleId(\"mod-permissions\", bodyHandler);",
-											"utils.getModuleId(\"mod-configuration\", bodyHandler);",
-											"",
-											"var modulesToEnable = [];",
-											"",
-											"function bodyHandler(moduleId) {",
-											"\tmodulesToEnable.push({",
-											"\t\t\"id\" : moduleId, ",
-											"\t\t\"action\": \"enable\"",
-											"\t});",
-											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));",
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"utils.getModuleId(\"mod-data-export\", bodyHandler);\r",
+											"utils.getModuleId(\"mod-login\", bodyHandler);\r",
+											"utils.getModuleId(\"mod-permissions\", bodyHandler);\r",
+											"utils.getModuleId(\"mod-configuration\", bodyHandler);\r",
+											"\r",
+											"var modulesToEnable = [];\r",
+											"\r",
+											"function bodyHandler(moduleId) {\r",
+											"    modulesToEnable.push({\r",
+											"        \"id\": moduleId,\r",
+											"        \"action\": \"enable\"\r",
+											"    });\r",
+											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));\r",
 											"}"
 										],
 										"type": "text/javascript"
@@ -208,13 +221,13 @@
 									"script": {
 										"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
 										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"postman.setNextRequest(null);",
-											"pm.test(\"Enabled required modules\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    pm.response.to.be.withBody;",
-											"    postman.setNextRequest();",
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"postman.setNextRequest(null);\r",
+											"pm.test(\"Enabled required modules\", function() {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    pm.response.to.be.withBody;\r",
+											"    postman.setNextRequest();\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -396,16 +409,18 @@
 									"script": {
 										"id": "dded3598-c238-487d-b06c-721c60509cf4",
 										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"let pmRq = {",
-											"    url: utils.buildOkapiURL('/perms/permissions?length=1000&query=(subPermissions=\"\" NOT subPermissions ==/respectAccents []) and (cql.allRecords=1 NOT childOf <>/respectAccents [])'),",
-											"    method: \"GET\",",
-											"    header: {\"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")}",
-											"};",
-											"pm.sendRequest(pmRq, (err, res) => {",
-											"    let userPermissions = globals.testData.users.admin.permissions;",
-											"    userPermissions.permissions = res.json().permissions.map(perm => perm.permissionName);",
-											"    pm.variables.set(\"userPermissions\", JSON.stringify(userPermissions));",
+											"let utils = eval(globals.loadUtils);\r",
+											"let pmRq = {\r",
+											"    url: utils.buildOkapiURL('/perms/permissions?length=1000&query=(subPermissions=\"\" NOT subPermissions ==/respectAccents []) and (cql.allRecords=1 NOT childOf <>/respectAccents [])'),\r",
+											"    method: \"GET\",\r",
+											"    header: {\r",
+											"        \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
+											"    }\r",
+											"};\r",
+											"pm.sendRequest(pmRq, (err, res) => {\r",
+											"    let userPermissions = globals.testData.users.admin.permissions;\r",
+											"    userPermissions.permissions = res.json().permissions.map(perm => perm.permissionName);\r",
+											"    pm.variables.set(\"userPermissions\", JSON.stringify(userPermissions));\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -459,18 +474,18 @@
 									"script": {
 										"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
 										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"utils.getModuleId(\"mod-authtoken\", bodyHandler);",
-											"",
-											"var modulesToEnable = [];",
-											"",
-											"function bodyHandler(moduleId) {",
-											"\tmodulesToEnable.push({",
-											"\t\t\"id\" : moduleId,",
-											"\t\t\"action\": \"enable\"",
-											"\t});",
-											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));",
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"utils.getModuleId(\"mod-authtoken\", bodyHandler);\r",
+											"\r",
+											"var modulesToEnable = [];\r",
+											"\r",
+											"function bodyHandler(moduleId) {\r",
+											"    modulesToEnable.push({\r",
+											"        \"id\": moduleId,\r",
+											"        \"action\": \"enable\"\r",
+											"    });\r",
+											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));\r",
 											"}"
 										],
 										"type": "text/javascript"
@@ -641,14 +656,13 @@
 									"script": {
 										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
 										"exec": [
-											"// In case the user was not created no sense to run further requests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"User created - Expected Created (201)\", () => {",
-											"    pm.response.to.have.status(201);",
-											"",
-											"    // All is okay so running further requests",
-											"    postman.setNextRequest();",
+											"// In case the user was not created no sense to run further requests\r",
+											"postman.setNextRequest(null);\r",
+											"\r",
+											"pm.test(\"User created - Expected Created (201)\", () => {\r",
+											"    pm.response.to.have.status(201);\r",
+											"    // All is okay so running further requests\r",
+											"    postman.setNextRequest();\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -752,9 +766,9 @@
 									"script": {
 										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
 										"exec": [
-											"pm.test(globals.testData.users.regular.user.username + \" user's permissions created\", () => {",
-											"    pm.response.to.have.status(201);",
-											"    pm.environment.set(\"limitedPrivPermId\", pm.response.json().id);",
+											"pm.test(globals.testData.users.regular.user.username + \" user's permissions created\", () => {\r",
+											"    pm.response.to.have.status(201);\r",
+											"    pm.environment.set(\"limitedPrivPermId\", pm.response.json().id);\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -812,15 +826,15 @@
 									"script": {
 										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
 										"exec": [
-											"// In case the new user cannot be logged in no sense to run further tests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"Status code is 201\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    // All is okay so running further requests",
-											"    postman.setNextRequest();",
-											"});",
-											"",
+											"// In case the new user cannot be logged in no sense to run further tests\r",
+											"postman.setNextRequest(null);\r",
+											"\r",
+											"pm.test(\"Status code is 201\", function() {\r",
+											"    pm.response.to.have.status(201);\r",
+											"    // All is okay so running further requests\r",
+											"    postman.setNextRequest();\r",
+											"});\r",
+											"\r",
 											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
 										],
 										"type": "text/javascript"
@@ -920,7 +934,6 @@
 											"",
 											"pm.test(\"User created - Expected Created (201)\", () => {",
 											"    pm.response.to.have.status(201);",
-											"",
 											"    // All is okay so running further requests",
 											"    postman.setNextRequest();",
 											"});"
@@ -1026,9 +1039,9 @@
 									"script": {
 										"id": "1f1202b1-b74a-46cc-8fcd-e5d9b76d53b7",
 										"exec": [
-											"pm.test(globals.testData.users.noPerms.user.username + \" user's permissions created\", () => {",
-											"    pm.response.to.have.status(201);",
-											"    pm.environment.set(\"limitedPrivPermId\", pm.response.json().id);",
+											"pm.test(globals.testData.users.noPerms.user.username + \" user's permissions created\", () => {\r",
+											"    pm.response.to.have.status(201);\r",
+											"    pm.environment.set(\"limitedPrivPermId\", pm.response.json().id);\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1086,15 +1099,15 @@
 									"script": {
 										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
 										"exec": [
-											"// In case the new user cannot be logged in no sense to run further tests",
-											"postman.setNextRequest(null);",
-											"",
-											"pm.test(\"Status code is 201\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    // All is okay so running further requests",
-											"    postman.setNextRequest();",
-											"});",
-											"",
+											"// In case the new user cannot be logged in no sense to run further tests\r",
+											"postman.setNextRequest(null);\r",
+											"\r",
+											"pm.test(\"Status code is 201\", function() {\r",
+											"    pm.response.to.have.status(201);\r",
+											"    // All is okay so running further requests\r",
+											"    postman.setNextRequest();\r",
+											"});\r",
+											"\r",
 											"pm.environment.set(\"xokapitoken-user2\", postman.getResponseHeader(\"x-okapi-token\"));"
 										],
 										"type": "text/javascript"
@@ -1212,7 +1225,7 @@
 											"    url: utils.buildOkapiURL(\"/perms/users\"),\r",
 											"    method: \"GET\",\r",
 											"    header: {\r",
-											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-testAdmin\"),\r",
 											"        \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
 											"    }\r",
 											"}, (err, res) => {\r",
@@ -1228,7 +1241,7 @@
 											"        url: utils.buildOkapiURL(\"/perms/users/\" + id),\r",
 											"        method: \"DELETE\",\r",
 											"        header: {\r",
-											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-testAdmin\"),\r",
 											"            \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
 											"        }\r",
 											"    }, (err, res) => {\r",
@@ -1247,12 +1260,12 @@
 									"script": {
 										"id": "e361a49e-60c1-490b-bfdf-2d3995279ade",
 										"exec": [
-											"postman.setNextRequest(null);",
-											"pm.test(\"Permissions has been successfully  removed\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    pm.response.to.be.withBody;",
-											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
-											"    postman.setNextRequest();",
+											"postman.setNextRequest(null);\r",
+											"pm.test(\"Permissions has been successfully  removed\", function() {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    pm.response.to.be.withBody;\r",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);\r",
+											"    postman.setNextRequest();\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1264,7 +1277,7 @@
 								"header": [
 									{
 										"key": "x-okapi-token",
-										"value": "{{xokapitoken-admin}}",
+										"value": "{{xokapitoken-testAdmin}}",
 										"type": "text"
 									},
 									{
@@ -1301,7 +1314,7 @@
 											"    url: utils.buildOkapiURL(\"/authn/credentials\"),\r",
 											"    method: \"GET\",\r",
 											"    header: {\r",
-											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-testAdmin\"),\r",
 											"        \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
 											"    }\r",
 											"}, (err, res) => {\r",
@@ -1317,7 +1330,7 @@
 											"        url: utils.buildOkapiURL(\"/authn/credentials/\" + id),\r",
 											"        method: \"DELETE\",\r",
 											"        header: {\r",
-											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-testAdmin\"),\r",
 											"            \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
 											"        }\r",
 											"    }, (err, res) => {\r",
@@ -1336,12 +1349,12 @@
 									"script": {
 										"id": "e361a49e-60c1-490b-bfdf-2d3995279ade",
 										"exec": [
-											"postman.setNextRequest(null);",
-											"pm.test(\"Credentials has been successfully  removed\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    pm.response.to.be.withBody;",
-											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
-											"    postman.setNextRequest();",
+											"postman.setNextRequest(null);\r",
+											"pm.test(\"Credentials has been successfully  removed\", function() {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    pm.response.to.be.withBody;\r",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);\r",
+											"    postman.setNextRequest();\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1354,7 +1367,7 @@
 									{
 										"key": "x-okapi-token",
 										"type": "text",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-testAdmin}}"
 									},
 									{
 										"key": "x-okapi-tenant",
@@ -1363,15 +1376,15 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
 									],
 									"port": "{{okapiport}}",
 									"path": [
-										"perms",
-										"users"
+										"authn",
+										"credentials"
 									]
 								}
 							},
@@ -1390,7 +1403,7 @@
 											"    url: utils.buildOkapiURL(\"/users\"),\r",
 											"    method: \"GET\",\r",
 											"    header: {\r",
-											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"        \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-testAdmin\"),\r",
 											"        \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
 											"    }\r",
 											"}, (err, res) => {\r",
@@ -1406,7 +1419,7 @@
 											"        url: utils.buildOkapiURL(\"/users/\" + id),\r",
 											"        method: \"DELETE\",\r",
 											"        header: {\r",
-											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\"),\r",
+											"            \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-testAdmin\"),\r",
 											"            \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\")\r",
 											"        }\r",
 											"    }, (err, res) => {\r",
@@ -1425,12 +1438,12 @@
 									"script": {
 										"id": "e361a49e-60c1-490b-bfdf-2d3995279ade",
 										"exec": [
-											"postman.setNextRequest(null);",
-											"pm.test(\"Credentials has been successfully  removed\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    pm.response.to.be.withBody;",
-											"    pm.expect(pm.response.json().totalRecords).to.equal(0);",
-											"    postman.setNextRequest();",
+											"postman.setNextRequest(null);\r",
+											"pm.test(\"Credentials has been successfully  removed\", function() {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    pm.response.to.be.withBody;\r",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(0);\r",
+											"    postman.setNextRequest();\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1443,7 +1456,7 @@
 									{
 										"key": "x-okapi-token",
 										"type": "text",
-										"value": "{{xokapitoken-admin}}"
+										"value": "{{xokapitoken-testAdmin}}"
 									},
 									{
 										"key": "x-okapi-tenant",
@@ -1452,14 +1465,13 @@
 									}
 								],
 								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
 									"protocol": "{{protocol}}",
 									"host": [
 										"{{url}}"
 									],
 									"port": "{{okapiport}}",
 									"path": [
-										"perms",
 										"users"
 									]
 								}
@@ -1481,17 +1493,17 @@
 									"script": {
 										"id": "c0e4e7c3-311a-4fd3-8b45-3bab9a58256f",
 										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"pm.sendRequest(utils.buildOkapiURL(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\") + \"/modules\"), (err, res) => {",
-											"    pm.test(\"Preparing request to disable modules\", () => {",
-											"        pm.expect(err).to.equal(null);",
-											"        pm.expect(res.code).to.equal(200);",
-											"        let modulesToDisable = res.json();",
-											"        modulesToDisable.forEach(entry => entry.action = \"disable\");",
-											"",
-											"        console.log(modulesToDisable);",
-											"        pm.variables.set(\"modulesToDisable\", JSON.stringify(modulesToDisable));",
-											"    });",
+											"let utils = eval(globals.loadUtils);\r",
+											"pm.sendRequest(utils.buildOkapiURL(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\") + \"/modules\"), (err, res) => {\r",
+											"    pm.test(\"Preparing request to disable modules\", () => {\r",
+											"        pm.expect(err).to.equal(null);\r",
+											"        pm.expect(res.code).to.equal(200);\r",
+											"        let modulesToDisable = res.json();\r",
+											"        modulesToDisable.forEach(entry => entry.action = \"disable\");\r",
+											"\r",
+											"        console.log(modulesToDisable);\r",
+											"        pm.variables.set(\"modulesToDisable\", JSON.stringify(modulesToDisable));\r",
+											"    });\r",
 											"});"
 										],
 										"type": "text/javascript"
@@ -1502,14 +1514,12 @@
 									"script": {
 										"id": "a7a55baa-f34f-4e7b-bb2f-0f6a6d4ca951",
 										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"",
-											"pm.test(\"Disable all modules for test tenant\", function () {",
-											"    pm.response.to.have.status(200);",
-											"    pm.response.to.be.withBody;",
-											"});",
-											"",
-											""
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"pm.test(\"Disable all modules for test tenant\", function() {\r",
+											"    pm.response.to.have.status(200);\r",
+											"    pm.response.to.be.withBody;\r",
+											"});"
 										],
 										"type": "text/javascript"
 									}
@@ -1569,11 +1579,11 @@
 									"script": {
 										"id": "9b46996e-04ac-475d-8d3a-fe8947e8db87",
 										"exec": [
-											"pm.test(\"Tenant deleted - Expected Created (204)\", () => {",
-											"    pm.response.to.have.status(204);",
-											"});",
-											"",
-											"// Remove all created variables",
+											"pm.test(\"Tenant deleted - Expected Created (204)\", () => {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});\r",
+											"\r",
+											"// Remove all created variables\r",
 											"eval(globals.loadUtils).unsetTestVariables();"
 										],
 										"type": "text/javascript"
@@ -1782,31 +1792,31 @@
 	],
 	"variable": [
 		{
-			"id": "73052c65-2e6b-40a9-96fb-bdfe2334b309",
+			"id": "e2eb8141-762a-45a2-8590-a135629547cf",
 			"key": "testTenant",
 			"value": "mdexp_test_tenant",
 			"type": "string"
 		},
 		{
-			"id": "6e65bb6e-993c-4f47-a4cb-76bc32516aca",
+			"id": "a6fd2a48-9700-40dd-ae34-283b9888103f",
 			"key": "xokapitenant",
 			"value": "diku",
 			"type": "string"
 		},
 		{
-			"id": "bab523f0-0001-4772-9bf0-f458383c58ac",
+			"id": "aab3f0cd-e864-4bb8-b791-72aecab7c77d",
 			"key": "protocol",
 			"value": "http",
 			"type": "string"
 		},
 		{
-			"id": "a7d8371e-f89f-4666-bf23-b6e09d24be00",
+			"id": "48a826af-878f-4cae-a71c-d4b07d451d75",
 			"key": "url",
 			"value": "localhost",
 			"type": "string"
 		},
 		{
-			"id": "8a2ff875-19f8-4c5d-84be-005377bd910c",
+			"id": "2250814a-38ee-49c2-8a74-d90587e57e2b",
 			"key": "okapiport",
 			"value": "9130",
 			"type": "string"
