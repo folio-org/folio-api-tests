@@ -10005,6 +10005,85 @@
 								"description": "The test gets list of voucher"
 							},
 							"response": []
+						},
+						{
+							"name": "Edit voucher editable fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/voucher/vouchers/\" + pm.environment.get(\"voucherId\"), (err, res) => utils.validateVoucher(res.json()));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"utils.sendGetRequest(\"/voucher/vouchers/\" + pm.environment.get(\"voucherId\"), (err, res) => {",
+											"    let voucher = res.json();",
+											"    ",
+											"    // modify editable fields",
+											"    voucher.voucherNumber = \"APITESTS123\";",
+											"    voucher.disbursementNumber = \"EFT123456\";",
+											"    voucher.disbursementDate = \"2020-05-05T00:00:00.000+0000\";",
+											"    voucher.disbursementAmount = 4.0;",
+											"    pm.environment.set(\"modifiedVoucherBody\", JSON.stringify(voucher));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modifiedVoucherBody}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/vouchers/{{voucherId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher",
+										"vouchers",
+										"{{voucherId}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"description": "Tests to verify basic operations with vouchers which are created manually",
@@ -15836,6 +15915,158 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Update voucher protected fields",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(\"Bad Request\");",
+											"    pm.expect(pm.response.json().errors[0].protectedAndModifiedFields).to.have.members([\"systemCurrency\", \"exchangeRate\", \"voucherDate\"]);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/voucher/vouchers/\" + pm.environment.get(\"voucherId\"), (err, res) => {",
+											"    let voucher = res.json();",
+											"    ",
+											"    // modify protected fields",
+											"    voucher.systemCurrency = \"EUR\";",
+											"    voucher.exchangeRate = 1.123;",
+											"    voucher.voucherDate = \"2020-05-06T00:00:00.000+0000\";",
+											"    pm.environment.set(\"modifiedVoucherBody\", JSON.stringify(voucher));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modifiedVoucherBody}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/vouchers/{{voucherId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher",
+										"vouchers",
+										"{{voucherId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update voucher bad id format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(\"Bad Request\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.sendGetRequest(\"/voucher/vouchers/\" + pm.environment.get(\"voucherId\"), (err, res) => {",
+											"    let voucher = res.json();",
+											"    ",
+											"    // modify protected fields",
+											"    voucher.systemCurrency = \"EUR\";",
+											"    voucher.exchangeRate = 1.123;",
+											"    voucher.voucherDate = \"2020-05-06T00:00:00.000+0000\";",
+											"    pm.environment.set(\"modifiedVoucherBody\", JSON.stringify(voucher));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modifiedVoucherBody}}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/voucher/vouchers/bad-id-format",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"voucher",
+										"vouchers",
+										"bad-id-format"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -19907,6 +20138,17 @@
 					"    utils.getBatchGroupSchema = function() {",
 					"        return JSON.parse(pm.environment.get(utils.schemaPrefix + \"batch_group.json\"));",
 					"    };",
+					"    ",
+					"    /**",
+					"     * Validates export configuration credentials against schema",
+					"     */",
+					"    utils.validateExpConfCredentials = function(jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, utils.getExpConfCredentials());",
+					"    };",
+					"",
+					"    utils.getExpConfCredentials = function() {",
+					"        return JSON.parse(pm.environment.get(utils.schemaPrefix + \"credentials.json\"));",
+					"    };",
 					"",
 					"",
 					"    return utils;",
@@ -19928,55 +20170,55 @@
 	],
 	"variable": [
 		{
-			"id": "ae3e86e4-d889-4e9d-9a82-3ef8a193cbba",
+			"id": "8b95613c-8125-4461-b98a-fe5b5e8519b3",
 			"key": "testTenant",
 			"value": "invoicing_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "f2d71486-1ac6-4d35-b11a-3a7a6d7bf2f7",
+			"id": "73941494-dcc3-4618-a8ba-34cff9a40a81",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "3bc35478-08c7-4f43-9441-085f34ce2cce",
+			"id": "02bbb106-9851-4d6b-b608-8306588909c5",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "fcefcc77-8a1a-431a-9bda-f8347bce0e70",
+			"id": "7e65fece-7e88-49cc-baa7-72681ce6705c",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "5fe913db-5f64-4fbb-91b6-dde8cedd628a",
+			"id": "372d8d9c-326d-40de-b12f-69bfa7df639f",
 			"key": "inventory-instanceTypeCode",
 			"value": "invoicingApiTestsIdentifierType",
 			"type": "string"
 		},
 		{
-			"id": "ea6535aa-4329-47b2-ab5d-e7172f0a6afe",
+			"id": "62fa1d2c-422d-49d9-b6c2-a446512cbb64",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "57c9a425-687c-4e73-8719-a2796d5cf2e2",
+			"id": "9f30ba5f-0a97-4806-9a19-4b95b7abc9c7",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "3089a8ab-3753-4f1e-adae-3479195d86d8",
+			"id": "41be8a58-2fee-4555-b428-cb2d448f1305",
 			"key": "voucherNumber",
 			"value": "{\"voucherNumberPrefix\": \"testPrefix\"}",
 			"type": "string"
 		},
 		{
-			"id": "c45cb93c-0adb-4140-a300-2835ce2302cb",
+			"id": "5c09e590-a827-4f3a-b0ab-5425eb13c7c1",
 			"key": "batchGroupSystemRecordId",
 			"value": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
 			"type": "string"
