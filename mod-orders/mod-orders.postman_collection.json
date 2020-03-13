@@ -44,7 +44,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"username\": \"{{username}}\",\n    \"password\": \"{{password}}\"\n}"
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
@@ -13936,6 +13936,176 @@
 											"    utils.validateWorkflowStatus(order);",
 											"    ",
 											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"On order\"));",
+											"    pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{checkItemStatusOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{checkItemStatusOrderId}}"
+									]
+								},
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						},
+						{
+							"name": "Update order without poLine with status Closed",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let order = JSON.parse(pm.globals.get(\"check_item_status_order_content\"));",
+											"",
+											"order.compositePoLines = [];",
+											"order.workflowStatus = \"Closed\";",
+											"",
+											"",
+											"pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});   ",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.checkItemStatusOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let order  = res.json();",
+											"    pm.test(\"Verify order updated with expected workflow status\", function () {",
+											"        pm.expect(order.workflowStatus).is.equal(\"Closed\");",
+											"    });",
+											"    ",
+											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"Order closed\"));",
+											"    ",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{checkItemStatusOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{checkItemStatusOrderId}}"
+									]
+								},
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						},
+						{
+							"name": "Reopen order without poLine",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let order = JSON.parse(pm.globals.get(\"check_item_status_order_content\"));",
+											"",
+											"order.compositePoLines = [];",
+											"order.workflowStatus = \"Open\";",
+											"",
+											"",
+											"pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});   ",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.checkItemStatusOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let order = res.json();",
+											"    ",
+											"    pm.test(\"Verify order updated with expected workflow status\", function () {",
+											"         pm.expect(order.workflowStatus).is.equal(\"Open\");",
+											"    });",
+											"   ",
+											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"On order\"));",
+											"    ",
 											"    pm.globals.unset(\"check_item_status_order_content\");",
 											"    pm.globals.unset(\"checkItemStatusOrderId\");",
 											"    ",
@@ -14015,199 +14185,6 @@
 		{
 			"name": "Negative Tests",
 			"item": [
-				{
-					"name": "Create finances with restrictions",
-					"item": [
-						{
-							"name": "Restricted Ledger",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
-										"exec": [
-											"pm.test(\"Ledger is created\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    pm.response.to.be.withBody;",
-											"    pm.environment.set(\"restrictedLedgerId\", pm.response.json().id);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-testAdmin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n\t\"id\": \"ce353f9c-f089-4701-90d1-951d008348f2\",\r\n\t\"code\": \"RESTRICTED-LDGR\",\r\n\t\"ledgerStatus\": \"Active\",\r\n\t\"name\": \"Restricted ledger\",\r\n    \"fiscalYearOneId\": \"ac2164c7-ba3d-1bc2-a12c-e35ceccbfaf2\",\r\n    \"restrictEncumbrance\": true,\r\n    \"restrictExpenditures\": true\r\n}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/ledgers",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance-storage",
-										"ledgers"
-									]
-								},
-								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
-							},
-							"response": []
-						},
-						{
-							"name": "Restricted Fund",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
-										"exec": [
-											"pm.test(\"Fund is created\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    pm.response.to.be.withBody;",
-											"    pm.environment.set(\"restrictedFundId\", pm.response.json().id);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-testAdmin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n  \"code\": \"RESTRICTED-FND\",\r\n  \"description\": \"Fund for orders API Tests\",\r\n  \"externalAccountNo\": \"1111111111111111111111111\",\r\n  \"fundStatus\": \"Active\",\r\n  \"ledgerId\": \"{{restrictedLedgerId}}\",\r\n  \"name\": \"Fund for orders API Tests\"\r\n}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/funds",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance-storage",
-										"funds"
-									]
-								},
-								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
-							},
-							"response": []
-						},
-						{
-							"name": "Restricted Budget",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"id": "26b15fda-7df4-473f-9ce4-ccfc4924460c",
-										"exec": [
-											"pm.test(\"Budget is created\", function () {",
-											"    pm.response.to.have.status(201);",
-											"    pm.response.to.be.withBody;",
-											"    pm.environment.set(\"restrictedBudgetId\", pm.response.json().id);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "fa42b974-2ac7-4dbf-9572-3f42ef3569f6",
-										"exec": [
-											""
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									},
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken-testAdmin}}"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n  \"budgetStatus\": \"Active\",\r\n  \"fundId\": \"{{restrictedFundId}}\",\r\n  \"name\": \"Restricted Budget for orders API Tests\",\r\n  \"fiscalYearId\":\"ac2164c7-ba3d-1bc2-a12c-e35ceccbfaf2\",\r\n  \"allowableEncumbrance\": 100.0,\r\n  \"allowableExpenditure\": 100.0,\r\n  \"allocated\": 25,\r\n  \"awaitingPayment\": 2.0,\r\n  \"available\": 3.0,\r\n  \"encumbered\": 4.0,\r\n  \"expenditures\": 5.0,\r\n  \"unavailable\": 14.0\r\n}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"finance",
-										"budgets"
-									]
-								},
-								"description": "Gets or creates if not yet exists test identifier type to be used accross the orders while interaction with inventory"
-							},
-							"response": []
-						}
-					],
-					"protocolProfileBehavior": {},
-					"_postman_isSubFolder": true
-				},
 				{
 					"name": "Create Order for tests",
 					"item": [
@@ -20093,82 +20070,6 @@
 								}
 							},
 							"response": []
-						},
-						{
-							"name": "Create Open order. Ledger is restricted",
-							"event": [
-								{
-									"listen": "prerequest",
-									"script": {
-										"id": "1e460952-a0bc-4b0f-ace8-ba0494b30f5c",
-										"exec": [
-											"let utils = eval(globals.loadUtils);",
-											"var uuid = require('uuid');",
-											"",
-											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_serial.json\", (err, res) => {",
-											"    let openOrder = utils.prepareOrder(res.json());",
-											"    openOrder.workflowStatus = \"Open\";",
-											"    delete openOrder.poNumber;",
-											"",
-											"    // Setting restricted fund id\"",
-											"    openOrder.compositePoLines[0].fundDistribution[0].fundId = pm.environment.get(\"restrictedFundId\");",
-											"",
-											"    pm.variables.set(\"order_with_insufficient_funds\", JSON.stringify(openOrder));",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "test",
-									"script": {
-										"id": "aa91a697-30b7-400f-886a-b671dba65f5b",
-										"exec": [
-											"let utils = eval(globals.loadUtils);\r",
-											"\t\r",
-											"pm.test(\"Server error is expected: encumbranceCreationFailure\", function () {\r",
-											"    pm.response.to.have.status(422);\r",
-											"    let errors = pm.response.json().errors;\r",
-											"    pm.expect(errors).to.have.lengthOf(1);\r",
-											"    pm.expect(errors[0].code).to.equal(\"fundCannotBePaid\");\r",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "x-okapi-token",
-										"type": "text",
-										"value": "{{xokapitoken}}"
-									},
-									{
-										"key": "Content-Type",
-										"type": "text",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{{order_with_insufficient_funds}}"
-								},
-								"url": {
-									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
-									"protocol": "{{protocol}}",
-									"host": [
-										"{{url}}"
-									],
-									"port": "{{okapiport}}",
-									"path": [
-										"orders",
-										"composite-orders"
-									]
-								}
-							},
-							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -20409,7 +20310,6 @@
 					"                    // To be removed when MODINV-120 is resolved",
 					"                    \"inventory-storage.items.collection.get\",",
 					"                    \"inventory-storage.items.item.get\",",
-                    "                      // To be removed when MODINVSTOR-456 is done",
 					"                    \"inventory-storage.instances.item.get\"",
 					"                ]",
 					"            }",
@@ -20436,7 +20336,7 @@
 					"                    // To be removed when MODINV-120 is resolved",
 					"                    \"inventory-storage.items.collection.get\",",
 					"                    \"inventory-storage.items.item.get\",",
-					"                    // To be removed when MODINVSTOR-456 is done",
+					"                    // To be removed when",
 					"                    \"inventory-storage.instances.item.get\"",
 					"                ]",
 					"            }",
@@ -20879,10 +20779,13 @@
 					"     */",
 					"    utils.verifyItemsStatus = function(line, itemStatus) {",
 					"        utils.getItemsByPoLineId(line.id, 1000, (err, res) => {",
-					"            pm.test(\"All item records for PO Line with number=\" + line.poLineNumber + \" have status=\" + itemStatus, function() {",
+					"            let items = {};",
+					"            pm.test(\"All item records for PO Line with number=\" + line.poLineNumber + \" retrieved\", function() {",
 					"                pm.expect(res.code).to.eql(200);",
-					"                let items = res.json().items;",
-					"                items.forEach(item => pm.expect(item.status.name).to.eql(itemStatus))",
+					"                items = res.json().items;",
+					"            });",
+					"            pm.test(items.length + \" item records for PO Line with number=\" + line.poLineNumber + \" have status=\" + itemStatus, function() {",
+					"                res.json().items.forEach(item => pm.expect(item.status.name).to.eql(itemStatus))",
 					"            });",
 					"        });",
 					"    };",
@@ -21925,55 +21828,55 @@
 	],
 	"variable": [
 		{
-			"id": "26269961-8807-4f3b-9a6b-d0cd6a373bcf",
+			"id": "8eb7cf20-ebb0-4918-bd76-799e0f3b9e94",
 			"key": "testTenant",
 			"value": "orders_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "7d6d326e-754a-4340-a22b-360a20d626ae",
+			"id": "9683dd1a-83a7-4413-9041-d1be6ac84adc",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "b0f44ccc-0aee-420a-b0ce-cbc6c02344ac",
+			"id": "f15d7e97-6b4e-4661-b387-939e57bc7910",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "37def592-083f-4d4d-9730-9bf1b022bfda",
+			"id": "8e6e0474-1f52-4683-a968-829c4cd5ca47",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "8967017e-49c1-4f02-aa8d-c68038c495e0",
+			"id": "8cfbd136-4132-4b1e-b30c-8b898d4d076a",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "e218ef22-1bf6-44b0-847d-63a3a740ca9a",
+			"id": "3739c4b7-07fb-42b1-a83e-47a781332f6f",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "2eba37bf-6b22-4aca-81a4-496b014a1e43",
+			"id": "ee782a4c-88ca-4be7-aa12-36364d22df19",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "2d35c998-da74-445f-97a1-446f40491da3",
+			"id": "f258037c-5377-4efa-84f9-c6eb1d0e32d9",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "a3256b7c-b546-40a8-9446-cd27803c9492",
+			"id": "cc365615-6b03-4ae7-8483-c60971e88d8f",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
