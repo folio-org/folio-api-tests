@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "7b388ffb-7b88-4b0d-a541-854b138be0fc",
+		"_postman_id": "4b328ec2-97f1-4ecf-9e41-bf554a03bb5d",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -44,7 +44,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"username\": \"{{username}}\",\n    \"password\": \"{{password}}\"\n}"
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
@@ -13685,6 +13685,479 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Check items status changes upon Closing/Reopening order",
+					"item": [
+						{
+							"name": "Create Open order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "55871111-bca8-4768-949c-9c1ffe102063",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", function(err, res) {",
+											"    let order = res.json();",
+											"",
+											"    order.workflowStatus = \"Open\";",
+											"    delete order.poNumber;",
+											"    let lines = order.compositePoLines;",
+											"    for (let i = 0; i < lines.length; i++) {",
+											"        lines[i].paymentStatus = \"Fully Paid\";",
+											"        lines[i].receiptStatus = \"Awaiting Receipt\";",
+											"        delete lines[i].eresource;",
+											"        setPhysicalInfo(lines[i]);",
+											"    }",
+											"",
+											"    pm.globals.set(\"check_item_status_order_content\", JSON.stringify(utils.prepareOrder(order)));",
+											"});",
+											"",
+											"function setPhysicalInfo(line) {",
+											"    delete line.eresource;",
+											"    delete line.cost.quantityElectronic;",
+											"    delete line.cost.listUnitPriceElectronic;",
+											"    line.orderFormat = \"Physical Resource\";",
+											"    var total = 0;",
+											"    for(var i = 0; i < line.locations.length; i++) {",
+											"        var location = line.locations[i];",
+											"        delete location.quantityElectronic;",
+											"        location.quantityPhysical = i + 1;",
+											"        total += location.quantityPhysical;",
+											"    }",
+											"    line.cost.quantityPhysical = total;",
+											"    line.cost.listUnitPrice = 10.5;",
+											"    if (!line.hasOwnProperty(\"physical\")) {",
+											"        line.physical = {",
+											"            \"materialType\": pm.environment.get(\"materialTypeId\")",
+											"            ",
+											"        };",
+											"    }",
+											"    line.physical.createInventory = \"Instance, Holding, Item\";",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d71ce686-44f1-41c2-865d-77e3d7a661f6",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"PO Lines exist\", function () {",
+											"    utils.validatePoLines(jsonData, 2);",
+											"});",
+											"",
+											"pm.test(\"Each order has these optional fields\", function() {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"    pm.globals.set(\"checkItemStatusOrderId\", jsonData.id);",
+											"    pm.globals.set(\"check_item_status_order_content\", JSON.stringify(jsonData));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders.\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `false`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
+							},
+							"response": []
+						},
+						{
+							"name": "Update order make all lines completed",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let order = JSON.parse(pm.globals.get(\"check_item_status_order_content\"));",
+											"",
+											"order.compositePoLines.forEach(line => {",
+											"    line.paymentStatus = \"Fully Paid\";",
+											"    line.receiptStatus = \"Fully Received\";",
+											"    delete line.instanceId;",
+											"})",
+											"",
+											"",
+											"pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let order = {};",
+											"",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});   ",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.checkItemStatusOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    order  = res.json();",
+											"    utils.verifyOrderCalculatedInfo(order);",
+											"    pm.test(\"Verify PO Line updated with expected receipt status\", function () {",
+											"        pm.expect(order.closeReason.reason).is.equal(\"Complete\");",
+											"    });",
+											"    utils.validateWorkflowStatus(order);",
+											"    ",
+											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"Order closed\"));",
+											"    pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											"    ",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{checkItemStatusOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{checkItemStatusOrderId}}"
+									]
+								},
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						},
+						{
+							"name": "Update order make lines uncompleted",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let order = JSON.parse(pm.globals.get(\"check_item_status_order_content\"));",
+											"",
+											"order.compositePoLines.forEach(line => {",
+											"    line.paymentStatus = \"Partially Paid\";",
+											"    delete line.instanceId;",
+											"})",
+											"",
+											"",
+											"pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let order = {};",
+											"",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});   ",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.checkItemStatusOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    order  = res.json();",
+											"    utils.verifyOrderCalculatedInfo(order);",
+											"    pm.test(\"Verify PO Line updated with expected receipt status\", function () {",
+											"        pm.expect(order.closeReason.reason).is.equal(\"Complete\");",
+											"    });",
+											"    utils.validateWorkflowStatus(order);",
+											"    ",
+											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"On order\"));",
+											"    pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{checkItemStatusOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{checkItemStatusOrderId}}"
+									]
+								},
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						},
+						{
+							"name": "Update order without poLine with status Closed",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let order = JSON.parse(pm.globals.get(\"check_item_status_order_content\"));",
+											"",
+											"order.compositePoLines = [];",
+											"order.workflowStatus = \"Closed\";",
+											"",
+											"",
+											"pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});   ",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.checkItemStatusOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let order  = res.json();",
+											"    pm.test(\"Verify order updated with expected workflow status\", function () {",
+											"        pm.expect(order.workflowStatus).is.equal(\"Closed\");",
+											"    });",
+											"    ",
+											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"Order closed\"));",
+											"    ",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{checkItemStatusOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{checkItemStatusOrderId}}"
+									]
+								},
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						},
+						{
+							"name": "Reopen order without poLine",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let order = JSON.parse(pm.globals.get(\"check_item_status_order_content\"));",
+											"",
+											"order.compositePoLines = [];",
+											"order.workflowStatus = \"Open\";",
+											"",
+											"",
+											"pm.globals.set(\"check_item_status_order_content\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Successfully updated (status code is 204)\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"});   ",
+											"",
+											"utils.sendGetRequest(\"/orders/composite-orders/\" + globals.checkItemStatusOrderId, function (err, res) {",
+											"    pm.expect(err).to.equal(null);",
+											"    let order = res.json();",
+											"    ",
+											"    pm.test(\"Verify order updated with expected workflow status\", function () {",
+											"         pm.expect(order.workflowStatus).is.equal(\"Open\");",
+											"    });",
+											"   ",
+											"    order.compositePoLines.forEach(line => utils.verifyItemsStatus(line, \"On order\"));",
+											"    ",
+											"    pm.globals.unset(\"check_item_status_order_content\");",
+											"    pm.globals.unset(\"checkItemStatusOrderId\");",
+											"    ",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{check_item_status_order_content}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{checkItemStatusOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{checkItemStatusOrderId}}"
+									]
+								},
+								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Configuration",
 					"item": [
 						{
@@ -21865,7 +22338,8 @@
 					"                    \"orders-storage.pieces.collection.get\",",
 					"                    // To be removed when MODINV-120 is resolved",
 					"                    \"inventory-storage.items.collection.get\",",
-					"                    \"inventory-storage.items.item.get\"",
+					"                    \"inventory-storage.items.item.get\",",
+					"                    \"inventory-storage.instances.item.get\"",
 					"                ]",
 					"            }",
 					"        },",
@@ -21890,7 +22364,9 @@
 					"                    \"orders-storage.pieces.collection.get\",",
 					"                    // To be removed when MODINV-120 is resolved",
 					"                    \"inventory-storage.items.collection.get\",",
-					"                    \"inventory-storage.items.item.get\"",
+					"                    \"inventory-storage.items.item.get\",",
+					"                    // To be removed when",
+					"                    \"inventory-storage.instances.item.get\"",
 					"                ]",
 					"            }",
 					"        }",
@@ -22336,6 +22812,22 @@
 					"            if (typeof handler === \"function\") {",
 					"                handler();",
 					"            }",
+					"        });",
+					"    };",
+					"    ",
+					"    /**",
+					"     * Verifies that items has specified status",
+					"     */",
+					"    utils.verifyItemsStatus = function(line, itemStatus) {",
+					"        utils.getItemsByPoLineId(line.id, 1000, (err, res) => {",
+					"            let items = {};",
+					"            pm.test(\"All item records for PO Line with number=\" + line.poLineNumber + \" retrieved\", function() {",
+					"                pm.expect(res.code).to.eql(200);",
+					"                items = res.json().items;",
+					"            });",
+					"            pm.test(items.length + \" item records for PO Line with number=\" + line.poLineNumber + \" have status=\" + itemStatus, function() {",
+					"                res.json().items.forEach(item => pm.expect(item.status.name).to.eql(itemStatus))",
+					"            });",
 					"        });",
 					"    };",
 					"",
@@ -22903,7 +23395,10 @@
 					"                newStatus = (i % 2 === 0) ? \"Fully Paid\" : \"Payment Not Required\";",
 					"            }",
 					"            // Send update line request with delay",
-					"            setTimeout(() => utils.updatePoLinePaymentStatus(lines[i], newStatus), 500 * i);",
+					"            setTimeout((function(newStatus) {",
+					"                console.log(newStatus);",
+					"                utils.updatePoLinePaymentStatus(lines[i], newStatus)",
+					"            }).bind(null, newStatus), 500 * i);",
 					"        }",
 					"    };",
 					"",
@@ -23376,55 +23871,55 @@
 	],
 	"variable": [
 		{
-			"id": "2f1fdc5d-854a-4355-ae2c-b504565734a2",
+			"id": "d1492603-18a5-4389-85f1-841be1f5d129",
 			"key": "testTenant",
 			"value": "orders_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "9374de5c-1465-4b2d-9adb-1fc62c1d4c30",
+			"id": "d8749bb5-bd42-427e-a208-23ece558572a",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "c7c2aab3-0f6e-4490-9959-56f554e2c24d",
+			"id": "98a620da-758f-48b7-8319-d47447594d9f",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "8d71aa69-57ff-4fc3-b13f-4b7a157c6275",
+			"id": "b3cebfe4-06e5-4773-821b-37fc34d82e08",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "ec52868e-c7a2-4510-b7d8-6ff9176c68cb",
+			"id": "471f8598-d4cd-436a-b1bb-73e30be84033",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "42a86f95-90e7-4e5f-89c2-873903b2b736",
+			"id": "911693bd-f3e4-4ded-abe2-726517f80c91",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "711e8d6b-f2b3-47aa-934e-1bf3c9084ff6",
+			"id": "d9bf6a16-7e38-4d13-a5db-a3e374566f9e",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "49c425e3-2023-4e56-93b5-da0e19d02182",
+			"id": "73059b71-6153-4de8-9147-bdf99182fa27",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "668ac76f-08f0-4ed3-93b5-466c5a58a00d",
+			"id": "2cc829f6-0ab3-46ac-a8dd-56b41ed153c5",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
