@@ -3237,6 +3237,77 @@
 										"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
 									},
 									"response": []
+								},
+								{
+									"name": "Create order in Pending status without material types",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/order_po_line_without_material_type.json\", function (err, res) {",
+													"    let order  = res.json();",
+													"    // Set retrieved content for further requests",
+													"    pm.globals.set(\"order_po_line_without_material_type\", JSON.stringify(utils.prepareOrder(order)));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var jsonData = {};",
+													"",
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    jsonData = pm.response.json();",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{order_po_line_without_material_type}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+									},
+									"response": []
 								}
 							],
 							"protocolProfileBehavior": {},
@@ -5249,6 +5320,88 @@
 									]
 								},
 								"description": "Update a purchase order created a step before adding 2 more order lines and setting status to `Open`. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe two lines are added to order:\n- the first new line is of `Physical Resource` format, 3 locations, 6 physical items in total.\n- the second new line is of `Other` format, 2 location, 3 items."
+							},
+							"response": []
+						},
+						{
+							"name": "Success transition from Pending to Open with material type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") +\"/order_po_line_without_material_type.json\", function (err, res) {",
+											"  let originOrder  = pm.globals.get(\"order_po_line_without_material_type\");",
+											"  let orderForPut = originOrder",
+											"  console.log(originOrder.id)    ",
+											"  pm.environment.set(\"orderIdWithoutMaterialType\", originOrder.id);",
+											"",
+											"  let originPoLine = originOrder.compositePoLines[0];",
+											"  orderForPut.id = originOrder.id;",
+											"  orderForPut.poNumber = originOrder.poNumber;",
+											"  orderForPut.workflowStatus = \"Open\"",
+											"",
+											"  let poLineUpdated = orderForPut.compositePoLines[0];",
+											"  poLineUpdated.id = originPoLine.id;",
+											"  poLineUpdated.poLineNumber = originPoLine.poLineNumber;",
+											"  poLineUpdated.purchaseOrderId = originOrder.id;",
+											"  poLineUpdated.physical.materialType = \"1a54b431-2e4f-452d-9cae-9cee66c9a892\";",
+											"  console.log(orderForPut)",
+											"  pm.globals.set(\"orderForPut_without_material_type\", JSON.stringify(orderForPut));    ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Successfully get Batch Voucher\", function () {\r",
+											"    console.log(\"Status : \" + pm.response.status)\r",
+											"    pm.response.to.have.status(204);\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderForPut_without_material_type}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderIdWithoutMaterialType}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{orderIdWithoutMaterialType}}"
+									]
+								},
+								"description": "Transition from Pending to Open without material type should be blocked\n[MODORDERS-176](https://issues.folio.org/browse/MODORDERS-176)"
 							},
 							"response": []
 						}
@@ -22099,6 +22252,97 @@
 							],
 							"protocolProfileBehavior": {},
 							"_postman_isSubFolder": true
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Pending To Open order",
+					"item": [
+						{
+							"name": "Failed transition from Pending to Open without material type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") +\"/order_po_line_without_material_type.json\", function (err, res) {",
+											"  let originOrder  = pm.globals.get(\"order_po_line_without_material_type\");",
+											"  let orderForPut = originOrder",
+											"  console.log(originOrder.id)    ",
+											"  pm.environment.set(\"orderIdWithoutMaterialType\", originOrder.id);",
+											"",
+											"  let originPoLine = originOrder.compositePoLines[0];",
+											"  orderForPut.id = originOrder.id;",
+											"  orderForPut.poNumber = originOrder.poNumber;",
+											"  orderForPut.workflowStatus = \"Open\"",
+											"  ",
+											"  let poLineUpdated = orderForPut.compositePoLines[0];",
+											"  poLineUpdated.id = originPoLine.id;",
+											"  poLineUpdated.poLineNumber = originPoLine.poLineNumber;",
+											"  poLineUpdated.purchaseOrderId = originOrder.id;",
+											"  console.log(orderForPut)",
+											"  pm.globals.set(\"orderForPut_without_material_type\", JSON.stringify(orderForPut));    ",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Successfully get Batch Voucher\", function () {\r",
+											"    console.log(\"Status : \" + pm.response.status)\r",
+											"    pm.response.to.have.status(422);\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"    console.log(\"Content-Type : \" + pm.response.headers.get(\"Content-Type\"));\r",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/json\");\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderForPut_without_material_type}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderIdWithoutMaterialType}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{orderIdWithoutMaterialType}}"
+									]
+								},
+								"description": "Transition from Pending to Open without material type should be blocked\n[MODORDERS-176](https://issues.folio.org/browse/MODORDERS-176)"
+							},
+							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
