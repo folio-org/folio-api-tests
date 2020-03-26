@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "4b328ec2-97f1-4ecf-9e41-bf554a03bb5d",
+		"_postman_id": "fd6ea954-a6da-4778-8edd-7b497859a7eb",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -11854,6 +11854,96 @@
 									]
 								},
 								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Open order with P/E Mix, physical Instance, Holding, Items, electronic - None with locations",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+											"    let order  = utils.prepareOrder(res.json());",
+											"    order.workflowStatus = \"Open\";",
+											"    order.compositePoLines[0].eresource.createInventory = \"None\";",
+											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
+											"    order.compositePoLines.pop();",
+											"    order.compositePoLines[0].cost.quantityPhysical = 2;",
+											"    order.compositePoLines[0].cost.quantityElectronic = 2;",
+											"    let location = {",
+											"        \"locationId\": pm.environment.get(\"locationId1\"),",
+											"        \"quantityElectronic\": 2,",
+											"        \"quantityPhysical\": 2",
+											"    };",
+											"    ",
+											"     order.compositePoLines[0].locations = [location];",
+											"  ",
+											"    pm.variables.set(\"po_mixed\", JSON.stringify(order));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {compositePoLines:[]};",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"PO Lines and corresponding Inventory entities exist\", function () {",
+											"    utils.validatePoLines(jsonData, 1);",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_mixed}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
 							},
 							"response": []
 						},
