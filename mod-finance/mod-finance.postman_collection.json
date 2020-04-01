@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "134f246b-737f-49a5-b5dc-4f8374354d87",
+		"_postman_id": "9e46b9b7-a796-4b77-a6b1-0932f1d8a26f",
 		"name": "mod-finance",
 		"description": "Tests for mod-finance",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -3442,6 +3442,67 @@
 									"response": []
 								},
 								{
+									"name": "Create group",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"pm.test(\"Group is created\", () => {",
+													"    pm.response.to.have.status(201);",
+													"    pm.environment.set(\"groupId\", pm.response.json().id); ",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let group = utils.buildGroupMinContent(\"GROUP_GRUD\");",
+													"",
+													"pm.environment.set(\"groupContent\", JSON.stringify(group));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{groupContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/groups",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"groups"
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Create fund - required for transactions",
 									"event": [
 										{
@@ -3473,7 +3534,7 @@
 												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"pm.variables.set(\"allocFundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"ALLOC-FND\", pm.environment.get(\"allocLedgerId\")))));"
+													"pm.variables.set(\"allocFundContent\", JSON.stringify(utils.buildCompositeFund(utils.buildFundMinContent(\"ALLOC-FND\", pm.environment.get(\"allocLedgerId\")), [pm.environment.get(\"groupId\")])));"
 												],
 												"type": "text/javascript"
 											}
@@ -3750,6 +3811,71 @@
 									"response": []
 								},
 								{
+									"name": "Get group fund fiscal year by budgetId",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Group fund fiscal year founded - deleted\", function () {",
+													"    pm.response.to.be.ok;",
+													"    let records = pm.response.json();",
+													"    pm.expect(records.groupFundFiscalYears).to.have.lengthOf(1);",
+													"    pm.expect(records.totalRecords).to.equal(1);",
+													"    pm.environment.set(\"groupFundFYId\", records.groupFundFiscalYears[0].id)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/group-fund-fiscal-years?query=budgetId=={{allocBudgetId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance",
+												"group-fund-fiscal-years"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "budgetId=={{allocBudgetId}}"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "Create allocations",
 									"event": [
 										{
@@ -3967,6 +4093,65 @@
 												"finance",
 												"budgets",
 												"{{allocBudgetId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get group fund fiscal year by budgetId after budget deletion",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Group fund fiscal year founded - deleted\", function () {",
+													"    pm.response.to.be.ok;",
+													"    let record = pm.response.json();",
+													"    pm.expect(record).not.empty;",
+													"    pm.expect(record).to.not.have.property('budgetId');",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken-testAdmin}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance-storage/group-fund-fiscal-years/{{groupFundFYId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"finance-storage",
+												"group-fund-fiscal-years",
+												"{{groupFundFYId}}"
 											]
 										}
 									},
