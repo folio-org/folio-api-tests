@@ -3270,7 +3270,7 @@
 											"script": {
 												"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
 												"exec": [
-													"pm.test(\"Status code is 204\", function () {",
+													"pm.test(\"Status code is 204\", function() {",
 													"    pm.response.to.have.status(204);",
 													"});"
 												],
@@ -3672,6 +3672,8 @@
 													"    poline.physical.createInventory = \"Instance\";",
 													"    poline.locations = [];",
 													"    poline.purchaseOrderId = pm.globals.get(\"completeOrderId\");",
+													"    poline.isPackage = false;",
+													"    poline.instanceId = \"5bf370e0-8cca-4d9c-82e4-5170ab2a0a39\";",
 													"    pm.variables.set(\"po_line_updated_content\", JSON.stringify(poline));",
 													"});",
 													"pm.variables.set(\"poLineId\", utils.getLastPoLineId());"
@@ -3684,8 +3686,16 @@
 											"script": {
 												"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
 												"exec": [
-													"pm.test(\"Status code is 204\", function () {",
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 204\", function() {",
 													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"pm.test(\"Status code is 204\", function() {",
+													"    utils.sendGetRequest(\"/orders/titles?query=poLineId==\" + pm.variables.get(\"poLineId\"), (err, res) => {",
+													"        pm.test(\"Verify title updated with new instanceId\", () => pm.expect(res.json().titles[0].instanceId).to.equal(\"5bf370e0-8cca-4d9c-82e4-5170ab2a0a39\"));",
+													"    });",
 													"});"
 												],
 												"type": "text/javascript"
@@ -16237,12 +16247,14 @@
 											"",
 											"    let order = pm.response.json();",
 											"    pm.globals.set(\"negativeTestsPendingOrderId\", order.id);",
+											"    pm.globals.set(\"negativeTestsPendingOrderContent\", JSON.stringify(order));",
 											"",
 											"    pm.expect(order.workflowStatus).to.equal(\"Pending\");",
 											"",
 											"    pm.test(\"Validate that PO Line contains desired data\", function () {",
 											"        utils.validatePoLines(order, 1);",
 											"        pm.globals.set(\"poLineForNegativeTests\", JSON.stringify(order.compositePoLines[0]));",
+											"        pm.globals.set(\"poLineForNegativeTestsId\", order.compositePoLines[0].id);",
 											"    });",
 											"});"
 										],
@@ -16290,7 +16302,107 @@
 					"name": "Order",
 					"item": [
 						{
-							"name": "Post order - vendor validation",
+							"name": "PUT order isPackage validation",
+							"item": [
+								{
+									"name": "PUT order - package poline with instanceId - 422",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var uuid = require(\"uuid\");",
+													"",
+													"let orderFor422 = JSON.parse(pm.globals.get(\"negativeTestsPendingOrderContent\"));",
+													"orderFor422.compositePoLines[0].isPackage = true;",
+													"orderFor422.compositePoLines[0].instanceId = uuid.v4();",
+													"",
+													"pm.variables.set(\"orderBody422\", JSON.stringify(orderFor422));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"",
+													"    pm.expect(pm.response.text()).to.include(\"InstanceIdNotAllowedForPackagePoLine\");",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody422}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsPendingOrderId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "2906727e-d771-4306-997c-c3fc574ef59d",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3b2fc4e6-a51a-41a2-acfb-61321bf04442",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "POST order - vendor validation",
 							"item": [
 								{
 									"name": "Post order - vendor not found",
@@ -19282,6 +19394,85 @@
 				{
 					"name": "Lines",
 					"item": [
+						{
+							"name": "isPackageValidation",
+							"item": [
+								{
+									"name": "PUT line - package with insanceId - 422",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"var uuid = require(\"uuid\");",
+													"",
+													"let line = JSON.parse(pm.globals.get(\"poLineForNegativeTests\"));",
+													"",
+													"line.isPackage = true;",
+													"line.instanceId = uuid.v4();",
+													"pm.variables.set(\"po_line_isPackage422\", JSON.stringify(line));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+												"exec": [
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(422);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"",
+													"    pm.expect(pm.response.text()).to.include(\"InstanceIdNotAllowedForPackagePoLine\");",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_line_isPackage422}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poLineForNegativeTestsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines",
+												"{{poLineForNegativeTestsId}}"
+											]
+										},
+										"description": "GET /orders/order-lines/id requests that return 422"
+									},
+									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Verify PO Line required properties",
 							"item": [
