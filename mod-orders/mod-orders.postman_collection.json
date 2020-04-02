@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "4b328ec2-97f1-4ecf-9e41-bf554a03bb5d",
+		"_postman_id": "ddd245e3-9c1e-4617-a2a3-8043d696e072",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -3237,6 +3237,80 @@
 										"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
 									},
 									"response": []
+								},
+								{
+									"name": "Create order in Pending status without material types",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/order_po_line_without_material_type.json\", function (err, res) {",
+													"    let order  = res.json();",
+													"    order.compositePoLines[0].alerts = [];",
+													"    order.compositePoLines[0].reportingCodes = [];",
+													"    pm.globals.set(\"create_order_po_line_without_material_type\", JSON.stringify(order));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var jsonData = {};",
+													"",
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    jsonData = pm.response.json();",
+													"    console.log(jsonData)",
+													"    pm.globals.set(\"order_po_line_without_material_type\", jsonData);",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{create_order_po_line_without_material_type}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+									},
+									"response": []
 								}
 							],
 							"protocolProfileBehavior": {},
@@ -3270,7 +3344,7 @@
 											"script": {
 												"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
 												"exec": [
-													"pm.test(\"Status code is 204\", function () {",
+													"pm.test(\"Status code is 204\", function() {",
 													"    pm.response.to.have.status(204);",
 													"});"
 												],
@@ -3672,6 +3746,8 @@
 													"    poline.physical.createInventory = \"Instance\";",
 													"    poline.locations = [];",
 													"    poline.purchaseOrderId = pm.globals.get(\"completeOrderId\");",
+													"    poline.isPackage = false;",
+													"    poline.instanceId = \"5bf370e0-8cca-4d9c-82e4-5170ab2a0a39\";",
 													"    pm.variables.set(\"po_line_updated_content\", JSON.stringify(poline));",
 													"});",
 													"pm.variables.set(\"poLineId\", utils.getLastPoLineId());"
@@ -3684,8 +3760,16 @@
 											"script": {
 												"id": "b95ac933-05d2-4876-aab0-13142296fb9e",
 												"exec": [
-													"pm.test(\"Status code is 204\", function () {",
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 204\", function() {",
 													"    pm.response.to.have.status(204);",
+													"});",
+													"",
+													"pm.test(\"Status code is 204\", function() {",
+													"    utils.sendGetRequest(\"/orders/titles?query=poLineId==\" + pm.variables.get(\"poLineId\"), (err, res) => {",
+													"        pm.test(\"Verify title updated with new instanceId\", () => pm.expect(res.json().titles[0].instanceId).to.equal(\"5bf370e0-8cca-4d9c-82e4-5170ab2a0a39\"));",
+													"    });",
 													"});"
 												],
 												"type": "text/javascript"
@@ -6987,6 +7071,446 @@
 									]
 								},
 								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`, checkinItems is `true`."
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Fund Distribution",
+					"item": [
+						{
+							"name": "Open order 422 - fund distri total greater than poLineEstimatedPrice",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_serial.json\", (err, res) => {",
+											"    let order = utils.prepareOrderFundDistri(res.json());",
+											"    order.compositePoLines[0].fundDistribution[0].value = 100;",
+											"    order.compositePoLines[0].fundDistribution[1].value = 100;",
+											"    pm.variables.set(\"po_listed_print_serial\", JSON.stringify(order));",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var error = {};",
+											"",
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    error = pm.response.json();",
+											"    pm.expect(error).to.exist;",
+											"    pm.expect(error.errors[0].code).to.equal(\"incorrectFundDistributionTotal\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_serial}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete previous order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_serial.json\", (err, res) => {",
+											"    let order = res.json();",
+											"",
+											"    pm.variables.set(\"delOrderWithPoNumber\", order.poNumber);",
+											"    ",
+											"    utils.sendGetRequest(\"/orders/composite-orders?query=poNumber=\" + pm.variables.get(\"delOrderWithPoNumber\"), function (err, res) {",
+											"         let orderToDelete = res.json();",
+											"         pm.variables.set(\"delOrderId\", orderToDelete.purchaseOrders[0].id);",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order deleted - Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{delOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{delOrderId}}"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Open order 422 - fund distri total less than poLineEstimatedPrice",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_serial.json\", (err, res) => {",
+											"    let order = utils.prepareOrderFundDistri(res.json());",
+											"    order.compositePoLines[0].fundDistribution[0].value = 90;",
+											"    order.compositePoLines[0].fundDistribution[1].value = 9;",
+											"    pm.variables.set(\"po_listed_print_serial\", JSON.stringify(order));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var error = {};",
+											"",
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    error = pm.response.json();",
+											"    pm.expect(error).to.exist;",
+											"    pm.expect(error.errors[0].code).to.equal(\"incorrectFundDistributionTotal\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_serial}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete previous order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_serial.json\", (err, res) => {",
+											"    let order = res.json();",
+											"    pm.variables.set(\"delOrderWithPoNumber\", order.poNumber);",
+											"    ",
+											"    utils.sendGetRequest(\"/orders/composite-orders?query=poNumber=\" + pm.variables.get(\"delOrderWithPoNumber\"), function (err, res) {",
+											"        let orderToDelete = res.json();",
+											"        pm.variables.set(\"delOrderId\", orderToDelete.purchaseOrders[0].id);",
+											"    });",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order deleted - Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{delOrderId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{delOrderId}}"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Open order 201 - fund distri total equals poLineEstimatedPrice",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_serial.json\", (err, res) => {",
+											"    let order = utils.prepareOrderFundDistri(res.json());",
+											"    order.compositePoLines[0].fundDistribution[0].value = 90;",
+											"    order.compositePoLines[0].fundDistribution[1].value = 10;",
+											"    pm.variables.set(\"po_listed_print_serial\", JSON.stringify(order));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var order = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    order = pm.response.json();",
+											"    pm.expect(order.id).to.exist;",
+											"    pm.environment.set(\"delOrderId201\", order.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_serial}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete previous order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Order deleted - Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{delOrderId201}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{delOrderId201}}"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_one_physical_one_electronic_lines.json` from mod-orders.\nThe order has two lines: \n- the first line is of `Physical Resources` format, 2 locations and 25 items in total.\n- the second line is of `Electronic Resources` format, 1 location, 10 items, create inventory is `false`."
 							},
 							"response": []
 						}
@@ -11858,6 +12382,96 @@
 							"response": []
 						},
 						{
+							"name": "Create Open order with P/E Mix, physical Instance, Holding, Items, electronic - None with locations",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+											"    let order  = utils.prepareOrder(res.json());",
+											"    order.workflowStatus = \"Open\";",
+											"    order.compositePoLines[0].eresource.createInventory = \"None\";",
+											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
+											"    order.compositePoLines.pop();",
+											"    order.compositePoLines[0].cost.quantityPhysical = 2;",
+											"    order.compositePoLines[0].cost.quantityElectronic = 2;",
+											"    let location = {",
+											"        \"locationId\": pm.environment.get(\"locationId1\"),",
+											"        \"quantityElectronic\": 2,",
+											"        \"quantityPhysical\": 2",
+											"    };",
+											"    ",
+											"     order.compositePoLines[0].locations = [location];",
+											"  ",
+											"    pm.variables.set(\"po_mixed\", JSON.stringify(order));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {compositePoLines:[]};",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"PO Lines and corresponding Inventory entities exist\", function () {",
+											"    utils.validatePoLines(jsonData, 1);",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_mixed}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
+							},
+							"response": []
+						},
+						{
 							"name": "Get current configs and restore test values",
 							"event": [
 								{
@@ -15180,6 +15794,564 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Check holding creation upon receiving/chek-in",
+					"item": [
+						{
+							"name": "Create Open order with P/E Mix",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_listed_print_monograph.json\", (err, res) => {",
+											"",
+											"    let order  = utils.prepareOrder(res.json());",
+											"    delete order.poNumber;",
+											"    order.workflowStatus = \"Open\";",
+											"    order.compositePoLines.pop();",
+											"    order.compositePoLines[0].eresource.createInventory = \"Instance\";",
+											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding\";",
+											"    order.compositePoLines.forEach(poLine => poLine.paymentStatus = \"Partially Paid\");",
+											"    pm.variables.set(\"po_listed_print_monograph\", JSON.stringify(order));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {compositePoLines:[]};",
+											" ",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    pm.environment.set(\"mixLineForCheckIn\", JSON.stringify(jsonData.compositePoLines[0]));",
+											"    pm.environment.set(\"mixLineForCheckInId\", JSON.stringify(jsonData.compositePoLines[0].id));",
+											"    pm.environment.set(\"instanceId\", jsonData.compositePoLines[0].instanceId);",
+											"});",
+											"",
+											"jsonData.compositePoLines.forEach(line => utils.validateReceiptStatus(line, \"Awaiting Receipt\"));",
+											"jsonData.compositePoLines.forEach(line => utils.validatePaymentStatus(line, \"Partially Paid\"));",
+											"utils.verifyOrderCalculatedInfo(jsonData);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in Open status based on `po_listed_print_monograph.json` from mod-orders. This also should trigger interraction with Inventory (based on [MODORDERS-66](https://issues.folio.org/browse/MODORDERS-66), [MODORDERS-67](https://issues.folio.org/browse/MODORDERS-67), [MODORDERS-69](https://issues.folio.org/browse/MODORDERS-69) and [MODORDERS-117](https://issues.folio.org/browse/MODORDERS-117)).\nThe order has two lines: \n- the first line is of `P/E Mix` format, 3 locations, 3 physical + 1 electronic (create inventory is `true`) items in total.\n- the second line is of `Electronic Resources` format, 2 location, 3 items, create inventory is `true`."
+							},
+							"response": []
+						},
+						{
+							"name": "Create new location",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4bae1c04-6f38-4b77-bdea-a918b637e5bd",
+										"exec": [
+											"pm.test(\"Location is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"checkinLocationId\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "39c6d609-c5de-49cf-aa6c-7cc022346e87",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"tes Loaction\",\n    \"code\": \"LOC_TEST\",\n    \"isActive\": true,\n    \"institutionId\": \"40ee00ca-a518-4b49-be01-0638d0a4ac57\",\n    \"campusId\": \"62cf76b7-cca5-4d33-9217-edf42ce1a848\",\n    \"libraryId\": \"5d78803e-ca04-4b4a-aeae-2c63b924518b\",\n    \"primaryServicePoint\": \"3a40852d-49fd-4df2-a1f9-6e2641a6e91f\",\n    \"servicePointIds\": [\n        \"3a40852d-49fd-4df2-a1f9-6e2641a6e91f\"\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/locations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"locations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get receiving history Order Line With Electronic format",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    let receivingHistory = pm.response.json().receivingHistory;",
+											"    pm.expect(receivingHistory.length).to.be.above(0);",
+											"    pm.environment.set(\"electronicResourceId\", receivingHistory[0].id);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{mixLineForCheckInId}} and pieceFormat==Electronic",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{mixLineForCheckInId}} and pieceFormat==Electronic"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "check-in electronic piece, createInventory-\"instance\"",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "36abaaa2-063f-42d6-9cb0-c4020c263425",
+										"exec": [
+											"//create piece - > need po line id , format , (can add location )",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = JSON.parse(pm.environment.get(\"mixLineForCheckIn\"));",
+											"",
+											"",
+											"utils.prepareCheckinBody(compPoLine, pm.environment.get(\"electronicResourceId\"));",
+											"let checkinBody = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"checkinBody.toBeCheckedIn[0].checkInPieces[0].locationId = pm.environment.get(\"checkinLocationId\");",
+											"pm.variables.set(\"checkinBody\", JSON.stringify(checkinBody));",
+											" "
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4f537129-29fc-4653-9e93-b75d7b56131b",
+										"exec": [
+											"//verify that the po line receipt status is partially received",
+											"//verify that the piece status is updated to Received",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.variables.get(\"mixLineForCheckInId\");",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully checked-in\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "creates a piece without any items in inventory and performs check-in. \nTests to see if the piece status is changed.\nThe order used for checkin is created in the request \"Create order all po lines checkin\""
+							},
+							"response": []
+						},
+						{
+							"name": "Check that no holding for new location",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    let holdings = pm.response.json().holdingsRecords;",
+											"    pm.expect(holdings).to.have.lengthOf(0);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/holdings-storage/holdings?query=instanceId=={{instanceId}} and permanentLocationId=={{checkinLocationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"holdings-storage",
+										"holdings"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "instanceId=={{instanceId}} and permanentLocationId=={{checkinLocationId}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "Get receiving history Order Line With Physical format",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    let receivingHistory = pm.response.json().receivingHistory;",
+											"    pm.expect(receivingHistory.length).to.be.above(0);",
+											"    pm.environment.set(\"physicalResourceId\", receivingHistory[0].id);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/receiving-history?query=poLineId=={{mixLineForCheckInId}} and pieceFormat==Physical",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"receiving-history"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{mixLineForCheckInId}} and pieceFormat==Physical"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "check-in physical piece, createInventory-\"instance, Holding\"",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "36abaaa2-063f-42d6-9cb0-c4020c263425",
+										"exec": [
+											"//create piece - > need po line id , format , (can add location )",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = JSON.parse(pm.environment.get(\"mixLineForCheckIn\"));",
+											"",
+											"",
+											"utils.prepareCheckinBody(compPoLine, pm.environment.get(\"physicalResourceId\"));",
+											"let checkinBody = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"checkinBody.toBeCheckedIn[0].checkInPieces[0].locationId = pm.environment.get(\"checkinLocationId\");",
+											"pm.variables.set(\"checkinBody\", JSON.stringify(checkinBody));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4f537129-29fc-4653-9e93-b75d7b56131b",
+										"exec": [
+											"//verify that the po line receipt status is partially received",
+											"//verify that the piece status is updated to Received",
+											"",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"let checkinPoLineId = pm.variables.get(\"mixLineForCheckInId\");",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully checked-in\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(jsonRq.totalRecords);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(jsonRq.toBeCheckedIn.length);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, jsonRq.totalRecords, 0);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "creates a piece without any items in inventory and performs check-in. \nTests to see if the piece status is changed.\nThe order used for checkin is created in the request \"Create order all po lines checkin\""
+							},
+							"response": []
+						},
+						{
+							"name": "Check that holding created for new location",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    let holdings = pm.response.json().holdingsRecords;",
+											"    pm.expect(holdings).to.have.lengthOf(1);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/holdings-storage/holdings?query=instanceId=={{instanceId}} and permanentLocationId=={{checkinLocationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"holdings-storage",
+										"holdings"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "instanceId=={{instanceId}} and permanentLocationId=={{checkinLocationId}}"
+										}
+									]
+								},
+								"description": "GET /orders/receiving-history requests that return 200"
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"event": [
@@ -15589,12 +16761,14 @@
 											"",
 											"    let order = pm.response.json();",
 											"    pm.globals.set(\"negativeTestsPendingOrderId\", order.id);",
+											"    pm.globals.set(\"negativeTestsPendingOrderContent\", JSON.stringify(order));",
 											"",
 											"    pm.expect(order.workflowStatus).to.equal(\"Pending\");",
 											"",
 											"    pm.test(\"Validate that PO Line contains desired data\", function () {",
 											"        utils.validatePoLines(order, 1);",
 											"        pm.globals.set(\"poLineForNegativeTests\", JSON.stringify(order.compositePoLines[0]));",
+											"        pm.globals.set(\"poLineForNegativeTestsId\", order.compositePoLines[0].id);",
 											"    });",
 											"});"
 										],
@@ -15642,7 +16816,107 @@
 					"name": "Order",
 					"item": [
 						{
-							"name": "Post order - vendor validation",
+							"name": "PUT order isPackage validation",
+							"item": [
+								{
+									"name": "PUT order - package poline with instanceId - 422",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"var uuid = require(\"uuid\");",
+													"",
+													"let orderFor422 = JSON.parse(pm.globals.get(\"negativeTestsPendingOrderContent\"));",
+													"orderFor422.compositePoLines[0].isPackage = true;",
+													"orderFor422.compositePoLines[0].instanceId = uuid.v4();",
+													"",
+													"pm.variables.set(\"orderBody422\", JSON.stringify(orderFor422));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "4a638bb8-dbd4-4c76-a67b-a496016ee9df",
+												"exec": [
+													"pm.test(\"Status code is 422 - Unprocessable Entity\", function () {",
+													"    pm.response.to.have.status(422);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"",
+													"    pm.expect(pm.response.text()).to.include(\"InstanceIdNotAllowedForPackagePoLine\");",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody422}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{negativeTestsPendingOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{negativeTestsPendingOrderId}}"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "2906727e-d771-4306-997c-c3fc574ef59d",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3b2fc4e6-a51a-41a2-acfb-61321bf04442",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "POST order - vendor validation",
 							"item": [
 								{
 									"name": "Post order - vendor not found",
@@ -18634,6 +19908,85 @@
 				{
 					"name": "Lines",
 					"item": [
+						{
+							"name": "isPackageValidation",
+							"item": [
+								{
+									"name": "PUT line - package with insanceId - 422",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d8c9ac0f-96ad-4626-b6cd-5bd280e0e1a6",
+												"exec": [
+													"var uuid = require(\"uuid\");",
+													"",
+													"let line = JSON.parse(pm.globals.get(\"poLineForNegativeTests\"));",
+													"",
+													"line.isPackage = true;",
+													"line.instanceId = uuid.v4();",
+													"pm.variables.set(\"po_line_isPackage422\", JSON.stringify(line));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "ccc9c5b5-89d5-413c-8c48-5d7b817d6dc6",
+												"exec": [
+													"pm.test(\"Status code is 422\", function () {",
+													"    pm.response.to.have.status(422);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"});",
+													"",
+													"pm.test(\"Expected errors verification\", function () {",
+													"",
+													"    pm.expect(pm.response.text()).to.include(\"InstanceIdNotAllowedForPackagePoLine\");",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{po_line_isPackage422}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines/{{poLineForNegativeTestsId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines",
+												"{{poLineForNegativeTestsId}}"
+											]
+										},
+										"description": "GET /orders/order-lines/id requests that return 422"
+									},
+									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Verify PO Line required properties",
 							"item": [
@@ -22103,6 +23456,234 @@
 					],
 					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Pending To Open order",
+					"item": [
+						{
+							"name": "Create order in Pending status without material types",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "b9160e8c-a4de-43f4-a316-4d9230558897",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/order_po_line_without_material_type.json\", function (err, res) {",
+											" let order  = res.json()//utils.buildOrderWithMinContent();",
+											" order.compositePoLines[0].alerts = [];",
+											" order.compositePoLines[0].reportingCodes = [];",
+											"",
+											" pm.environment.set(\"prepared_string_order_po_line_without_material_type\", JSON.stringify(order));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "c9359911-d12b-4bde-9d31-80bd71154803",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    console.log(jsonData)",
+											"    pm.environment.set(\"orderIdWithoutMaterialType\", jsonData.id);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{prepared_string_order_po_line_without_material_type}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create a purchase order in `Pending` status based on `po_listed_print_monograph.json` from mod-orders"
+							},
+							"response": []
+						},
+						{
+							"name": "Get composite order",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "697c4861-e94f-4156-a0be-660d54d015cf",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    jsonData = pm.response.json();",
+											"    console.log(jsonData)",
+											"    pm.environment.set(\"prepared_order_po_line_without_material_type_for_transfer\", jsonData);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "b0ceb827-4cf3-4b61-847e-ef99ae7c7c69",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cache-Control",
+										"type": "text",
+										"value": "no-cache"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderIdWithoutMaterialType}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{orderIdWithoutMaterialType}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Failed transition from Pending to Open without material type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "e6004c0b-2ac7-4ac0-aa64-4d43bcb758fe",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"  let originOrder  = pm.environment.get(\"prepared_order_po_line_without_material_type_for_transfer\");",
+											"  console.log(originOrder)",
+											"  let orderForPut = utils.buildOrderWithMinContent();",
+											"  console.log(orderForPut)",
+											"",
+											"",
+											"  orderForPut.id = originOrder.id;",
+											"  orderForPut.poNumber = originOrder.poNumber;",
+											"   orderForPut.reEncumber = originOrder.reEncumber;",
+											"   orderForPut.totalEstimatedPrice = originOrder.totalEstimatedPrice",
+											"   orderForPut.totalItems = originOrder.totalItems",
+											"   orderForPut.vendor = originOrder.vendor",
+											"  orderForPut.workflowStatus = \"Open\"",
+											"   orderForPut.acqUnitIds = []",
+											"   orderForPut.metadata = originOrder.metadata",
+											"",
+											"  pm.environment.set(\"orderForPut_without_material_type\", JSON.stringify(orderForPut));    ",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "29d9fb5a-3618-48a4-8605-60124c3b7025",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {\r",
+											"    console.log(\"Status : \" + pm.response.status)\r",
+											"    pm.response.to.have.status(422);\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"    console.log(\"Content-Type : \" + pm.response.headers.get(\"Content-Type\"));\r",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.equal(\"application/json\");\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderForPut_without_material_type}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderIdWithoutMaterialType}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{orderIdWithoutMaterialType}}"
+									]
+								},
+								"description": "Transition from Pending to Open without material type should be blocked\n[MODORDERS-176](https://issues.folio.org/browse/MODORDERS-176)"
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
 				}
 			],
 			"protocolProfileBehavior": {}
@@ -22533,6 +24114,60 @@
 					"        });",
 					"    };",
 					"",
+					"    /**",
+					"     * Updates PO json removing ids and updating PO lines for Fund Distribution.",
+					"     */",
+					"    utils.prepareOrderFundDistri = function(order) {",
+					"        delete order.id;",
+					"        delete order.totalItems;",
+					"        order.vendor = pm.environment.get(\"activeVendorId\");",
+					"",
+					"        if (order.hasOwnProperty(\"compositePoLines\")) {",
+					"            order.compositePoLines.forEach(line => utils.preparePoLineFundDistri(line));",
+					"        }",
+					"",
+					"        return order;",
+					"    };",
+					"",
+					"    /**",
+					"     * Updates sub-objects of the PO Line removing ids and adding missing data for Fund Distribution.",
+					"     */",
+					"    utils.preparePoLineFundDistri = function(poLine) {",
+					"        if (poLine.hasOwnProperty(\"eresource\")) {",
+					"            poLine.eresource.accessProvider = pm.environment.get(\"activeVendorId\");",
+					"            poLine.eresource.materialType = pm.environment.get(\"materialTypeId\");",
+					"        }        ",
+					"        if (poLine.hasOwnProperty(\"physical\")) {",
+					"            poLine.physical.materialType = pm.environment.get(\"materialTypeId\");",
+					"        }",
+					"        if (poLine.hasOwnProperty(\"details\") && poLine.details.hasOwnProperty(\"productIds\")) {",
+					"            poLine.details.productIds.forEach(prod => utils.makeProductIdUnique(prod));",
+					"        }",
+					"        if (poLine.hasOwnProperty(\"fundDistribution\")) {",
+					"            poLine.fundDistribution.forEach(distrib => {",
+					"                delete distrib.encumbrance;",
+					"                distrib.fundId = pm.environment.get(\"fundId\");",
+					"            });",
+					"        }        ",
+					"        if (poLine.hasOwnProperty(\"contributors\")) {",
+					"            poLine.contributors.forEach(contributor => {",
+					"                contributor.contributorNameTypeId = pm.environment.get(\"contributorNameTypeId\");",
+					"            });",
+					"        }",
+					"        if (poLine.hasOwnProperty(\"locations\")) {",
+					"            poLine.locations.forEach((location, index) => {",
+					"                location.locationId = pm.environment.get(\"locationId\" + (index + 1));",
+					"            });",
+					"        }",
+					"",
+					"        delete poLine.id;",
+					"        delete poLine.purchaseOrderId;",
+					"        delete poLine.receiptDate;",
+					"        utils._deleteSubObjectsIds(poLine.alerts);",
+					"        utils._deleteSubObjectsIds(poLine.reportingCodes);",
+					"        return poLine;",
+					"    };",
+					"    ",
 					"    /**",
 					"     * Updates PO json removing ids and updating PO lines.",
 					"     */",
@@ -23782,6 +25417,7 @@
 					"        pm.environment.unset(\"current-tenant-configs\");",
 					"        pm.environment.unset(\"enabledModules\");",
 					"        pm.environment.unset(\"fundId\");",
+					"        pm.environment.unset(\"budgetId\");",
 					"        pm.environment.unset(\"identifierTypeId\");",
 					"        pm.environment.unset(\"isbnIdentifierTypeId\");",
 					"        pm.environment.unset(\"inactiveVendorId\");",
@@ -23804,6 +25440,20 @@
 					"        pm.environment.unset(\"xokapitoken-admin\");",
 					"        pm.environment.unset(\"xokapitoken-testAdmin\");",
 					"        pm.environment.unset(\"xokapitoken-restricted\");",
+					"        pm.environment.unset(\"newLocationId\");",
+					"        pm.environment.unset(\"orderTemplateId\");",
+					"        pm.environment.unset(\"restrictedLedgerId\");",
+					"        pm.environment.unset(\"restrictedFundId\");",
+					"        pm.environment.unset(\"restrictedBudgetId\");",
+					"        pm.environment.unset(\"uniqueProductId\");",
+					"        pm.environment.unset(\"receivingItemBarcode\");",
+					"        pm.environment.unset(\"mixLineForCheckIn\");",
+					"        pm.environment.unset(\"mixLineForCheckInId\");",
+					"        pm.environment.unset(\"instanceId\");",
+					"        pm.environment.unset(\"checkinLocationId\");",
+					"        pm.environment.unset(\"electronicResourceId\");",
+					"        pm.environment.unset(\"physicalResourceId\");",
+					"        pm.environment.unset(\"delOrderId201\");",
 					"    };",
 					"",
 					"    /**",
@@ -23871,55 +25521,55 @@
 	],
 	"variable": [
 		{
-			"id": "d1492603-18a5-4389-85f1-841be1f5d129",
+			"id": "18bdcd9f-5cc3-4b30-b599-28890a367b86",
 			"key": "testTenant",
 			"value": "orders_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "d8749bb5-bd42-427e-a208-23ece558572a",
+			"id": "5da08a71-0719-4ba7-a68f-1426a40e0089",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "98a620da-758f-48b7-8319-d47447594d9f",
+			"id": "d3c73db5-6717-4947-aa59-a17837c1a19e",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "b3cebfe4-06e5-4773-821b-37fc34d82e08",
+			"id": "63f742d3-ef05-4a4d-b37f-ee62e77d9b9f",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "471f8598-d4cd-436a-b1bb-73e30be84033",
+			"id": "027fa1a4-af84-4642-92cc-c1e4efdb7686",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "911693bd-f3e4-4ded-abe2-726517f80c91",
+			"id": "86c5973a-3ebf-4e8f-aa88-3b409aa7dc33",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "d9bf6a16-7e38-4d13-a5db-a3e374566f9e",
+			"id": "79983ca7-41ed-486d-96db-aa688e0e109b",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "73059b71-6153-4de8-9147-bdf99182fa27",
+			"id": "24ae1ead-60f2-43a3-87f5-b29d90f25022",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "2cc829f6-0ab3-46ac-a8dd-56b41ed153c5",
+			"id": "245848c9-d19d-4849-bbdf-b79f5329d69a",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
