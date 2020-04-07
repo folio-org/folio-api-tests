@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "b3994aed-31bf-47ca-9431-2abc5c41223e",
+		"_postman_id": "d9c5fe0a-1d11-445d-a7b3-95372c0ea2d4",
 		"name": "mod-quick-marc",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1268,6 +1268,75 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Edit record",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"utils.sendGetRequest(\"/records-editor/records?instanceId=\" + pm.variables.get(\"instanceId\"), (err, res) => {",
+									"    let quickMarcJson = res.json();",
+									"    quickMarcJson.fields[quickMarcJson.fields.findIndex(field => field.tag === \"008\")].content.Date1 = \"2020\";",
+									"    quickMarcJson.fields[quickMarcJson.fields.findIndex(field => field.tag === \"008\")].content.Date2 = \"2021\";",
+									"    quickMarcJson.fields[quickMarcJson.fields.findIndex(field => field.tag === \"035\")].content = \"12345678\";",
+									"    pm.environment.set(\"quickMarcJsonId\", quickMarcJson.externalDtoId)",
+									"    pm.environment.set(\"modifiedQuickMarcJsonBody\", JSON.stringify(quickMarcJson));",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{modifiedQuickMarcJsonBody}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/records-editor/records/{{quickMarcJsonId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"records-editor",
+								"records",
+								"{{quickMarcJsonId}}"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"event": [
@@ -1413,6 +1482,206 @@
 									"key": "instanceId",
 									"value": "000-111"
 								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit record wrong fixed field length",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"utils.sendGetRequest(\"/records-editor/records?instanceId=\" + pm.variables.get(\"instanceId\"), (err, res) => {",
+									"    let quickMarcJson = res.json();",
+									"    quickMarcJson.fields[quickMarcJson.fields.findIndex(field => field.tag === \"008\")].content.Date1 = \"20201\";",
+									"    quickMarcJson.fields[quickMarcJson.fields.findIndex(field => field.tag === \"008\")].content.Date2 = \"20211\";",
+									"    pm.environment.set(\"quickMarcJsonId\", quickMarcJson.externalDtoId)",
+									"    pm.environment.set(\"modifiedQuickMarcJsonBody\", JSON.stringify(quickMarcJson));",
+									"});",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{modifiedQuickMarcJsonBody}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/records-editor/records/{{quickMarcJsonId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"records-editor",
+								"records",
+								"{{quickMarcJsonId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit record Id mismatch",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"let error = {};",
+									"",
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"    error = pm.response.json();",
+									"});",
+									"",
+									"pm.test(\"Record content is valid\", function() {",
+									"    pm.expect(error.code).to.eql(\"HTTP_BAD_REQUEST\");",
+									"    pm.expect(error.message).to.eql(\"request id and entity id are not equal\");",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									"let utils = eval(globals.loadUtils);",
+									"utils.sendGetRequest(\"/records-editor/records?instanceId=\" + pm.variables.get(\"instanceId\"), (err, res) => {",
+									"    let quickMarcJson = res.json();",
+									"    pm.environment.set(\"quickMarcJsonId\", quickMarcJson.parsedRecordId)",
+									"    pm.environment.set(\"modifiedQuickMarcJsonBody\", JSON.stringify(quickMarcJson));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{modifiedQuickMarcJsonBody}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/records-editor/records/{{quickMarcJsonId}}",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"records-editor",
+								"records",
+								"{{quickMarcJsonId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit record bad UUID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Type",
+								"type": "text",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/records-editor/records/1234-5678",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"records-editor",
+								"records",
+								"1234-5678"
 							]
 						}
 					},
@@ -1760,19 +2029,19 @@
 	],
 	"variable": [
 		{
-			"id": "200e1098-8bbd-4109-99ad-c4008638410c",
+			"id": "d07a443b-7e2b-4cea-bb11-3b9f6af609b4",
 			"key": "marcRecordsResourceUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-source-record-storage/master/mod-source-record-storage-server/src/main/resources/sampledata/sampleMarcRecords.json",
 			"type": "string"
 		},
 		{
-			"id": "6231bd37-69a7-42c9-a19d-8b8290bdec30",
+			"id": "838b3829-61e1-44da-b49b-b3efa13ed567",
 			"key": "testTenant",
 			"value": "quick_marc_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "60dc1a6d-a15b-40da-b503-188db7029f86",
+			"id": "28e70be8-1f25-4090-9f1a-2d0fe30ea03d",
 			"key": "moduleName",
 			"value": "mod-quick-marc",
 			"type": "string"
