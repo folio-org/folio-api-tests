@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "1b0b58e3-e7a3-4f35-b06e-2d461ac028f9",
+		"_postman_id": "1882cc22-3771-4862-8f33-56c088efd0bf",
 		"name": "mod-invoice",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -1610,7 +1610,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"allocated\": \"1000000\",\n    \"budgetStatus\": \"Active\",\n    \"name\": \"Budget for invoice API tests\",\n    \"fundId\": \"{{fundId}}\",\n    \"fiscalYearId\": \"{{fiscYearId}}\",\n    \"allowableEncumbrance\": 100\n}"
+									"raw": "{\n    \"allocated\": \"1000000\",\n    \"budgetStatus\": \"Active\",\n    \"name\": \"Budget for invoice API tests\",\n    \"fundId\": \"{{fundId}}\",\n    \"fiscalYearId\": \"{{fiscYearId}}\",\n    \"allowableEncumbrance\": 100,\n    \"allowableExpenditure\": 100\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets",
@@ -1671,7 +1671,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"allocated\": \"1000000\",\n    \"budgetStatus\": \"Active\",\n    \"name\": \"Budget 2 for invoice API tests\",\n    \"fundId\": \"{{fund2Id}}\",\n    \"fiscalYearId\": \"{{fiscYearId}}\",\n    \"allowableEncumbrance\": 100\n}"
+									"raw": "{\n    \"allocated\": \"1000000\",\n    \"budgetStatus\": \"Active\",\n    \"name\": \"Budget 2 for invoice API tests\",\n    \"fundId\": \"{{fund2Id}}\",\n    \"fiscalYearId\": \"{{fiscYearId}}\",\n    \"allowableEncumbrance\": 100,\n    \"allowableExpenditure\": 100\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/budgets",
@@ -10767,7 +10767,7 @@
 									"name": "Create Open invoices",
 									"item": [
 										{
-											"name": "Create invoice with 4 lines",
+											"name": "Create invoice with 4 lines, 2 of lines have negative total",
 											"event": [
 												{
 													"listen": "test",
@@ -10811,6 +10811,7 @@
 															"            invoiceLine.poLineId = pm.globals.get(\"poLine1Id\");",
 															"        } else {",
 															"            invoiceLine.poLineId = pm.globals.get(\"poLine2Id\");",
+															"            invoiceLine.subTotal = -invoiceLine.subTotal;",
 															"        }",
 															"  ",
 															"        invoiceLine.releaseEncumbrance = i === 4;",
@@ -11077,6 +11078,135 @@
 												}
 											},
 											"response": []
+										},
+										{
+											"name": "Check number of payments created",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let transactions = {};",
+															"",
+															"pm.test(\"Successfully get transactions\", function() {",
+															"    pm.response.to.have.status(200);",
+															"    transactions = pm.response.json().transactions;",
+															"});",
+															"",
+															"pm.test(\"Retrieved expected number of payments\", function() {",
+															"",
+															"    pm.expect(transactions).to.have.length(2);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions?query=sourceInvoiceId=={{workflow-invoiceWith4LinesId}} and transactionType==Payment",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"finance",
+														"transactions"
+													],
+													"query": [
+														{
+															"key": "query",
+															"value": "sourceInvoiceId=={{workflow-invoiceWith4LinesId}} and transactionType==Payment"
+														}
+													]
+												},
+												"description": "GET /voucher/voucher-lines requests that return 200"
+											},
+											"response": []
+										},
+										{
+											"name": "Check number of credits created",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let transactions = {};",
+															"",
+															"pm.test(\"Successfully get transactions\", function() {",
+															"    pm.response.to.have.status(200);",
+															"    transactions = pm.response.json().transactions;",
+															"});",
+															"",
+															"pm.test(\"Retrieved expected number of credits\", function() {",
+															"    pm.expect(transactions).to.have.length(2);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions?query=sourceInvoiceId=={{workflow-invoiceWith4LinesId}} and transactionType==Credit",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"finance",
+														"transactions"
+													],
+													"query": [
+														{
+															"key": "query",
+															"value": "sourceInvoiceId=={{workflow-invoiceWith4LinesId}} and transactionType==Credit"
+														}
+													]
+												},
+												"description": "GET /voucher/voucher-lines requests that return 200"
+											},
+											"response": []
 										}
 									],
 									"protocolProfileBehavior": {},
@@ -11296,18 +11426,6 @@
 													"script": {
 														"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
 														"exec": [
-															"let utils = eval(globals.loadUtils);",
-															"",
-															"",
-															"let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"emptyConfigWorkflow-invoiceWith1LineId\"));",
-															"    invoiceLine.subTotal = 101;",
-															"    invoiceLine.fundDistributions[0].value = 50;",
-															"    invoiceLine.fundDistributions[0].encumbrance = pm.environment.set(\"encumbrance1\");",
-															"    let amoutDistribution = {\"fundId\": invoiceLine.fundDistributions[0].fundId, \"distributionType\": \"amount\", \"value\": 55.6, \"encumbrance\" : pm.environment.set(\"encumbrance2\")};",
-															"    invoiceLine.fundDistributions.push(amoutDistribution);",
-															"    delete invoiceLine.poLineId;",
-															"",
-															"pm.environment.set(\"emptyConfigWorkflow-invoiceLineContent\", JSON.stringify(invoiceLine));",
 															""
 														],
 														"type": "text/javascript"
@@ -11913,6 +12031,71 @@
 												}
 											},
 											"response": []
+										},
+										{
+											"name": "Check number of payments created",
+											"event": [
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "test",
+													"script": {
+														"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let transactions = {};",
+															"",
+															"pm.test(\"Successfully get transactions\", function() {",
+															"    pm.response.to.have.status(200);",
+															"    transactions = pm.response.json().transactions;",
+															"});",
+															"",
+															"pm.test(\"Retrieved expected number of payments\", function() {",
+															"",
+															"    pm.expect(transactions).to.have.length(2);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/finance/transactions?query=sourceInvoiceId=={{emptyConfigWorkflow-invoiceWith1LineId}} and transactionType==Payment",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"finance",
+														"transactions"
+													],
+													"query": [
+														{
+															"key": "query",
+															"value": "sourceInvoiceId=={{emptyConfigWorkflow-invoiceWith1LineId}} and transactionType==Payment"
+														}
+													]
+												},
+												"description": "GET /voucher/voucher-lines requests that return 200"
+											},
+											"response": []
 										}
 									],
 									"protocolProfileBehavior": {},
@@ -12281,6 +12464,64 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Delete batch-group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"pm.test(\"Batch-group is deleted\", function() {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups/{{batchGroupId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups",
+										"{{batchGroupId}}"
+									]
+								}
+							},
+							"response": []
 						}
 					],
 					"protocolProfileBehavior": {},
@@ -12289,6 +12530,77 @@
 				{
 					"name": "Batch voucher exports",
 					"item": [
+						{
+							"name": "Create batch-group",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let batchGroup = {};",
+											"",
+											"pm.test(\"Batch-group is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    batchGroup = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Batch-group content is valid\", function() {",
+											"    pm.expect(batchGroup.name).to.exist;",
+											"    pm.environment.set(\"batchGroupId\", batchGroup.id);",
+											"    ",
+											"    utils.validateBatchGroup(batchGroup);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+										"exec": [
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockdata/batchGroups/batch_group_collection.json\", function (err, res) {",
+											"    let batchGroup = res.json().batchGroups[0];",
+											"    delete batchGroup.metadata;",
+											"    pm.environment.set(\"batchGroupContent\", JSON.stringify(batchGroup));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{batchGroupContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/batch-groups",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"batch-groups"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get batch-voucher-export",
 							"event": [
@@ -13533,7 +13845,7 @@
 							"name": "Approved",
 							"item": [
 								{
-									"name": "Create approved invoice",
+									"name": "Create to be approved invoice",
 									"event": [
 										{
 											"listen": "test",
@@ -13581,7 +13893,7 @@
 													"let invoice = utils.prepareInvoice(utils.getMockInvoice(1));",
 													"",
 													"invoice.note += \" - transition to Paid\";",
-													"invoice.status = \"Approved\";",
+													"invoice.status = \"Open\";",
 													"",
 													"pm.globals.set(\"negativeApprovedToPaidInvoiceContent\", JSON.stringify(invoice));",
 													""
@@ -13618,6 +13930,78 @@
 												"invoices"
 											]
 										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update invoice with status Approved",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let invoice = JSON.parse(globals.negativeApprovedToPaidInvoiceContent);",
+													"invoice.status = \"Approved\";",
+													"pm.globals.set(\"negativeApprovedToPaidInvoiceContent\", JSON.stringify(invoice));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"",
+													"    // The test can be run only if update succeded",
+													"    utils.sendGetRequest(\"/invoice/invoices/\" + pm.environment.get(\"negativeApprovedToPaidInvoice\"), (err, res) => {",
+													"        pm.expect(res.json().status).to.equal(\"Approved\");",
+													"        pm.globals.set(\"negativeApprovedToPaidInvoiceContent\", JSON.stringify(res.json()));",
+													"      ",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeApprovedToPaidInvoiceContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeApprovedToPaidInvoice}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativeApprovedToPaidInvoice}}"
+											]
+										},
+										"description": "Verify [MODORDERS-150](https://issues.folio.org/browse/MODORDERS-150) - the order can be updated if created without workflow status"
 									},
 									"response": []
 								},
@@ -13764,6 +14148,185 @@
 												"invoice",
 												"invoices",
 												"{{negativeApprovedInvoiceWithLockedTotalId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create approved invoice with non-existing fund",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    pm.environment.set(\"negativeInvoiceWithUnexistingFund\", invoice.id);",
+													"    pm.environment.set(\"negativeInvoiceWithUnexistingFundContent\", JSON.stringify(invoice));",
+													"    utils.validateInvoice(invoice);",
+													"    addInvoiceLine();",
+													"});",
+													"",
+													"function addInvoiceLine() {",
+													"    let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"negativeInvoiceWithUnexistingFund\"));",
+													"    invoiceLine.poLineId = require('uuid').v4();",
+													"    invoiceLine.fundDistributions[0].fundId = require('uuid').v4();",
+													"    ",
+													"    utils.sendPostRequest(\"/invoice-storage/invoice-lines\", invoiceLine, function(err,response){",
+													"        pm.test(\"Invoice line is created in storage\", function(){",
+													"          pm.expect(response).to.have.status(201);",
+													"          pm.expect(err).to.equal(null);",
+													"        });",
+													"    });",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = utils.prepareInvoice(utils.getMockInvoice(1));",
+													"",
+													"invoice.note += \" - transition to Paid\";",
+													"invoice.status = \"Approved\";",
+													"",
+													"pm.environment.set(\"negativeInvoiceWithUnexistingFundContent\", JSON.stringify(invoice));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeInvoiceWithUnexistingFundContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Create approved invoice with big invoiceLine.total",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "fd474d88-68c0-4f40-ac6f-59e07108f064",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let invoice = {};",
+													"",
+													"pm.test(\"Invoice is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    invoice = pm.response.json();",
+													"});",
+													"",
+													"pm.test(\"Invoice content is valid\", function() {",
+													"    pm.environment.set(\"negativeInvoiceOwerexpended\", invoice.id);",
+													"    pm.environment.set(\"negativeInvoiceOwerexpendedContent\", JSON.stringify(invoice));",
+													"    utils.validateInvoice(invoice);",
+													"    addInvoiceLine();",
+													"});",
+													"",
+													"function addInvoiceLine() {",
+													"    let invoiceLine = utils.prepareInvoiceLine(utils.getMockInvoiceLine(), pm.environment.get(\"negativeInvoiceOwerexpended\"));",
+													"    invoiceLine.poLineId = require('uuid').v4();",
+													"    invoiceLine.subTotal = 2000000000;",
+													"    ",
+													"    utils.sendPostRequest(\"/invoice-storage/invoice-lines\", invoiceLine, function(err,response){",
+													"        pm.test(\"Invoice line is created in storage\", function(){",
+													"          pm.expect(response).to.have.status(201);",
+													"          pm.expect(err).to.equal(null);",
+													"          pm.environment.set(\"negativeOwerexpendedInvoiceLineId\", response.json().id);",
+													"        });",
+													"    });",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5972827b-f9a4-47f7-98ab-7eacd59aa566",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"let invoice = utils.prepareInvoice(utils.getMockInvoice(1));",
+													"",
+													"invoice.note += \" - transition to Paid\";",
+													"invoice.status = \"Approved\";",
+													"",
+													"pm.environment.set(\"negativeInvoiceOwerexpendedContent\", JSON.stringify(invoice));",
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeInvoiceOwerexpendedContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices"
 											]
 										}
 									},
@@ -16913,6 +17476,151 @@
 												"invoice",
 												"invoices",
 												"{{negativeApprovedInvoiceWithLockedTotalId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Pay invoice with non-existing fund",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let invoice = JSON.parse(pm.environment.get(\"negativeInvoiceWithUnexistingFundContent\"));",
+													"invoice.status = \"Paid\";",
+													"pm.environment.set(\"negativeInvoiceWithUnexistingFundContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Error expected: fund not found\", function () {",
+													"    pm.response.to.have.status(400);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"    pm.expect(pm.response.json().errors[0]).to.have.property(\"code\", \"fundsNotFound\");",
+													"    pm.expect(pm.response.json().errors[0].parameters[0]).to.have.property(\"value\");",
+													"    pm.expect(pm.response.json().errors[0].parameters[0]).to.have.property(\"key\", \"funds\");",
+													"",
+													"});",
+													"",
+													"pm.environment.unset(\"negativeInvoiceWithUnexistingFund\");",
+													"pm.environment.unset(\"negativeInvoiceWithUnexistingFundContent\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeInvoiceWithUnexistingFundContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeInvoiceWithUnexistingFund}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativeInvoiceWithUnexistingFund}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Pay invoice with owerexpended line.total",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+												"exec": [
+													"let invoice = JSON.parse(pm.environment.get(\"negativeInvoiceOwerexpendedContent\"));",
+													"invoice.status = \"Paid\";",
+													"pm.environment.set(\"negativeInvoiceOwerexpendedContent\", JSON.stringify(invoice));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Error expected: fund not found\", function () {",
+													"    pm.response.to.have.status(400);",
+													"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+													"    pm.expect(pm.response.json().errors[0]).to.have.property(\"code\", \"transactionCreationFailure\");",
+													"    pm.expect(pm.response.json().errors[0].parameters[0]).to.have.property(\"value\", pm.environment.get(\"negativeOwerexpendedInvoiceLineId\"));",
+													"    pm.expect(pm.response.json().errors[0].parameters[0]).to.have.property(\"key\", \"invoiceLineId\");",
+													"    pm.expect(pm.response.json().errors[0].parameters[1]).to.have.property(\"value\", pm.environment.get(\"fundId\"));",
+													"    pm.expect(pm.response.json().errors[0].parameters[1]).to.have.property(\"key\", \"fundId\");",
+													"",
+													"});",
+													"",
+													"pm.environment.unset(\"negativeOwerexpendedInvoiceLineId\");",
+													"pm.environment.unset(\"negativeInvoiceOwerexpended\");",
+													"pm.environment.unset(\"negativeInvoiceOwerexpendedContent\");"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"name": "Content-Type",
+												"type": "text",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{negativeInvoiceOwerexpendedContent}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/invoice/invoices/{{negativeInvoiceOwerexpended}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"invoice",
+												"invoices",
+												"{{negativeInvoiceOwerexpended}}"
 											]
 										}
 									},
@@ -21547,55 +22255,55 @@
 	],
 	"variable": [
 		{
-			"id": "f4ef4ceb-86e8-4213-98a6-536028d9d6e6",
+			"id": "94649b2f-9c8e-4309-a9d0-cf261b3e47ca",
 			"key": "testTenant",
-			"value": "invoicing_api_tests",
+			"value": "invoice_api_tests",
 			"type": "string"
 		},
 		{
-			"id": "9d4af4e8-b48b-44d4-9667-f993e4fcebca",
+			"id": "1e850660-fc12-4a4b-a9f5-17778d136a05",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-invoice/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "0c546c64-d119-49e2-91a1-ebacde90137d",
+			"id": "c28bc485-07f5-4650-b2cc-61c6ce434f8b",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "8229eec9-da30-4ec8-8157-e15560cb2c06",
+			"id": "dfb3bb0c-cc53-4908-8234-e97dff8049d7",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "ab633d9c-0ec3-481c-b72b-ce1b8abedc1a",
+			"id": "eb10b0c5-f207-4396-b3d7-c053dee72b34",
 			"key": "inventory-instanceTypeCode",
 			"value": "invoicingApiTestsIdentifierType",
 			"type": "string"
 		},
 		{
-			"id": "805596af-b693-4b07-9e2a-d2205d16fe4d",
+			"id": "6d8a25ae-f5b5-4f4c-9b58-a5a1c9e04c9b",
 			"key": "finance-ledgerCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "c8281ad8-8c6d-4256-a493-1e4bd84f41dd",
+			"id": "e0dc12bb-d857-4404-9a47-148f2e13b7e0",
 			"key": "finance-fundCode",
 			"value": "invoicingApiTests",
 			"type": "string"
 		},
 		{
-			"id": "61fe101c-9659-4434-91f5-456463bae943",
+			"id": "1a6edb77-1462-4811-bbb2-6fe15cc58218",
 			"key": "voucherNumber",
 			"value": "{\"voucherNumberPrefix\": \"testPrefix\"}",
 			"type": "string"
 		},
 		{
-			"id": "a5294cfb-7479-43fd-b644-d44285aa232f",
+			"id": "88b8e028-158c-4797-9310-183f97dc005f",
 			"key": "batchGroupSystemRecordId",
 			"value": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
 			"type": "string"
