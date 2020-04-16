@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "d8814b71-868f-4000-8214-a6e1970d674f",
+		"_postman_id": "f8da52e3-51ae-4c1b-bd5c-21eb86a1db98",
 		"name": "mod-data-export",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -12,7 +12,7 @@
 					"name": "Create tenant and enable modules",
 					"item": [
 						{
-							"name": "Login by existing admin Copy",
+							"name": "Login by existing admin",
 							"event": [
 								{
 									"listen": "test",
@@ -33,9 +33,7 @@
 									"script": {
 										"id": "4a1b05a6-b00f-437e-a095-d97113f57b08",
 										"exec": [
-											"pm.test(\"Preparing request to login via existing admin user\", () => {",
-											"    pm.variables.set(\"dikuAdmin\", JSON.stringify(globals.testData.users.dikuadmin.credentials));",
-											"});"
+											""
 										],
 										"type": "text/javascript"
 									}
@@ -55,7 +53,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{{dikuAdmin}}"
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
 								},
 								"url": {
 									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
@@ -626,6 +624,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -898,6 +897,7 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				}
 			],
@@ -922,7 +922,8 @@
 						]
 					}
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "Main tests",
@@ -1049,7 +1050,7 @@
 					"response": []
 				},
 				{
-					"name": "Get file dedeinition by id",
+					"name": "Get file definition by id",
 					"event": [
 						{
 							"listen": "test",
@@ -1184,6 +1185,74 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Post uploading a file - Idempotent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "abe069b9-5316-402f-ba2d-41f089b7cfda",
+								"exec": [
+									"pm.test(\"File is already uploaded\", () => {",
+									"    pm.response.to.have.status(400);",
+									"    pm.response.to.be.withBody;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "dded3598-c238-487d-b06c-721c60509cf4",
+								"exec": [
+									"let utils = eval(globals.loadUtils);\r",
+									"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockData/test_file_to_upload.csv\", function(err, res) {\r",
+									"    let test_file_to_upload = res.body;\r",
+									"    pm.variables.set(\"fileToUpload\", test_file_to_upload);\r",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/octet-stream"
+							},
+							{
+								"key": "x-okapi-token",
+								"value": "{{xokapitoken}}"
+							},
+							{
+								"key": "Content-Disposition",
+								"value": "attachment"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{{fileToUpload}}"
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/data-export/fileDefinitions/{{fileDefinitionId}}/upload",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"data-export",
+								"fileDefinitions",
+								"{{fileDefinitionId}}",
+								"upload"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"event": [
@@ -1207,7 +1276,8 @@
 						]
 					}
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "Cleanup",
@@ -1482,6 +1552,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				},
 				{
@@ -1623,6 +1694,7 @@
 							"response": []
 						}
 					],
+					"protocolProfileBehavior": {},
 					"_postman_isSubFolder": true
 				}
 			],
@@ -1647,7 +1719,8 @@
 						]
 					}
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		}
 	],
 	"event": [
@@ -1660,12 +1733,6 @@
 					"let testData = {",
 					"    // User template with hardcoded id",
 					"    users: {",
-					"        dikuadmin : {",
-					"            credentials: {",
-					"                \"username\": \"diku_admin\",",
-					"                \"password\": \"admin\"",
-					"            }",
-					"        },",
 					"        admin: {",
 					"            user: {",
 					"                \"id\": \"00000000-1111-5555-9999-999999999999\",",
@@ -1781,40 +1848,41 @@
 	],
 	"variable": [
 		{
-			"id": "b68ace8e-25d4-4d66-9422-a0628a666faf",
+			"id": "3d01d306-301e-4646-b114-78d79b65f20c",
 			"key": "testTenant",
 			"value": "mdexp_test_tenant",
 			"type": "string"
 		},
 		{
-			"id": "25fb89db-d9e6-47f3-bb5b-7f4a535392a7",
+			"id": "ac9b2d93-f577-4edb-897e-9bf900d36815",
 			"key": "xokapitenant",
 			"value": "diku",
 			"type": "string"
 		},
 		{
-			"id": "28b9eb69-7439-4e26-a891-4b9ce8b9193f",
+			"id": "87f12060-c753-4ae7-a838-85c97fdeebcb",
 			"key": "protocol",
 			"value": "http",
 			"type": "string"
 		},
 		{
-			"id": "8938e7f7-fbd0-4c49-baa3-f7b8c4ac3035",
+			"id": "679eb929-069b-4808-9cb9-615ec3f6ca75",
 			"key": "url",
 			"value": "localhost",
 			"type": "string"
 		},
 		{
-			"id": "30485f6c-d908-4f13-bfc6-4e0663079f40",
+			"id": "e5cdc3be-d9fa-47e5-8c0c-4915bd5269ad",
 			"key": "okapiport",
 			"value": "9130",
 			"type": "string"
 		},
 		{
-			"id": "f8e5c0b7-4db8-4b73-a3df-37a6b4bad517",
+			"id": "cb33b695-63ca-44a5-8a33-4ef94534807e",
 			"key": "resourcesUrl",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-data-export/master/src/test/resources",
 			"type": "string"
 		}
-	]
+	],
+	"protocolProfileBehavior": {}
 }
