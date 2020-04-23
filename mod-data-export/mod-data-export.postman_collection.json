@@ -199,6 +199,7 @@
 											"utils.getModuleId(\"mod-data-export\", bodyHandler);\r",
 											"utils.getModuleId(\"mod-login\", bodyHandler);\r",
 											"utils.getModuleId(\"mod-permissions\", bodyHandler);\r",
+											"utils.getModuleId(\"mod-inventory-storage\", bodyHandler);\r",
 											"\r",
 											"var modulesToEnable = [];\r",
 											"\r",
@@ -879,6 +880,167 @@
 						{
 							"listen": "prerequest",
 							"script": {
+								"id": "4b89281a-8487-11ea-bc55-0242ac130003",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "e502ad70-67e9-41f3-9eb9-30f6df699975",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Post instance to inventory storage",
+					"item": [
+						{
+							"name": "Create instance type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"pm.sendRequest(\"https://raw.githubusercontent.com/Andrew7691/test/master/test_instance_type_to_post.json\", function(err, res) {\r",
+											"    let instance_type_to_put = JSON.stringify(res.json());\r",
+											"    pm.variables.set(\"instanceTypeToPut\", instance_type_to_put);\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"pm.test(\"Instance type created - Expected Created (201)\", () => {\r",
+											"    pm.response.to.have.status(201);\r",
+											"    // All is okay so running further requests\r",
+											"    if (pm.response.code === 201) {\r",
+											"    pm.variables.set(\"instanceTypeId\", pm.response.json().id);\r",
+											"        postman.setNextRequest();\r",
+											"    } else {\r",
+											"       // Failed to create instance type;\r",
+											"        postman.setNextRequest(null);\r",
+											"    }\r});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{instanceTypeToPut}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-types",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-types"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create instance",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "76c0a072-8ef6-4371-b926-f56d6a3218a0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"pm.sendRequest(\"https://raw.githubusercontent.com/Andrew7691/test/master/test_instance_to_post.json\", function(err, res) {\r",
+											"    let instance_to_put = JSON.stringify(res.json());\r",
+											"    pm.variables.set(\"instanceToPut\", instance_to_put);\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "d98143bb-5fc0-4394-ac89-bff8d0df33fe",
+										"exec": [
+											"pm.test(\"Instance created - Expected Created (201)\", () => {\r",
+											"    pm.response.to.have.status(201);\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{instanceToPut}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-storage/instances",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-storage",
+										"instances"
+									]
+								}
+							},
+							"response": []
+						}
+
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
 								"id": "8ccdb48f-b945-4203-828e-6dd09515eedc",
 								"type": "text/javascript",
 								"exec": [
@@ -1120,17 +1282,21 @@
 									"    pm.response.to.be.withBody;",
 									"});",
 									"",
-									"pm.test(\"Dirrectory for uploaded file has been created & source path not empty\", () => {",
-									"    pm.expect(pm.response.json().sourcePath).not.equal(null);",
+									"let fileDefinition = pm.response.json();",
+									"",
+									"pm.test(\"Directory for uploaded file has been created & source path not empty\", () => {",
+									"    pm.expect(fileDefinition.sourcePath).not.equal(null);",
 									"})",
 									"",
 									"pm.test(\"Status has completed value\", () => {",
-									"    pm.expect(pm.response.json().status).equal(\"COMPLETED\");",
+									"    pm.expect(fileDefinition.status).equal(\"COMPLETED\");",
 									"})",
 									"",
 									"pm.test(\"With metadata\", () => {",
-									"    pm.expect(pm.response.json().metadata).not.equal(null);",
-									"})"
+									"    pm.expect(fileDefinition.metadata).not.equal(null);",
+									"})",
+									"",
+									"pm.variables.set(\"jobExecutionId\", fileDefinition.jobExecutionId);"
 								]
 							}
 						},
@@ -1142,7 +1308,8 @@
 								"exec": [
 									"let utils = eval(globals.loadUtils);\r",
 									"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/mockData/test_file_to_upload.csv\", function(err, res) {\r",
-									"    let test_file_to_upload = res.body;\r",
+									"    let arr = new Uint8Array(res.stream);\r",
+									"    let test_file_to_upload = String.fromCharCode.apply(String, arr);\n\r",
 									"    pm.variables.set(\"fileToUpload\", test_file_to_upload);\r",
 									"});"
 								]
@@ -1253,6 +1420,142 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Export uploaded file",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "71cd067c-8482-11ea-bc55-0242ac130003",
+								"exec": [
+									"pm.test(\"Export of uploaded file completed successfully\", () => {\r",
+									"    pm.response.to.have.status(204);\r",
+									"    // The export process has begun. Wait 10 seconds for it to complete.\r",
+									"    setTimeout(() => postman.setNextRequest(), 10000);\r",
+									"});\r"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "a510ca8c-8482-11ea-bc55-0242ac130003",
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-okapi-token",
+								"type": "text",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fileDefinitionId\": \"{{fileDefinitionId}}\",\n  \"jobProfileId\": \"da0ccaa8-6f59-11ea-bc55-0242ac130003\",\n  \"metadata\": {\n    \"createdDate\": \"2020-03-21T07:48:51.974+0000\",\n    \"createdByUserId\": \"ee82f536-0498-5c6e-88a2-0e546eea8ad6\",\n    \"updatedDate\": \"2020-03-21T07:48:51.974+0000\",\n    \"updatedByUserId\": \"ee82f536-0498-5c6e-88a2-0e546eea8ad6\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/data-export/export",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"data-export",
+								"export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get job execution",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "85775ad8-8482-11ea-bc55-0242ac130003",
+								"exec": [
+									"pm.test(\"Job execution has been retrieved successfully\", () => {\r",
+									"    pm.response.to.have.status(200);\r",
+									"    pm.response.to.be.withBody;",
+									"});\r",
+									"",
+									"let jobExecution = pm.response.json().jobExecutions.find(job => job.id === pm.variables.get(\"jobExecutionId\"));",
+									"",
+									"pm.test(\"The status is success\", () => {",
+									"    pm.expect(jobExecution.status).equal(\"SUCCESS\");",
+									"});\r",
+									"",
+									"pm.test(\"File name contains hrId\", () => {",
+									"pm.expect(jobExecution.exportedFiles[0].fileName).include(jobExecution.hrId);",
+									"});\r",
+									"",
+									"pm.test(\"With runBy object\", () => {",
+									"pm.expect(jobExecution.runBy).not.equal(null);",
+									"});\r",
+									"",
+									"pm.test(\"With progress\", () => {",
+									"pm.expect(jobExecution.progress).not.equal(null);",
+									"});\r"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "8d6b1f90-8482-11ea-bc55-0242ac130003",
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-okapi-token",
+								"type": "text",
+								"value": "{{xokapitoken}}"
+							}
+						],
+						"url": {
+							"raw": "{{protocol}}://{{url}}:{{okapiport}}/data-export/export",
+							"protocol": "{{protocol}}",
+							"host": [
+								"{{url}}"
+							],
+							"port": "{{okapiport}}",
+							"path": [
+								"data-export",
+								"jobExecutions?query=id={{jobExecutionId}}"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"event": [
@@ -1282,6 +1585,153 @@
 		{
 			"name": "Cleanup",
 			"item": [
+				{
+					"name": "Delete instance from inventory storage",
+					"item": [
+						{
+							"name": "Delete instance",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "b43d0048-8482-11ea-bc55-0242ac130003",
+										"exec": [],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "b9b92010-8482-11ea-bc55-0242ac130003",
+										"exec": [
+											"pm.test(\"Instance deleted - Expected No content (204)\", () => {\r",
+											"    pm.response.to.have.status(204);\r",
+											"    // All is okay so running further requests\r",
+											"    postman.setNextRequest();\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-storage/instances/{{instanceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-storage",
+										"instances",
+										"{{instanceId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete instance type",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "c1429c80-8482-11ea-bc55-0242ac130003",
+										"exec": [],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "c710446e-8482-11ea-bc55-0242ac130003",
+										"exec": [
+											"pm.test(\"Instance type deleted - Expected No content (204)\", () => {\r",
+											"    pm.response.to.have.status(204);\r",
+											"    // All is okay so running further requests\r",
+											"    postman.setNextRequest();\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/instance-types/{{instanceTypeId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"instance-types",
+										"{{instanceTypeId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "cbba47bc-8482-11ea-bc55-0242ac130003",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "d09240be-8482-11ea-bc55-0242ac130003",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
 				{
 					"name": "clean user data",
 					"item": [
@@ -1773,7 +2223,8 @@
 					"                    \"data-export.file-definitions.item.get\",",
 					"                    \"data-export.file-definitions.item.post\",",
 					"                    \"data-export.file-definitions.upload.post\",",
-					"                    \"data-export.job-executions.items.get\"",
+					"                    \"data-export.job-executions.items.get\",",
+					"                    \"inventory-storage.all\"",
 					"                ]",
 					"            }",
 					"        },",
