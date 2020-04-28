@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "337fd84d-de1d-44f2-9c69-236f8dce9484",
+		"_postman_id": "b3b29b08-61ff-461a-b239-fe7e3f1afd1b",
 		"name": "mod-orders",
 		"description": "Tests for mod-orders",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -7521,6 +7521,409 @@
 				{
 					"name": "Receiving",
 					"item": [
+						{
+							"name": "Should recieve Pieces if item.status = \"Order closed\" and order.workflowStatus = \"Closed\"",
+							"item": [
+								{
+									"name": "Create order One-Time",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "0d890763-d28a-4c1b-8cc8-ae698fbeed32",
+												"exec": [
+													"var bePoNumberNum = pm.environment.get(\"poNumberNum\");",
+													"if (bePoNumberNum === null) {",
+													"    pm.environment.set(\"poNumberNum\", 1);",
+													"}else",
+													"{",
+													"    pm.environment.set(\"poNumberNum\", ++bePoNumberNum);",
+													"}"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "68ebc10c-e466-40be-8436-9c22eac25b27",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let beOrder = {};",
+													"",
+													"pm.test(\"One-time order is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    beOrder = pm.response.json();",
+													"    pm.environment.set(\"order\", beOrder);",
+													"    pm.environment.set(\"orderId\", beOrder.id);",
+													"    pm.environment.set(\"orderNumber\", beOrder.poNumber);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"poNumber\": \"{{poNumberNum}}\",\n  \"vendor\": \"{{activeVendorId}}\",\n  \"orderType\": \"One-Time\"\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Add order lines",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "e1abefe3-59d2-4081-b7b5-8cd056587107",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let beOrderLine = {};",
+													"",
+													"pm.test(\"Order line is created\", function () {",
+													"    pm.response.to.have.status(201);",
+													"    beOrderLine = pm.response.json();",
+													"    pm.environment.set(\"orderLine\", beOrderLine);",
+													"    pm.environment.set(\"orderLineId\", beOrderLine.id);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"source\": \"User\",\n  \"cost\": {\n    \"discountType\": \"percentage\",\n    \"discount\": 10,\n    \"currency\": \"USD\",\n    \"quantityPhysical\": 2,\n    \"listUnitPrice\": 2\n  },\n  \"vendorDetail\": {\n    \"instructions\": \"\",\n    \"vendorAccount\": \"BRXXXXX-01\",\n    \"refNumberType\": null\n  },\n  \"details\": {\n    \"subscriptionInterval\": 0,\n    \"productIds\": [\n      {\n        \"productId\": \"3319643991\",\n        \"productIdType\": \"8261054f-be78-422d-bd51-4ed9f33c3422\",\n        \"qualifier\": \"\"\n      }\n    ]\n  },\n  \"purchaseOrderId\": \"{{orderId}}\",\n  \"eresource\": {\n    \"createInventory\": \"Instance, Holding\",\n    \"accessProvider\": \"{{activeVendorId}}\"\n  },\n  \"physical\": {\n    \"createInventory\": \"None\",\n    \"materialSupplier\": \"{{activeVendorId}}\",\n    \"materialType\": \"{{materialTypeId}}\"\n  },\n  \"locations\": [\n    {\n      \"locationId\": \"f34d27c6-a8eb-461b-acd6-5dea81771e70\",\n      \"quantityPhysical\": 2\n    }\n  ],\n  \"isPackage\": false,\n  \"instanceId\": null,\n  \"titleOrPackage\": \"Futures, biometrics and neuroscience research Luiz Moutinho, Mladen Sokele, editors\",\n  \"publisher\": \"Palgrave Macmillan\",\n  \"contributors\": [\n    {\n      \"contributor\": \"Moutinho, Luiz\",\n      \"contributorNameTypeId\": \"2b94c631-fca9-4892-a730-03ee529ffe2a\"\n    }\n  ],\n  \"orderFormat\": \"Physical Resource\",\n  \"acquisitionMethod\": \"Approval Plan\",\n  \"fundDistribution\": [\n    {\n      \"distributionType\": \"percentage\",\n      \"fundId\": \"{{fundId}}\",\n      \"value\": 100\n    }\n  ]\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"order-lines"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Open order",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "842da32d-ec20-44a6-8083-423d83f33b3a",
+												"exec": [
+													"setTimeout(function(){}, 2000);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"id\": \"{{orderId}}\",\n  \"approved\": false,\n  \"notes\": [],\n  \"poNumber\": \"{{orderNumber}}\",\n  \"orderType\": \"One-Time\",\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 3.6,\n  \"totalItems\": 2,\n  \"vendor\": \"{{activeVendorId}}\",\n  \"workflowStatus\": \"Open\",\n  \"acqUnitIds\": [],\n  \"metadata\": {\n    \"createdDate\": \"2020-04-14T11:22:33.171+0000\",\n    \"createdByUserId\": \"584af3f6-b529-526c-a0d9-5553c5fb80a5\",\n    \"updatedDate\": \"2020-04-14T11:22:33.171+0000\",\n    \"updatedByUserId\": \"584af3f6-b529-526c-a0d9-5553c5fb80a5\"\n  }\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{orderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get composite order is OPen",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Cache-Control",
+												"type": "text",
+												"value": "no-cache"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{orderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Close order",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "956a324a-6df2-4d8e-9207-5f07d737f8e5",
+												"exec": [
+													"setTimeout(function(){}, 2000);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"id\": \"{{orderId}}\",\n  \"approved\": false,\n  \"approvedById\": \"584af3f6-b529-526c-a0d9-5553c5fb80a5\",\n  \"approvalDate\": \"2020-04-14T11:31:47.034+0000\",\n  \"dateOrdered\": \"2020-04-14T11:31:47.034+0000\",\n  \"notes\": [],\n  \"poNumber\": \"{{orderNumber}}\",\n  \"orderType\": \"One-Time\",\n  \"reEncumber\": false,\n  \"totalEstimatedPrice\": 3.6,\n  \"totalItems\": 2,\n  \"vendor\": \"{{activeVendorId}}\",\n  \"workflowStatus\": \"Closed\",\n  \"acqUnitIds\": [],\n  \"metadata\": {\n    \"createdDate\": \"2020-04-14T11:22:33.171+0000\",\n    \"createdByUserId\": \"584af3f6-b529-526c-a0d9-5553c5fb80a5\",\n    \"updatedDate\": \"2020-04-14T11:31:48.038+0000\",\n    \"updatedByUserId\": \"584af3f6-b529-526c-a0d9-5553c5fb80a5\"\n  },\n  \"closeReason\": {\n    \"reason\": \"Ceased\",\n    \"note\": \"\"\n  }\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{orderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Get composite order is Close",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Cache-Control",
+												"type": "text",
+												"value": "no-cache"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{orderId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Recieve piece(Check-in)",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "c3d93c8c-99ea-47f2-bca4-a9040505c201",
+												"exec": [
+													"pm.test(\"Pieces is retrieved\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    let piecesArray = pm.response.json();",
+													"    pm.environment.set(\"pieceId1\", piecesArray.pieces[0].id);",
+													"    console.log(piecesArray.pieces[0].id)",
+													"    pm.environment.set(\"pieceId2\", piecesArray.pieces[1].id);",
+													"    console.log(piecesArray.pieces[1].id)",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Cache-Control",
+												"value": "no-cache",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/pieces?query=poLineId=={{orderLineId}} sortby locationId",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders-storage",
+												"pieces"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "poLineId=={{orderLineId}} sortby locationId"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Recieve piece(Check-in)",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "d69fb7cd-71dc-41a1-a05b-f10d4cecefcc",
+												"exec": [
+													"pm.test(\"Piece is recieved\", function () {",
+													"    pm.response.to.have.status(200);",
+													"    receivingResultsArray = pm.response.json();",
+													"    pm.expect(receivingResultsArray.receivingResults[0].receivingItemResults[0].pieceId).to.be.equal( pm.environment.get(\"pieceId1\"));",
+													"    pm.expect(receivingResultsArray.receivingResults[0].receivingItemResults[0].processingStatus.type).to.be.equal(\"success\");",
+													"    pm.expect(receivingResultsArray.receivingResults[0].receivingItemResults[1].pieceId).to.be.equal( pm.environment.get(\"pieceId2\"));",
+													"    pm.expect(receivingResultsArray.receivingResults[0].receivingItemResults[1].processingStatus.type).to.be.equal(\"success\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "X-Okapi-Token",
+												"value": "{{xokapitoken}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"toBeCheckedIn\": [\n    {\n      \"poLineId\": \"{{orderLineId}}\",\n      \"checkedIn\": 2,\n      \"checkInPieces\": [\n        {\n          \"id\": \"{{pieceId1}}\",\n          \"locationId\": \"f34d27c6-a8eb-461b-acd6-5dea81771e70\",\n          \"itemStatus\": \"Order closed\"\n        },\n        {\n          \"id\": \"{{pieceId2}}\",\n          \"locationId\": \"f34d27c6-a8eb-461b-acd6-5dea81771e70\",\n          \"itemStatus\": \"Order closed\"\n        }\n      ]\n    }\n  ],\n  \"totalRecords\": 2\n}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/check-in",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"check-in"
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
 						{
 							"name": "Receive all pieces for P/E Mix line",
 							"event": [
@@ -17086,6 +17489,433 @@
 										"{{order_id}}"
 									]
 								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Receive piece with specified itemId when item wa deleted",
+					"item": [
+						{
+							"name": "Create order with createInventory INSTANCE_HOLDING_ITEM",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/po_one_physical_one_electronic_lines.json\", (err, res) => {",
+											"    let order  = res.json();",
+											"    order.workflowStatus = \"Open\";",
+											"    delete order.poNumber;",
+											"    order.compositePoLines.pop();",
+											"    //set createInventory value",
+											"    order.compositePoLines[0].physical.createInventory = \"Instance, Holding, Item\";",
+											"    order.compositePoLines[0].locations.pop();",
+											"    order.compositePoLines[0].locations[0].quantityPhysical = 1;",
+											"    order.compositePoLines[0].cost.quantityPhysical = 1;",
+											"    ",
+											"    pm.variables.set(\"orderForReceiving\", JSON.stringify(utils.prepareOrder(order)));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var order = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    order = pm.response.json();",
+											"    pm.expect(order.id).to.exist;",
+											"    pm.globals.set(\"orderForReceivingId\", order.id);",
+											"    pm.globals.set(\"orderForReceiving\", order);",
+											"});",
+											"",
+											"pm.test(\"1 PO Lines and corresponding Inventory entities exist\", function () {",
+											"    utils.validatePoLines(order, 1);",
+											"});",
+											"utils.validateWorkflowStatus(order);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderForReceiving}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								},
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						},
+						{
+							"name": "Close order",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let order =  pm.globals.get(\"orderForReceiving\");",
+											"order.workflowStatus = \"Closed\";",
+											"",
+											"pm.variables.set(\"orderForReceiving\", JSON.stringify(order));",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var order = {};",
+											"",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{orderForReceiving}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{orderForReceivingId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{orderForReceivingId}}"
+									]
+								},
+								"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete item from inventory",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let compPoLine = pm.globals.get(\"orderForReceiving\").compositePoLines[0];",
+											"",
+											"utils.sendGetRequest(\"/item-storage/items?limit=1&query=purchaseOrderLineIdentifier==\"+compPoLine.id, (err,res) => {",
+											"    pm.variables.set(\"itemId\",  res.json().items[0].id);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/item-storage/items/{{itemId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"item-storage",
+										"items",
+										"{{itemId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 200"
+							},
+							"response": []
+						},
+						{
+							"name": "check-in the existing piece",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c2ee708a-93a0-44e8-b34e-ab5725cf702f",
+										"exec": [
+											"//verify piece status is set to expected",
+											"let utils = eval(globals.loadUtils);",
+											"let jsonRq = JSON.parse(pm.variables.get(\"checkinBody\"));",
+											"",
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.be.ok;",
+											"});",
+											"",
+											"pm.test(\"The reponse has 1 pieces successfully reverted\", function () {",
+											"    let jsonRs = pm.response.json();",
+											"    pm.expect(jsonRs.totalRecords).to.equal(1);",
+											"    pm.expect(jsonRs.receivingResults).to.have.lengthOf(1);",
+											"    // One pieces should be successfully checked-in",
+											"    utils.verifyReceivingResponse(jsonRs, 1, 0);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4ef77f6a-87da-447a-937c-7d1ace325bcf",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let compPoLine = pm.globals.get(\"orderForReceiving\").compositePoLines[0];",
+											"",
+											"utils.sendGetRequest(\"/orders-storage/pieces?limit=1&query=poLineId==\"+compPoLine.id, (err,res) => {",
+											"    utils.prepareCheckinBody(compPoLine, res.json().pieces[0].id);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{checkinBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/check-in",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"check-in"
+									]
+								},
+								"description": "Do not create a new piece, but the existing piece must be successfully checked in"
+							},
+							"response": []
+						},
+						{
+							"name": "Get pieces by poLineId",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											"let compPoLine = pm.globals.get(\"orderForReceiving\").compositePoLines[0];",
+											"pm.variables.set(\"poLineId\", compPoLine.id);",
+											"",
+											"pm.globals.unset(\"orderForReceiving\");"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"let piece = {};",
+											"pm.test(\"Status code is 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"",
+											"    piece = pm.response.json().pieces[0];",
+											"    pm.globals.set(\"pieceId\", piece.id);",
+											"",
+											"});",
+											"",
+											"pm.test(\"The reference to unexisting item was removed\", function() {",
+											"    pm.expect(piece.itemId).to.be.an('undefined');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders-storage/pieces?query=poLineId=={{poLineId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders-storage",
+										"pieces"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{poLineId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete piece",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "eb2052a4-e388-4860-80be-ea96976bcf21",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.globals.unset(\"pieceId\");",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces/{{pieceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces",
+										"{{pieceId}}"
+									]
+								},
+								"description": "GET /orders/composite-orders/id requests that return 200"
 							},
 							"response": []
 						}
