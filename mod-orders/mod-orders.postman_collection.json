@@ -5344,6 +5344,83 @@
 					"name": "Titles",
 					"item": [
 						{
+							"name": "Create package po line for title",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "ffcac03c-820d-4537-8d88-290fcf7d3f83",
+										"exec": [
+											"let line = JSON.parse(pm.globals.get(\"po_listed_print_monograph\")).compositePoLines[0];",
+											"// make sure there is no id provided",
+											"delete line.id;",
+											"line.poLineNumber += \"1\";",
+											"line.poLineDescription += \" another PO Line\";",
+											"line.eresource.createInventory = \"Instance\";",
+											"line.locations.pop();",
+											"line.purchaseOrderId = pm.globals.get(\"completeOrderId\");",
+											"line.isPackage = true;",
+											"pm.variables.set(\"po_line_listed_print_monograph\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "50caad4f-052a-467c-843f-1cca0eb5d0a8",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    ",
+											"    ",
+											"    pm.environment.set(\"poLineIdForTitle\", jsonData.id);",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_line_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								},
+								"description": "GET /orders/id/lines/id requests that return 201"
+							},
+							"response": []
+						},
+						{
 							"name": "Create title",
 							"event": [
 								{
@@ -5353,12 +5430,8 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"utils.sendGetRequest(\"/orders/order-lines\", function (err, res) {",
-											"    pm.expect(err).to.equal(null);",
-											"    let sampleLineId  = res.json().poLines[0].id;",
-											"    ",
-											"    pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(sampleLineId)));",
-											"});",
+											"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(pm.environment.get(\"poLineIdForTitle\"))));",
+											"",
 											"",
 											""
 										],
@@ -5678,7 +5751,7 @@
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
 													"",
-													"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(utils.getLastPoLineId())));",
+													"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(pm.environment.get(\"poLineIdForTitle\"))));",
 													"",
 													""
 												],
@@ -5747,11 +5820,10 @@
 										"exec": [
 											"let utils = eval(globals.loadUtils);",
 											"",
-											"pm.variables.set(\"poLineId\", utils.getLastPoLineId());",
 											"",
 											"pm.sendRequest(pm.variables.get(\"mod-ordersResourcesURL\") + \"/mockdata/pieces/pieceRecord.json\", function(err, res) {",
 											"    let piece = res.json();",
-											"    piece.poLineId = pm.variables.get(\"poLineId\");",
+											"    piece.poLineId = pm.environment.get(\"poLineIdForTitle\");",
 											"    piece.titleId = pm.variables.get(\"titleId\");",
 											"    pm.globals.set(\"pieceRecord\", JSON.stringify(piece));",
 											"});"
@@ -6030,7 +6102,7 @@
 														"exec": [
 															"let utils = eval(globals.loadUtils);",
 															"",
-															"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(utils.getLastPoLineId())));",
+															"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(pm.environment.get(\"poLineIdForTitle\"))));",
 															""
 														],
 														"type": "text/javascript"
@@ -12343,16 +12415,14 @@
 									"response": []
 								},
 								{
-									"name": "Create title",
+									"name": "get title",
 									"event": [
 										{
 											"listen": "prerequest",
 											"script": {
 												"id": "b841b598-7465-49b9-996f-d38a6853d223",
 												"exec": [
-													"let utils = eval(globals.loadUtils);",
-													"",
-													"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(pm.environment.get(\"_poline_id\"))));"
+													""
 												],
 												"type": "text/javascript"
 											}
@@ -12362,9 +12432,9 @@
 											"script": {
 												"id": "bc8f663d-be14-4b2b-8976-5f7a951d6544",
 												"exec": [
-													"pm.test(\"Title status code is 201\", function() {",
-													"    pm.response.to.have.status(201);",
-													"    let title = pm.response.json();",
+													"pm.test(\"Title status code is 200\", function() {",
+													"    pm.response.to.have.status(200);",
+													"    let title = pm.response.json().titles[0];",
 													"    pm.expect(title.id).to.exist;",
 													"    pm.variables.set(\"titleId\", title.id);",
 													"    pm.variables.set(\"titleContent\", JSON.stringify(title));",
@@ -12375,7 +12445,7 @@
 										}
 									],
 									"request": {
-										"method": "POST",
+										"method": "GET",
 										"header": [
 											{
 												"key": "Content-Type",
@@ -12386,12 +12456,8 @@
 												"value": "{{xokapitoken}}"
 											}
 										],
-										"body": {
-											"mode": "raw",
-											"raw": "{{titleContent}}"
-										},
 										"url": {
-											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles",
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles?query=poLineId=={{_poline_id}}",
 											"protocol": "{{protocol}}",
 											"host": [
 												"{{url}}"
@@ -12400,6 +12466,12 @@
 											"path": [
 												"orders",
 												"titles"
+											],
+											"query": [
+												{
+													"key": "query",
+													"value": "poLineId=={{_poline_id}}"
+												}
 											]
 										}
 									},
@@ -16318,7 +16390,7 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"pm.test(\"Status code is 404\", function () {",
+													"pm.test(\"Status code is 204\", function () {",
 													"    pm.response.to.have.status(204);",
 													"    utils.sendGetRequest(\"/orders/configuration/reasons-for-closure/\" + pm.environment.get(\"reasonForClosureId\"), (err, res) => {",
 													"        pm.test(\"Reason for closure is deleted\", () => {",
@@ -16638,6 +16710,198 @@
 									"response": []
 								},
 								{
+									"name": "Create order with prefix",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "de59b5ea-a41c-4d59-97b1-3d47aa5760a6",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let order = utils.buildOrderWithMinContent();",
+													"order.poNumberPrefix = \"Updated name\";",
+													"pm.variables.set(\"orderBody\", JSON.stringify(order));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "ba27cc15-ca07-411f-86f1-72038967a4e6",
+												"exec": [
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"",
+													"    var jsonData = pm.response.json();",
+													"    pm.globals.set(\"prefixOrderId\", jsonData.id); ",
+													"    pm.globals.set(\"prefixOrder\", jsonData);",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+									},
+									"response": []
+								},
+								{
+									"name": "Delete cannot delete used prefix",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "8985fb75-32ac-4b25-a584-e476adabbab1",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "a578f9f3-1e41-49e7-b700-9bd6bfd58b3e",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 400\", function () {",
+													"    pm.response.to.have.status(400);",
+													"    let error = pm.response.json().errors[0];",
+													"    pm.expect(error.code).to.equal(\"prefixIsUsed\");",
+													"    utils.sendGetRequest(\"/orders/configuration/prefixes/\" + pm.environment.get(\"prefixId\"), (err, res) => {",
+													"        pm.test(\"Prefix is not deleted\", () => {",
+													"            pm.expect(res.code).to.eql(200);",
+													"        });",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/configuration/prefixes/{{prefixId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"configuration",
+												"prefixes",
+												"{{prefixId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update order's prefix",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "80855c1b-d61b-4ebd-9e21-d6021b810c16",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let order = pm.globals.get(\"prefixOrder\");",
+													"order.poNumberPrefix = \"New updated name\";",
+													"pm.variables.set(\"orderBody\", JSON.stringify(order));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "871b9323-67ba-4af3-97d5-bf28e101989b",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{prefixOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{prefixOrderId}}"
+											]
+										},
+										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+									},
+									"response": []
+								},
+								{
 									"name": "Delete prefix",
 									"event": [
 										{
@@ -16656,7 +16920,7 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"pm.test(\"Status code is 404\", function () {",
+													"pm.test(\"Status code is 204\", function () {",
 													"    pm.response.to.have.status(204);",
 													"    utils.sendGetRequest(\"/orders/configuration/prefixes/\" + pm.environment.get(\"prefixId\"), (err, res) => {",
 													"        pm.test(\"Prefix is deleted\", () => {",
@@ -16693,6 +16957,63 @@
 												"configuration",
 												"prefixes",
 												"{{prefixId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete order",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "436a101e-8c1d-424e-80d8-a71cc60f2cdd",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "68961911-2c95-45b7-8b45-844c0b666f51",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"    pm.globals.unset(\"prefixOrderId\");",
+													"    pm.globals.unset(\"prefixOrder\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{prefixOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{prefixOrderId}}"
 											]
 										}
 									},
@@ -16976,6 +17297,198 @@
 									"response": []
 								},
 								{
+									"name": "Create order with suffix",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "d6192809-1bdb-475d-a8c7-f40ac194b10f",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let order = utils.buildOrderWithMinContent();",
+													"order.poNumberSuffix = \"Updated name\";",
+													"pm.variables.set(\"orderBody\", JSON.stringify(order));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "c637d320-f1f1-4d07-98a6-8b25d108e375",
+												"exec": [
+													"pm.test(\"Status code is 201\", function () {",
+													"    pm.response.to.have.status(201);",
+													"",
+													"    var jsonData = pm.response.json();",
+													"    pm.globals.set(\"suffixOrderId\", jsonData.id); ",
+													"     pm.globals.set(\"suffixOrder\", jsonData);",
+													"",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders"
+											]
+										},
+										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+									},
+									"response": []
+								},
+								{
+									"name": "Delete cannot delete used suffx",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "b23e8c32-1f6d-418b-9b6d-0267ff68eb8c",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "ea2809a7-74c2-4f37-85c6-766e3c55bee8",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"",
+													"pm.test(\"Status code is 400\", function () {",
+													"    pm.response.to.have.status(400);",
+													"    let error = pm.response.json().errors[0];",
+													"    pm.expect(error.code).to.equal(\"suffixIsUsed\");",
+													"    utils.sendGetRequest(\"/orders/configuration/suffixes/\" + pm.environment.get(\"suffixId\"), (err, res) => {",
+													"        pm.test(\"Suffix is not deleted\", () => {",
+													"            pm.expect(res.code).to.eql(200);",
+													"        });",
+													"    });",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/configuration/suffixes/{{suffixId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"configuration",
+												"suffixes",
+												"{{suffixId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Update order's suffix",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "61d99813-ba56-43bb-86ff-d27ebab6735a",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"let order = pm.globals.get(\"suffixOrder\");",
+													"order.poNumberSuffix = \"New updated name\";",
+													"pm.variables.set(\"orderBody\", JSON.stringify(order));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "40124452-bdba-4592-af29-94ecccbe73e7",
+												"exec": [
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{{orderBody}}"
+										},
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{suffixOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{suffixOrderId}}"
+											]
+										},
+										"description": "Create an order with minimal required fields (update based on [MODORDERS-136](https://issues.folio.org/browse/MODORDERS-136) and [MODORDERS-145](https://issues.folio.org/browse/MODORDERS-145)."
+									},
+									"response": []
+								},
+								{
 									"name": "Delete suffix",
 									"event": [
 										{
@@ -16994,7 +17507,7 @@
 												"id": "3bf00f6d-8798-4764-a256-2d360ea02876",
 												"exec": [
 													"let utils = eval(globals.loadUtils);",
-													"pm.test(\"Status code is 404\", function () {",
+													"pm.test(\"Status code is 204\", function () {",
 													"    pm.response.to.have.status(204);",
 													"    utils.sendGetRequest(\"/orders/configuration/suffixes/\" + pm.environment.get(\"suffixId\"), (err, res) => {",
 													"        pm.test(\"Suffix is deleted\", () => {",
@@ -17031,6 +17544,63 @@
 												"configuration",
 												"suffixes",
 												"{{suffixId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Delete order",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "b8ba8008-edad-4319-b9c4-ebc83ae58d50",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"id": "0da6a5a9-20e1-4828-8991-d1274cd351eb",
+												"exec": [
+													"let utils = eval(globals.loadUtils);",
+													"pm.test(\"Status code is 204\", function () {",
+													"    pm.response.to.have.status(204);",
+													"    pm.globals.unset(\"suffixOrderId\");",
+													"    pm.globals.unset(\"suffixOrder\");",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "x-okapi-token",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{suffixOrderId}}",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"orders",
+												"composite-orders",
+												"{{suffixOrderId}}"
 											]
 										}
 									},
@@ -23805,6 +24375,148 @@
 					"_postman_isSubFolder": true
 				},
 				{
+					"name": "Title",
+					"item": [
+						{
+							"name": "Create po line for title",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "0f8ed85c-b085-4761-87af-7e132214f363",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let line = utils.buildPoLineWithMinContent(globals.negativeTestsPendingOrderId);",
+											"pm.variables.set(\"po_line_listed_print_monograph\", JSON.stringify(line));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "4e4d3056-4b29-4b04-b96b-4266558f82e4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"var jsonData = {};",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    jsonData = pm.response.json();",
+											"    ",
+											"    pm.environment.set(\"poLineIdForTitle\", jsonData.id);",
+											"});",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{po_line_listed_print_monograph}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/order-lines",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"order-lines"
+									]
+								},
+								"description": "GET /orders/id/lines/id requests that return 201"
+							},
+							"response": []
+						},
+						{
+							"name": "Create title with titleExist error",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "f7fa95ee-7f73-46cb-8616-e5f69a9e5b62",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"titleContent\", JSON.stringify(utils.buildTitleWithMinContent(pm.environment.get(\"poLineIdForTitle\"))));",
+											"",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "78bbcff7-9a47-4d25-8459-6b8897cd66ff",
+										"exec": [
+											"pm.test(\"Title status code is 422\", function() {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											"pm.test(\"Response contains titleExist error code\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.errors[0].code).to.eql(\"titleExist\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{titleContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
 					"name": "Piece",
 					"item": [
 						{
@@ -27733,55 +28445,55 @@
 	],
 	"variable": [
 		{
-			"id": "18bdcd9f-5cc3-4b30-b599-28890a367b86",
+			"id": "535f1eb8-2023-4597-a1e9-70f36f28e976",
 			"key": "testTenant",
-			"value": "orders_api_tests",
+			"value": "orders_api_tests1",
 			"type": "string"
 		},
 		{
-			"id": "5da08a71-0719-4ba7-a68f-1426a40e0089",
+			"id": "d73c059a-57ae-40bf-bf95-9306f2806587",
 			"key": "mod-ordersResourcesURL",
 			"value": "https://raw.githubusercontent.com/folio-org/mod-orders/master/src/test/resources",
 			"type": "string"
 		},
 		{
-			"id": "d3c73db5-6717-4947-aa59-a17837c1a19e",
+			"id": "e15757a6-565a-4192-b0e3-5e7c40c572fc",
 			"key": "poLines-limit",
 			"value": "10",
 			"type": "string"
 		},
 		{
-			"id": "63f742d3-ef05-4a4d-b37f-ee62e77d9b9f",
+			"id": "b7e6ee5a-ad0e-4813-a67d-9ce7a3022e7b",
 			"key": "inventory-identifierTypeName",
 			"value": "ordersApiTestsIdentifierTypeName",
 			"type": "string"
 		},
 		{
-			"id": "027fa1a4-af84-4642-92cc-c1e4efdb7686",
+			"id": "0a792eec-6970-4e20-be07-624b596b344a",
 			"key": "inventory-instanceTypeCode",
 			"value": "ordersApiTestsInstanceTypeCode",
 			"type": "string"
 		},
 		{
-			"id": "86c5973a-3ebf-4e8f-aa88-3b409aa7dc33",
+			"id": "598d3060-7933-4182-a307-82603de6a5ee",
 			"key": "inventory-instanceStatusCode",
 			"value": "ordersApiTestsInstanceStatusCode",
 			"type": "string"
 		},
 		{
-			"id": "79983ca7-41ed-486d-96db-aa688e0e109b",
+			"id": "230811ae-e8b1-4477-ba12-a7bcea33cc36",
 			"key": "inventory-loanTypeName",
 			"value": "ordersApiTestsLoanTypeName",
 			"type": "string"
 		},
 		{
-			"id": "24ae1ead-60f2-43a3-87f5-b29d90f25022",
+			"id": "c1b03dc5-3318-436d-bfab-5cec8c4a327f",
 			"key": "tenant.addresses",
 			"value": "{\n  \"address\": \"sample address\",\n  \"name\": \"sample name\"\n}\n",
 			"type": "string"
 		},
 		{
-			"id": "245848c9-d19d-4849-bbdf-b79f5329d69a",
+			"id": "f2901acd-6afa-4576-9d00-61fd3736f178",
 			"key": "approvals",
 			"value": "{\"isApprovalRequired\":false}",
 			"type": "string"
