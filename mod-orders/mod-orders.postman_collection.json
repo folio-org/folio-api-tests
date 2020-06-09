@@ -149,6 +149,7 @@
 											"utils.getModuleId(\"mod-login\", bodyHandler);",
 											"utils.getModuleId(\"mod-permissions\", bodyHandler);",
 											"utils.getModuleId(\"mod-configuration\", bodyHandler);",
+											"utils.getModuleId(\"mod-circulation\", bodyHandler);",
 											"",
 											"var modulesToEnable = [];",
 											"",
@@ -2399,6 +2400,76 @@
 					"name": "Create regular user",
 					"item": [
 						{
+							"name": "Patron Group",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "a1f7771b-4552-4804-8ea2-62869fb715d6",
+										"exec": [
+											"let user = globals.testData.users.regular.user;",
+											"user.patronGroup",
+											"pm.variables.set(\"userData\", JSON.stringify(user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "00269745-b3a4-4a1b-a4db-4a3d6747f40f",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"_patron_group_id\", pm.response.json().id)",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"group\" : \"Test Patron Group\",\n    \"desc\" : \"Test Patron Group Member\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/groups",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"groups"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Create user",
 							"event": [
 								{
@@ -2406,6 +2477,11 @@
 									"script": {
 										"id": "86a4f7a2-7101-41ec-8242-c9c495447050",
 										"exec": [
+											"let user = globals.testData.users.regular.user;",
+											"user.type = \"patron\",",
+											"user.active = true,",
+											"user.barcode = \"236964750970123\",",
+											"user.patronGroup = pm.environment.get(\"_patron_group_id\");",
 											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.regular.user));"
 										],
 										"type": "text/javascript"
@@ -9629,6 +9705,16 @@
 											"    pm.response.to.be.ok;",
 											"",
 											"    let order = pm.response.json();",
+											"",
+											"    // Increase location.quantity to prevent piecesNeedToBeDeleted failure",
+											"    let lines = order.compositePoLines;",
+											"    for (let i = 0; i < lines.length; i++) {",
+											"        let locations = lines[i].locations;",
+											"        for (let j = 0; j < locations.length; j++) {",
+											"            locations[j].quantity = 9999;",
+											"        }      ",
+											"    }",
+											"        ",
 											"    pm.expect(order.workflowStatus).to.equal(\"Open\");",
 											"    pm.expect(order.compositePoLines).to.have.lengthOf(4);",
 											"",
@@ -9688,6 +9774,14 @@
 											"    pm.response.to.be.ok;",
 											"",
 											"    let order = pm.response.json();",
+											"    // Increase location.quantity to prevent piecesNeedToBeDeleted failure",
+											"    let lines = order.compositePoLines;",
+											"    for (let i = 0; i < lines.length; i++) {",
+											"        let locations = lines[i].locations;",
+											"        for (let j = 0; j < locations.length; j++) {",
+											"            locations[j].quantity = 9999;",
+											"        }      ",
+											"    }",
 											"    pm.expect(order.workflowStatus).to.equal(\"Open\");",
 											"    pm.expect(order.compositePoLines).to.have.lengthOf(2);",
 											"",
@@ -9747,6 +9841,14 @@
 											"    pm.response.to.be.ok;",
 											"",
 											"    let order = pm.response.json();",
+											"    // Increase location.quantity to prevent piecesNeedToBeDeleted failure",
+											"    let lines = order.compositePoLines;",
+											"    for (let i = 0; i < lines.length; i++) {",
+											"        let locations = lines[i].locations;",
+											"        for (let j = 0; j < locations.length; j++) {",
+											"            locations[j].quantity = 9999;",
+											"        }      ",
+											"    }",
 											"    pm.expect(order.workflowStatus).to.equal(\"Open\");",
 											"    pm.expect(order.compositePoLines).to.have.lengthOf(2);",
 											"",
@@ -20912,6 +21014,1000 @@
 								"description": "GET /orders/composite-orders/id requests that return 200"
 							},
 							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Pieces and Location Consistency",
+					"item": [
+						{
+							"name": "Create Instance",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "53827b76-9c00-4be3-8409-a807a16a0da2",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "aab6256f-b2d7-4636-be5c-7a81319972fd",
+										"exec": [
+											"var uuid = require('uuid');",
+											"pm.environment.set(\"_instanceId\", uuid.v4());",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"discoverySuppress\": false,\n    \"staffSuppress\": false,\n    \"previouslyHeld\": false,\n    \"source\": \"FOLIO\",\n    \"title\": \"test\",\n    \"instanceTypeId\": \"6d6f642d-0000-1111-aaaa-6f7264657273\",\n    \"precedingTitles\": [],\n    \"succeedingTitles\": [],\n    \"id\": \"{{_instanceId}}\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/inventory/instances",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"inventory",
+										"instances"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Holding",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "89ca4e55-18b6-4773-b5eb-e0f789e9d1f5",
+										"exec": [
+											"pm.environment.set(\"_holdingId\", pm.response.json().id);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"permanentLocationId\" : \"fcd64ce1-6995-48f0-840e-89ffa2288371\",\n\t\"instanceId\" : \"{{_instanceId}}\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/holdings-storage/holdings",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"holdings-storage",
+										"holdings"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "instanceId=={{instanceId}}%20and%20permanentLocationId==53cf956f-c1df-410b-8bea-27f712cca7c0",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Item",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "7bccdbfa-8200-4afe-a224-7b736e0e6413",
+										"exec": [
+											"pm.environment.set(\"_itemId\", pm.response.json().id);",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": {\n        \"name\": \"On order\"\n    },\n    \"holdingsRecordId\" : \"{{_holdingId}}\",\n    \"barcode\": \"{{$guid}}\",\n    \"materialType\": {\n        \"id\": \"6d6f642d-0003-1111-aaaa-6f7264657273\"\n    },\n    \"permanentLoanType\": {\n        \"id\": \"6d6f642d-0002-1111-aaaa-6f7264657273\"\n    }\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/inventory/items",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"inventory",
+										"items"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f67055c-f224-4dc6-81c1-76b26033bc08",
+										"exec": [
+											"pm.environment.set(\"_requestId\", pm.response.json().id);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n   \"requestType\":\"Hold\",\n   \"fulfilmentPreference\":\"Hold Shelf\",\n   \"item\":{\n      \"barcode\":\"A14837334314\"\n   },\n   \"itemId\":\"{{_itemId}}\",\n   \"requester\":{\n      \"barcode\":\"236964750970123\"\n   },\n   \"status\": \"Open - Awaiting pickup\",\n   \"requesterId\":\"00000001-1111-5555-9999-999999999999\",\n   \"pickupServicePointId\":\"3a40852d-49fd-4df2-a1f9-6e2641a6e91f\",\n   \"requestDate\":\"2020-06-08T06:31:02Z\",\n   \"id\": \"489081f2-76de-4f22-8c0e-cdb7b91c5ffe\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/request-storage/requests",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"request-storage",
+										"requests"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Order",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "033d157b-d09a-46ec-98b8-c9ac529cf507",
+										"exec": [
+											"var id = pm.response.json().id",
+											"pm.environment.set(\"_order_id\", id);",
+											"pm.environment.set(\"_poNumber\", pm.response.json().poNumber);",
+											"pm.environment.set(\"_poline_id\", pm.response.json().compositePoLines[0].id);",
+											"pm.environment.set(\"_location_id\", pm.response.json().compositePoLines[0].locations[0].locationId);",
+											"pm.environment.set(\"_purchaseOrder\", pm.response.json());",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "132d8fa6-005f-4537-b6f8-79b869607cd2",
+										"exec": [
+											"var poNumberNum = pm.environment.get(\"poNumberNum\");",
+											"if (poNumberNum === null) {",
+											"    pm.environment.set(\"poNumberNum\", 1);",
+											"    console.log('1');",
+											"}else",
+											"{",
+											"    pm.environment.set(\"poNumberNum\", ++poNumberNum);",
+											"    console.log('2');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"approved\": true,\n  \"assignedTo\": \"ab18897b-0e40-4f31-896b-9c9adc979a88\",\n  \"billTo\": \"5b608726-3ab6-4ea3-bdb2-b5106f45f5b3\",\n  \"notes\": [\n    \"ABCDEFGHIJKLMNO\",\n    \"ABCDEFGHIJKLMNOPQRST\",\n    \"ABCDEFGHIJKLMNOPQRSTUV\"\n  ],\n  \"poNumber\": \"99999{{poNumberNum}}\",\n  \"orderType\": \"One-Time\",\n  \"reEncumber\": false,\n  \"shipTo\": \"5b608726-3ab6-4ea3-bdb2-b5106f45f5b3\",\n  \"totalEstimatedPrice\": 101.16,\n  \"totalItems\": 4,\n  \"vendor\": \"{{activeVendorId}}\",\n  \"workflowStatus\": \"Pending\",\n  \"compositePoLines\": [\n    {\n      \"checkinItems\": false,\n      \"acquisitionMethod\": \"Purchase At Vendor System\",\n      \"alerts\": [],\n      \"cancellationRestriction\": false,\n      \"cancellationRestrictionNote\": \"ABCDEFGHIJKLMNOPQRSTUVW\",\n      \"claims\": [\n        {\n          \"claimed\": false,\n          \"sent\": \"2018-10-09T00:00:00.000+0000\",\n          \"grace\": 30\n        }\n      ],\n      \"collection\": false,\n      \"contributors\": [\n        {\n          \"contributor\": \"Ed Mashburn\",\n          \"contributorNameTypeId\": \"6d6f642d-0005-1111-aaaa-6f7264657273\"\n        }\n      ],\n      \"cost\": {\n        \"listUnitPrice\": 24.99,\n        \"listUnitPriceElectronic\": 20.99,\n        \"currency\": \"USD\",\n        \"additionalCost\": 10.0,\n        \"discount\": 5.0,\n        \"discountType\": \"percentage\",\n        \"quantityPhysical\": 1,\n        \"quantityElectronic\": 1,\n        \"poLineEstimatedPrice\": 101.16\n      },\n      \"description\": \"ABCDEFGH\",\n      \"details\": {\n        \"receivingNote\": \"ABCDEFGHIJKL\",\n        \"productIds\": [\n          {\n            \"productId\": \"10000000155\",\n            \"productIdType\": \"6d6f642d-0010-1111-aaaa-6f7264657273\"\n          }\n        ],\n        \"subscriptionFrom\": \"2018-10-09T00:00:00.000+0000\",\n        \"subscriptionInterval\": 824,\n        \"subscriptionTo\": \"2020-10-09T00:00:00.000+0000\"\n      },\n      \"donor\": \"ABCDEFGHIJKLM\",\n      \"eresource\": {\n        \"activated\": false,\n        \"createInventory\": \"Instance, Holding, Item\",\n        \"trial\": false,\n        \"accessProvider\": \"{{activeVendorId}}\",\n        \"materialType\": \"6d6f642d-0003-1111-aaaa-6f7264657273\"\n      },\n      \"fundDistribution\": [\n        {\n          \"code\": \"HIST\",\n          \"fundId\": \"{{fundId}}\",\n          \"distributionType\": \"percentage\",\n          \"value\": 80.0\n        },\n        {\n          \"code\": \"GENRL\",\n          \"fundId\": \"{{fundId}}\",\n          \"distributionType\": \"percentage\",\n          \"value\": 20.0\n        }\n      ],\n      \"isPackage\": false,\n      \"locations\": [\n        {\n          \"locationId\": \"fcd64ce1-6995-48f0-840e-89ffa2288371\",\n          \"quantity\": 2,\n          \"quantityElectronic\": 1,\n          \"quantityPhysical\": 1\n        }\n      ],\n      \"orderFormat\": \"P/E Mix\",\n      \"paymentStatus\": \"Awaiting Payment\",\n      \"physical\": {\n        \"createInventory\": \"Instance, Holding, Item\",\n        \"materialType\": \"6d6f642d-0003-1111-aaaa-6f7264657273\",\n        \"materialSupplier\": \"73d14bc5-d131-48c6-b380-f8e62f63c8b6\",\n        \"receiptDue\": \"2018-10-10T00:00:00.000+0000\",\n        \"volumes\": [\n          \"vol.1\"\n        ]\n      },\n      \"poLineDescription\": \"ABCDEFGHIJKLMNOPQRSTUVWXY\",\n      \"poLineNumber\": \"99999{{poNumberNum}}-1\",\n      \"publicationDate\": \"2017\",\n      \"publisher\": \"Schiffer Publishing\",\n      \"purchaseOrderId\": \"4e743b7d-1852-4f04-8502-ab24e8adb918\",\n      \"receiptStatus\": \"Pending\",\n      \"reportingCodes\": [],\n      \"requester\": \"Leo Bulero\",\n      \"rush\": true,\n      \"selector\": \"ABCD\",\n      \"source\": \"API\",\n      \"tags\": {\n        \"tagList\": [\n          \"important\"\n        ]\n      },\n      \"titleOrPackage\": \"Kayak Fishing in the Northern Gulf Coast\",\n      \"vendorDetail\": {\n        \"instructions\": \"ABCDEFG\",\n        \"noteFromVendor\": \"ABCDEFGHIKJKLMNOP\",\n        \"refNumber\": \"123456-78\",\n        \"refNumberType\": \"Supplier's unique order line reference number\",\n        \"vendorAccount\": \"8910-10\"\n      },\n      \"metadata\": {\n        \"createdDate\": \"2020-06-07T17:37:12.481+0000\",\n        \"createdByUserId\": \"00000001-1111-5555-9999-999999999999\",\n        \"updatedDate\": \"2020-06-07T17:37:12.481+0000\",\n        \"updatedByUserId\": \"00000001-1111-5555-9999-999999999999\"\n      }\n    }\n  ],\n  \"acqUnitIds\": [],\n  \"metadata\": {\n    \"createdDate\": \"2020-06-07T17:37:04.546+0000\",\n    \"createdByUserId\": \"00000001-1111-5555-9999-999999999999\",\n    \"updatedDate\": \"2020-06-07T17:37:04.546+0000\",\n    \"updatedByUserId\": \"00000001-1111-5555-9999-999999999999\"\n  }\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Title",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "1f587d16-7b96-4c4c-81f2-f1cac7794e2b",
+										"exec": [
+											"pm.test(\"Title status code is 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"    let title = pm.response.json().titles[0];",
+											"    pm.expect(title.id).to.exist;",
+											"    pm.environment.set(\"_title_id\", title.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "81e5e2d2-c102-49c6-b44a-f4a4f1644179",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/titles?query=poLineId=={{_poline_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"titles"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "poLineId=={{_poline_id}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Piece #1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "11fb0c69-7837-4a15-9e63-27ac85674193",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    pm.environment.set(\"_first_piece_id\", pm.response.json().id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "1077b382-9038-4fdd-9423-cd91e8065a2f",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"poLineId\": \"{{_poline_id}}\",\n    \"format\": \"Physical\",\n    \"caption\": \"test\",\n    \"locationId\": \"{{_location_id}}\",\n    \"itemId\": \"{{_itemId}}\",\n    \"titleId\": \"{{_title_id}}\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Piece #2",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c86de9b7-29d6-4a2d-8c66-0aa505a1e21e",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"poLineId\": \"{{_poline_id}}\",\n    \"format\": \"Electronic\",\n    \"caption\": \"test\",\n    \"locationId\": \"{{_location_id}}\",\n    \"itemId\": \"{{_item_id}}\",\n    \"titleId\": \"{{_title_id}}\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Piece #3",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bb368c67-d56c-411e-8815-babb301e94de",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"poLineId\": \"{{_poline_id}}\",\n    \"format\": \"Electronic\",\n    \"caption\": \"test\",\n    \"locationId\": \"{{_location_id}}\",\n    \"itemId\": \"{{_item_id}}\",\n    \"titleId\": \"{{_title_id}}\"\n}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Order - Pieces Need To Be Deleted",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "8f3110dd-ce97-40b1-9254-c0f714895216",
+										"exec": [
+											"let updatedOrder = pm.environment.get(\"_purchaseOrder\");",
+											"updatedOrder.workflowStatus = \"Open\";",
+											"console.log(updatedOrder);",
+											"pm.variables.set(\"updatedOrder\", JSON.stringify(updatedOrder));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "2b9cd864-8eb8-4616-bf16-e7345412be90",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.text()).to.include(\"piecesNeedToBeDeleted\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedOrder}}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{_order_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{_order_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Piece #1 - There are Requests on Item",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5ad24990-08ac-45a0-9537-4418f22f3284",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.text()).to.include(\"thereAreRequestsOnItem\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces/{{_first_piece_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces",
+										"{{_first_piece_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Item - Item is not deleted",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c58e21af-604d-41a1-a905-2886093aa69a",
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/inventory/items/{{_itemId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"inventory",
+										"items",
+										"{{_itemId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "04531007-1518-45b8-b555-ace7fe3b080e",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "accept",
+										"value": "text/plain"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "text/plain"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/request-storage/requests/{{_requestId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"request-storage",
+										"requests",
+										"{{_requestId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Piece - Success",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "5c726add-819c-46a2-8559-a7b8c69567c5",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/pieces/{{_first_piece_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"pieces",
+										"{{_first_piece_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Item - Item is deleted",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "68c12b24-7631-423e-85dd-acd6f01ec93b",
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/inventory/items/{{_itemId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"inventory",
+										"items",
+										"{{_itemId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Order - Success",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5daf3660-9d1d-40fb-bd31-6238507dad1b",
+										"exec": [
+											"let updatedOrder = pm.environment.get(\"_purchaseOrder\");",
+											"updatedOrder.workflowStatus = \"Open\";",
+											"console.log(updatedOrder);",
+											"pm.variables.set(\"updatedOrder\", JSON.stringify(updatedOrder));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "9c5ce896-f5ae-439c-b653-62ba0694a47b",
+										"exec": [
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "accept",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}"
+									},
+									{
+										"key": "content-type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedOrder}}",
+									"options": {
+										"raw": {}
+									}
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/orders/composite-orders/{{_order_id}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"orders",
+										"composite-orders",
+										"{{_order_id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "42c7b9d3-c3d8-4da0-9931-657f81f8f782",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "3a0b86e0-d2b3-47b4-9520-617379c7b677",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
 						}
 					],
 					"protocolProfileBehavior": {},
