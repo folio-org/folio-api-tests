@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "f8c27fea-d1f2-4403-a5fb-126e4985b400",
+		"_postman_id": "47284b65-43bb-477e-a46f-c4b19c4e1cf1",
 		"name": "mod-notes",
 		"description": "Tests for the endpoints:\n/notes\n/note-types\n\nTests include:\n* /notes (CR)\n* /notes/_self (CR)\n* /notes/{id} (RUD)\n* /note-types (CR)\n* /note-types/{id} (RUD)",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -432,7 +432,8 @@
 						"id": "58bb3ef3-bbcf-484e-8ac1-43502651ac3a",
 						"type": "text/javascript",
 						"exec": [
-							" tv4.addSchema(\"schema_metadata.schema\", pm.environment.get(\"schema_metadata\"));"
+							" tv4.addSchema(\"schema_metadata.schema\", pm.environment.get(\"schema_metadata\"));",
+							" tv4.addSchema(\"schema_uuid.schema\", pm.environment.get(\"schema_metadata\"));"
 						]
 					}
 				}
@@ -625,12 +626,14 @@
 						"type": "text/javascript",
 						"exec": [
 							" tv4.addSchema(\"schema_metadata.schema\", pm.environment.get(\"schema_metadata\"));",
+							" tv4.addSchema(\"schema_uuid.schema\", pm.environment.get(\"schema_metadata\"));",
 							" tv4.addSchema(\"schema_userDisplayInfo.json\", pm.environment.get(\"schema_userDisplayInfo\"));",
 							" tv4.addSchema(\"schema_link.json\", pm.environment.get(\"schema_link\"));"
 						]
 					}
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "setup for links",
@@ -698,7 +701,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"notes\" : [\r\n    {\r\n      \"id\" : \"{{noteIdSecond}}\",\r\n      \"status\" : \"ASSIGNED\"\r\n    }\r\n  ]\r\n}\r\n"
+							"raw": "{\r\n  \"notes\" : [\r\n    {\r\n      \"id\" : \"{{noteIdSecond}}\",\r\n      \"status\" : \"ASSIGNED\"\r\n    }\r\n  ]\r\n}\r\n",
+							"options": {
+								"raw": {}
+							}
 						},
 						"url": {
 							"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/type/{{typeLink}}/id/{{linkId}}",
@@ -718,7 +724,8 @@
 					},
 					"response": []
 				}
-			]
+			],
+			"protocolProfileBehavior": {}
 		},
 		{
 			"name": "notes",
@@ -8848,6 +8855,94 @@
 									"response": []
 								},
 								{
+									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 200 orderBy noteType desc",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "7a379876-5ee7-41b6-92b2-2c828070bc21",
+												"exec": [
+													"pm.test(\"success test - 200 and JSON body\", function() {",
+													"    pm.response.to.be.ok;",
+													"    pm.response.to.be.json;",
+													"});",
+													"",
+													"var response = pm.response.json();",
+													"",
+													"pm.test(\"Validate schema\", function () {",
+													"    pm.expect(tv4.validate(response, JSON.parse(pm.environment.get(\"schema_noteCollection\")))).to.equal(true, \"Schema validation error: \" + JSON.stringify(tv4.error));",
+													"    pm.expect(tv4.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(tv4.missing));",
+													"});",
+													"",
+													"pm.test(\"validate data\", function() {",
+													"    pm.expect(response.totalRecords).to.be.at.least(response.notes.length);",
+													"    ",
+													"    let firstNote = response.notes[0];",
+													"    let lastNote = response.notes[response.notes.length - 1];",
+													"",
+													"    pm.expect(firstNote.typeId).eq(pm.environment.get(\"noteTypeIdSecond\"));",
+													"    pm.expect(lastNote.typeId).eq(pm.environment.get(\"noteTypeId\"));",
+													"});"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "5295554d-6fa8-4d54-a689-5157fada25c2",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?orderBy=noteType&order=desc",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"note-links",
+												"domain",
+												"eholdings",
+												"type",
+												"{{typeLink}}",
+												"id",
+												"{{linkId}}"
+											],
+											"query": [
+												{
+													"key": "orderBy",
+													"value": "noteType"
+												},
+												{
+													"key": "order",
+													"value": "desc"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
 									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 200 search title",
 									"event": [
 										{
@@ -9635,6 +9730,79 @@
 												{
 													"key": "offset",
 													"value": ""
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "note-links/domain/eholdings/type/{type}/id/{id} - 400 incorrect orderBy",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"id": "9f155c79-d46e-4e6d-bf69-f689d8fadb46",
+												"exec": [
+													"pm.test(\"400 test - incorrect params\", function() {",
+													"    pm.response.to.have.status(400);",
+													"    pm.response.to.have.body();",
+													"});",
+													"",
+													"pm.test(\"Response having negative error message\", function () {",
+													"    pm.response.to.be.withBody;",
+													"    pm.response.to.have.body(\"OrderBy is incorrect: noteype. Possible values: status, title, linksNumber, noteType\");",
+													"});",
+													""
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "prerequest",
+											"script": {
+												"id": "6e15624d-a50f-47bd-9522-c0a9718a5475",
+												"exec": [
+													""
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-okapi-tenant",
+												"type": "text",
+												"value": "{{xokapitenant}}"
+											},
+											{
+												"key": "x-okapi-token",
+												"type": "text",
+												"value": "{{xokapitoken}}"
+											}
+										],
+										"url": {
+											"raw": "{{protocol}}://{{url}}:{{okapiport}}/note-links/domain/eholdings/type/{{typeLink}}/id/{{linkId}}?orderBy=noteype",
+											"protocol": "{{protocol}}",
+											"host": [
+												"{{url}}"
+											],
+											"port": "{{okapiport}}",
+											"path": [
+												"note-links",
+												"domain",
+												"eholdings",
+												"type",
+												"{{typeLink}}",
+												"id",
+												"{{linkId}}"
+											],
+											"query": [
+												{
+													"key": "orderBy",
+													"value": "noteype"
 												}
 											]
 										}
