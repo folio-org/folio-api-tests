@@ -1,0 +1,6165 @@
+{
+	"info": {
+		"_postman_id": "b7b38d4f-da45-4f68-a161-3cf563aa7f4d",
+		"name": "mod-organizations",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Setup",
+			"item": [
+				{
+					"name": "Create tenant and enable modules",
+					"item": [
+						{
+							"name": "Login by existing admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "db9d6f4f-9e6f-4b5a-a763-0f3afcdda08b",
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken-admin\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{xokapitenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{  \r\n   \"username\":\"{{username}}\",\r\n   \"password\":\"{{password}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create new tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "51635f1b-9d0d-48bd-9ed6-14e71c3a1fcb",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"tenantData\", JSON.stringify(globals.testData.tenant));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "3bee7691-ed5e-46b7-9fa1-4d71ed38faac",
+										"exec": [
+											"// In case the tenant was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Tenant created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-admin}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{tenantData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Enable modules for new tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5c6bca7f-27ca-4097-b87d-428326f5ee55",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.getModuleId(\"mod-organizations-storage\", bodyHandler);",
+											"utils.getModuleId(\"mod-organizations\", bodyHandler);",
+											"utils.getModuleId(\"mod-login\", bodyHandler);",
+											"utils.getModuleId(\"mod-permissions\", bodyHandler);",
+											"utils.getModuleId(\"mod-orders-storage\", bodyHandler);",
+											"",
+											"var modulesToEnable = [];",
+											"",
+											"function bodyHandler(moduleId) {",
+											"\tmodulesToEnable.push({",
+											"\t\t\"id\": moduleId,",
+											"\t\t\"action\": \"enable\"",
+											"\t});",
+											"\tpm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "7460456b-89e6-488c-be79-3bce5eff7781",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"postman.setNextRequest(null);",
+											"pm.test(\"Enabled required modules\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"enabledModules\", pm.response.json());",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-admin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modulesToEnable}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}",
+										"install"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create admin user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "88eba0cf-8d2d-4026-8803-d71d9e42074a",
+										"exec": [
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.admin.user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "9e78f4a1-ea64-4cf2-aeee-95185228a066",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create credentials for admin user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "8c48b7d7-e45e-4fa1-91e4-50cbc84ac9f8",
+										"exec": [
+											"pm.test(globals.testData.users.admin.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "217784a2-d445-45c1-bf8d-2ff448b95fd0",
+										"exec": [
+											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.users.admin.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Add all permissions to admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "2a2dcaf9-5afb-424a-8bfb-2528acb93b78",
+										"exec": [
+											"pm.test(globals.testData.users.admin.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "46d53aad-aaea-4f7c-9094-f4b089a3e81a",
+										"exec": [
+											"eval(globals.loadUtils).sendGetRequest('/perms/permissions?length=1000&query=(subPermissions=\"\" NOT subPermissions ==/respectAccents []) and (cql.allRecords=1 NOT childOf <>/respectAccents [])', (err, res) => {",
+											"        let userPermissions = globals.testData.users.admin.permissions;",
+											"        userPermissions.permissions = res.json().permissions.map(perm => perm.permissionName);",
+											"        pm.variables.set(\"userPermissions\", JSON.stringify(userPermissions));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userPermissions}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Enable mod-authtoken for new tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "8bea8c03-2690-4ddb-b5c2-bd0adf3ad5e4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"utils.getModuleId(\"mod-authtoken\", bodyHandler);",
+											"",
+											"var modulesToEnable = [];",
+											"",
+											"function bodyHandler(moduleId) {",
+											"\tmodulesToEnable.push({",
+											"\t\t\"id\" : moduleId,",
+											"\t\t\"action\": \"enable\"",
+											"\t});",
+											"    pm.variables.set(\"modulesToEnable\", JSON.stringify(modulesToEnable));",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "6341702f-1490-4ca0-a6f8-18ecf1ae4713",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"postman.setNextRequest(null);",
+											"pm.test(\"mod-authtoken is enabled\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    pm.response.to.be.withBody;",
+											"    pm.environment.set(\"enabledModules\", pm.response.json());",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-admin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modulesToEnable}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}",
+										"install"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login by new admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "216b6617-3b0b-49ff-b544-9791da6196f9",
+										"exec": [
+											"// In case the new user cannot be logged in no sense to run further tests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken-testAdmin\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "936e1256-46c9-453c-a94a-423fb4510154",
+										"exec": [
+											"pm.variables.set(\"newUserCreds\", JSON.stringify(globals.testData.users.admin.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{testTenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{newUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Create regular user",
+					"item": [
+						{
+							"name": "Create user",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "70111138-6c86-4b0b-99f9-5b5e91163967",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"userData\", JSON.stringify(globals.testData.users.regular.user));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "77f8a911-dfe1-4b9c-9d8c-298e62ebbb5b",
+										"exec": [
+											"// In case the user was not created no sense to run further requests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"User created - Expected Created (201)\", () => {",
+											"    pm.response.to.have.status(201);",
+											"    ",
+											"    pm.variables.set(\"userId\", globals.testData.users.regular.user.id);",
+											"",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userData}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create credentials",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f10eda1a-c272-4c30-bcdf-eff30f011f75",
+										"exec": [
+											"pm.test(globals.testData.users.regular.user.username + \" user's credentials created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "4a8242b5-78ac-4ca9-be2f-11476bdf25d6",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"userCreds\", JSON.stringify(globals.testData.users.regular.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-testAdmin}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Define permissions",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0be347c4-1787-4a2b-8040-cda063a32692",
+										"exec": [
+											"pm.test(globals.testData.users.regular.user.username + \" user's permissions created\", () => pm.response.to.have.status(201));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "3dec4a70-e98a-4da8-a584-846c6fac06db",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"userPermissions\", JSON.stringify(globals.testData.users.regular.permissions));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "content-type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken-testAdmin}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{userPermissions}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/perms/users",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"perms",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login by new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "ea1d326c-fdd2-48f4-970a-8d4045ffb424",
+										"exec": [
+											"// In case the new user cannot be logged in no sense to run further tests",
+											"postman.setNextRequest(null);",
+											"",
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    // All is okay so running further requests",
+											"    postman.setNextRequest();",
+											"});",
+											"",
+											"pm.environment.set(\"xokapitoken\", postman.getResponseHeader(\"x-okapi-token\"));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "7ab3f061-c602-4714-bce7-5158f0e2e899",
+										"exec": [
+											"pm.variables.set(\"newUserCreds\", JSON.stringify(globals.testData.users.regular.credentials));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-tenant",
+										"value": "{{testTenant}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{newUserCreds}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/authn/login",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"authn",
+										"login"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Load schemas for validation",
+					"item": [
+						{
+							"name": "Get schemas and setup env variables",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6aa9f5b4-52b5-4dca-83ad-74f1dc7d541e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"\r",
+											"pm.test(\"Module has schemas to load\", function () {\r",
+											"    pm.response.to.be.ok;\r",
+											"    pm.response.to.have.jsonBody();\r",
+											"\r",
+											"    let schemas = pm.response.json();\r",
+											"    pm.expect(schemas).to.not.be.empty;\r",
+											"    traverse(pm.response.json());\r",
+											"});\r",
+											"\r",
+											"function traverse(schemas) {\r",
+											"    const timerId = setTimeout(() => { }, 60000);\r",
+											"\r",
+											"    var promises = schemas.map(path => fetchSchema(path));\r",
+											"    Promise.all(promises)\r",
+											"        .then(result => {\r",
+											"            let failedSchemas = schemas.filter(path => !result.includes(path));\r",
+											"            pm.test(\"All json schemas are loaded\", () => pm.expect(failedSchemas, failedSchemas.join()).to.be.empty);\r",
+											"            clearTimeout(timerId);\r",
+											"        })\r",
+											"        .catch((err, path) => {\r",
+											"            clearTimeout(timerId);\r",
+											"            pm.test(\"One or more schema could not be loaded: \" + err, () => pm.expect.fail());\r",
+											"            console.log(\"Failure to load \" + path, err);\r",
+											"        });\r",
+											"}\r",
+											"\r",
+											"function fetchSchema(path) {\r",
+											"    let getRequest = buildGetSchemaRequest(path);\r",
+											"    return new Promise((resolve, reject) => {\r",
+											"        pm.sendRequest(getRequest, (err, response) => {\r",
+											"\r",
+											"            if (!err) {\r",
+											"                if (response.code === 200) {\r",
+											"                    let content = replaceResponseRefWithName(response.text());\r",
+											"                    let name = extractName(path);\r",
+											"                    setEnvironmentVariable(name, content);\r",
+											"                    resolve(path);\r",
+											"                } else {\r",
+											"                    resolve();\r",
+											"                }\r",
+											"            } else {\r",
+											"                reject(err);\r",
+											"            }\r",
+											"        });\r",
+											"    });\r",
+											"}\r",
+											"\r",
+											"function setEnvironmentVariable(name, data) {\r",
+											"    pm.environment.set(utils.schemaPrefix + name, data);\r",
+											"}\r",
+											"\r",
+											"function extractName(url) {\r",
+											"    return url.substring(url.lastIndexOf(\"/\") + 1);\r",
+											"}\r",
+											"\r",
+											"function replaceResponseRefWithName(text) {\r",
+											"    return text.replace(/\"\\$ref\":\"([^\"]+\\/)(?=.*(\\.json|\\.schema))/g, \"\\\"$ref\\\":\\\"\" + utils.schemaPrefix);\r",
+											"}\r",
+											"\r",
+											"function buildGetSchemaRequest(path) {\r",
+											"    let getRequest = utils.buildPmRequest(\"/_/jsonSchemas?path=\" + path, \"GET\");\r",
+											"    getRequest.header['X-Okapi-Module-Id'] = pm.variables.get(\"modOrgsId\");\r",
+											"    return getRequest;\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "0cfef8b9-c118-402a-a2ad-2f0bb586321f",
+										"exec": [
+											"let utils = eval(globals.loadUtils);\r",
+											"const moduleName = 'mod-organizations-storage';\r",
+											"\r",
+											"pm.sendRequest(utils.buildOkapiUrl('/_/proxy/tenants/' + pm.variables.get(\"testTenant\") + '/interfaces/_jsonSchemas'), (err, response) => {\r",
+											"    pm.test(\"jsonSchemas provided by \" + moduleName, function () {\r",
+											"        pm.expect(err).to.equal(null);\r",
+											"        pm.expect(response.text()).to.include(moduleName);\r",
+											"\r",
+											"        let moduleId = response.json().map(element => element.id).filter(modId => modId.includes(moduleName))[0];\r",
+											"    \tpm.variables.set('modOrgsId', moduleId);\r",
+											"    });\r",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Module-Id",
+										"type": "text",
+										"value": "{{modOrgsId}}"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"type": "text",
+										"value": "{{testTenant}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/jsonSchemas",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"jsonSchemas"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "c643747f-da45-4131-8d91-b2c78503c61c",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "c320f452-29a4-4c8e-94d5-90b670c6a20f",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Positive Tests",
+			"item": [
+				{
+					"name": "Organizations",
+					"item": [
+						{
+							"name": "Acqusitions Units",
+							"item": [
+								{
+									"name": "Prepare test entities",
+									"item": [
+										{
+											"name": "Create read-open acquisitions unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "7be5771b-c771-4535-84f2-fd43a2ba7d7f",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let acqUnit = {};",
+															"",
+															"pm.test(\"Acq.unit is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    acqUnit = pm.response.json();",
+															"});",
+															"",
+															"pm.variables.set(\"readOnlyAcqUnitId\", acqUnit.id);"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "a48eaef6-4376-4e3c-8797-25c4982240be",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.name = \"read only\";",
+															"body.isDeleted = false;",
+															"body.protectCreate = true;",
+															"body.protectRead = false;",
+															"body.protectUpdate = true;",
+															"body.protectDelete = true;",
+															"",
+															"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{unitBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/units",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"units"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Create update-open acquisitions unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "198708a4-e40b-4fd4-b051-9f0a740cecbe",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let acqUnit = {};",
+															"",
+															"pm.test(\"Acq.unit is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    acqUnit = pm.response.json();",
+															"});",
+															"",
+															"pm.variables.set(\"updateOnlyAcqUnitId\", acqUnit.id);"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "b00b8110-0723-4688-8bbc-7ea1fdc40556",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.name = \"update only\";",
+															"body.isDeleted = false;",
+															"body.protectCreate = true;",
+															"body.protectRead = true;",
+															"body.protectUpdate = false;",
+															"body.protectDelete = true;",
+															"",
+															"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{unitBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/units",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"units"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Create full-protected acquisitions unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "3106685c-2d11-4d11-9fac-a186ffc25cee",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let acqUnit = {};",
+															"",
+															"pm.test(\"Acq.unit is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    acqUnit = pm.response.json();",
+															"});",
+															"",
+															"pm.variables.set(\"fullProtectedAcqUnitId\", acqUnit.id);"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "cf1d61b4-ede5-400d-8adb-6406acf790a0",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.name = \"full protected\";",
+															"body.isDeleted = false;",
+															"body.protectCreate = true;",
+															"body.protectRead = true;",
+															"body.protectUpdate = true;",
+															"body.protectDelete = true;",
+															"",
+															"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{unitBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/units",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"units"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Create no-acq org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "b0b69391-d4a3-46df-9a4a-f15249920324",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organization is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function() {",
+															"    pm.expect(organization.id).to.exist;",
+															"    pm.environment.set(\"noAcqOrganizationId\", organization.id); ",
+															"",
+															"    utils.validateOrganization(organization);",
+															"    pm.expect(organization.status).to.eql(\"Active\");",
+															"    pm.expect(organization.name).to.contain(\"for API Test\");",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "2956488b-f863-4a35-a9c9-6cb1a76c9151",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+															"    let org = res.json();",
+															"    delete org.id;",
+															"    org.name = \"Active org for API Test\";",
+															"    org.status = \"Active\";",
+															"    org.code = \"NO_ACQ_ORG\";",
+															"    org.acqUnitIds = [];",
+															"    pm.variables.set(\"noAcqOrganizationContent\", JSON.stringify(org));",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{noAcqOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Create read-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "c779ddd7-4a8c-4bbe-8bdb-860fb1e4d7f4",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organization is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function() {",
+															"    pm.expect(organization.id).to.exist;",
+															"    pm.environment.set(\"readOnlyOrganizationId\", organization.id); ",
+															"",
+															"    utils.validateOrganization(organization);",
+															"    pm.expect(organization.status).to.eql(\"Active\");",
+															"    pm.expect(organization.name).to.contain(\"for API Test\");",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "c23cc856-76e7-4317-ad88-6009b3e40182",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+															"    let org = res.json();",
+															"    delete org.id;",
+															"    org.name = \"Active org for API Test\";",
+															"    org.status = \"Active\";",
+															"    org.code = \"READ_ONLY_ORG\";",
+															"    org.acqUnitIds = [pm.variables.get(\"readOnlyAcqUnitId\")];",
+															"    pm.variables.set(\"readOnlyOrganizationContent\", JSON.stringify(org));",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{readOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Create update-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "b8cbf485-be49-4e1b-b69b-71c6b2a5be8f",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organization is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function() {",
+															"    pm.expect(organization.id).to.exist;",
+															"    pm.environment.set(\"updateOnlyOrganizationId\", organization.id); ",
+															"",
+															"    utils.validateOrganization(organization);",
+															"    pm.expect(organization.status).to.eql(\"Active\");",
+															"    pm.expect(organization.name).to.contain(\"for API Test\");",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "4aa54946-c879-4d13-a7de-e85606e2ed3f",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+															"    let org = res.json();",
+															"    delete org.id;",
+															"    org.name = \"Active org for API Test\";",
+															"    org.status = \"Active\";",
+															"    org.code = \"UPDATE_ONLY_ORG\";",
+															"    org.acqUnitIds = [pm.variables.get(\"updateOnlyAcqUnitId\")];",
+															"    pm.variables.set(\"updateOnlyOrganizationContent\", JSON.stringify(org));",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{updateOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Create full-protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "e16b1084-9a7b-4c27-b93b-6ee35f924eec",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organization is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function() {",
+															"    pm.expect(organization.id).to.exist;",
+															"    pm.environment.set(\"fullProtectedOrganizationId\", organization.id); ",
+															"",
+															"    utils.validateOrganization(organization);",
+															"    pm.expect(organization.status).to.eql(\"Active\");",
+															"    pm.expect(organization.name).to.contain(\"for API Test\");",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "0c89bd01-3575-404a-9596-09254b96b264",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"",
+															"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+															"    let org = res.json();",
+															"    delete org.id;",
+															"    org.name = \"Active org for API Test\";",
+															"    org.status = \"Active\";",
+															"    org.code = \"FULL_PROTECTED_ORG\";",
+															"    org.acqUnitIds = [pm.variables.get(\"fullProtectedAcqUnitId\")];",
+															"    pm.variables.set(\"fullProtectedOrganizationContent\", JSON.stringify(org));",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{fullProtectedOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													]
+												}
+											},
+											"response": []
+										}
+									],
+									"protocolProfileBehavior": {},
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "GET",
+									"item": [
+										{
+											"name": "Get not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "6c429463-1f3b-4b6b-873b-b73f6ff6f4ae",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function () {",
+															"    pm.expect(organization.id).to.eql(pm.environment.get(\"noAcqOrganizationId\"));",
+															"    utils.validateOrganization(organization);",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "b15b1eb2-0b56-4caf-8054-f9f9251815c5",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get read-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "1146bfb9-16ee-4ad6-90f2-88377e454535",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function () {",
+															"    pm.expect(organization.id).to.eql(pm.environment.get(\"readOnlyOrganizationId\"));",
+															"    utils.validateOrganization(organization);",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "04230f11-5e82-4a85-832d-4c92872753a1",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get full-protected org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "8c95b19d-0023-474e-8860-ab8b00f6fb59",
+														"exec": [
+															"pm.test(\"Organization can not be viewed\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "5d278740-15b5-46eb-906c-64d2feb753e6",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get organizations",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "ed03fe19-cc73-4847-8ba3-ba8cd3cf514c",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organizations = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organizations = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"2 open for read organizations should be found\", function () {",
+															"    pm.expect(organizations.totalRecords).to.eql(2);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "f0fb65b2-6cb3-4878-90a6-9d05a534bd9a",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations?limit=10",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													],
+													"query": [
+														{
+															"key": "limit",
+															"value": "10"
+														}
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Assign user to read-open unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "ea6a5a7c-688d-42fc-9fd2-1dd396e5ea0e",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let acqUnitMembership = {};",
+															"",
+															"pm.test(\"Membership is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    acqUnitMembership = pm.response.json();",
+															"});",
+															"",
+															"pm.variables.set(\"acqMembershipId\", acqUnitMembership.id);"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "652007ca-0451-4a2e-8553-2ff656235e14",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.userId = pm.variables.get(\"userId\");",
+															"body.acquisitionsUnitId = pm.variables.get(\"readOnlyAcqUnitId\");",
+															"",
+															"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{membershipBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/memberships",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"memberships"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "d62d0b51-0dbc-4fae-b1c5-d3745780ac80",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function () {",
+															"    pm.expect(organization.id).to.eql(pm.environment.get(\"noAcqOrganizationId\"));",
+															"    utils.validateOrganization(organization);",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "85499342-fdbd-47bd-b2f8-6269c2041593",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get read-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "08012a82-ec08-45c3-b4c6-a77774cd28c3",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function () {",
+															"    pm.expect(organization.id).to.eql(pm.environment.get(\"readOnlyOrganizationId\"));",
+															"    utils.validateOrganization(organization);",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "e1e23fa2-b9d6-4a9c-8254-606c06059f51",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get full-protected org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "2417584f-69b9-47c3-922f-b4f792e9e5ed",
+														"exec": [
+															"pm.test(\"Operation forbidden\", function () {",
+															"    pm.response.to.have.status(403);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "7a2f0b6f-f765-43c9-84a0-31f8c6a6117d",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get organizations",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "3eb3f0ac-4bca-40ce-92a5-9ace2045a1ef",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organizations = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organizations = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"2 open for read organizations should be found\", function () {",
+															"    pm.expect(organizations.totalRecords).to.eql(2);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "b62b0e1c-19eb-4237-89fd-2272c3bbca95",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations?limit=10",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													],
+													"query": [
+														{
+															"key": "limit",
+															"value": "10"
+														}
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Assign user to full-protected unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "419b3099-df1b-4e01-82d8-d82d6ad46bf8",
+														"exec": [
+															"pm.test(\"Membership was assigned\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "f29cd898-adac-4094-950e-e5795c8e0d15",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.id = pm.variables.get(\"acqMembershipId\");",
+															"body.userId = pm.variables.get(\"userId\");",
+															"body.acquisitionsUnitId = pm.variables.get(\"fullProtectedAcqUnitId\");",
+															"",
+															"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{membershipBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/memberships/{{acqMembershipId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"memberships",
+														"{{acqMembershipId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "dbc5affd-e3a7-4b49-b257-1ad7de868107",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function () {",
+															"    pm.expect(organization.id).to.eql(pm.environment.get(\"noAcqOrganizationId\"));",
+															"    utils.validateOrganization(organization);",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "7a5ca66e-97df-4520-add4-8fcac808b537",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get read-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "cf84be94-7047-4001-86ee-094a6dc444cb",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organization = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organization = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"Organization content is valid\", function () {",
+															"    pm.expect(organization.id).to.eql(pm.environment.get(\"readOnlyOrganizationId\"));",
+															"    utils.validateOrganization(organization);",
+															"});",
+															""
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "2783890a-c0cc-496e-919a-d89fd4c0b7f7",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get full-protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "3ce367da-583c-4002-a5d7-bb00ff0bd306",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "254a4b5a-5ab6-4ec5-9dcb-3da1e717889c",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Get organizations",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "e06dd990-299d-4caf-9988-91e1915a54d0",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let organizations = {};",
+															"",
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(200);",
+															"    organizations = pm.response.json();",
+															"});",
+															"",
+															"pm.test(\"3 organizations should be found\", function () {",
+															"    pm.expect(organizations.totalRecords).to.eql(3);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "d405fafe-b102-4f4d-88fe-9b175384391b",
+														"exec": [
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													}
+												],
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations?limit=10",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations"
+													],
+													"query": [
+														{
+															"key": "limit",
+															"value": "10"
+														}
+													]
+												}
+											},
+											"response": []
+										}
+									],
+									"protocolProfileBehavior": {},
+									"_postman_isSubFolder": true
+								},
+								{
+									"name": "PUT",
+									"item": [
+										{
+											"name": "Unassign user from acq. unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "b3ccc92a-6323-4347-95c6-f67aa5b95876",
+														"exec": [
+															"pm.test(\"Membership is deleted\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "4a766a01-7acc-4392-b01c-68719e848309",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.userId = pm.variables.get(\"userId\");",
+															"body.acquisitionsUnitId = pm.variables.get(\"readOnlyAcqUnitId\");",
+															"",
+															"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{membershipBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/memberships/{{acqMembershipId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"memberships",
+														"{{acqMembershipId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "c0461903-4388-45d9-adbb-37fb25b41f3e",
+														"exec": [
+															"pm.test(\"Organization is updated\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "0a7f7ed9-47a4-490a-a1f9-fbdf48e85229",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"noAcqOrganizationContent\"));",
+															"    org.code = \"UPDATED_NO_ACQ\";",
+															"    pm.variables.set(\"noAcqOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{noAcqOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update update-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "24815b5c-a6fa-4c65-aff6-4849cf0b95f1",
+														"exec": [
+															"pm.test(\"Organization is updated\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "a704a5ec-fa60-4930-be95-d03843f83164",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"updateOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_UPDATE_ONLY\";",
+															"    pm.variables.set(\"updateOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{updateOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{updateOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{updateOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update read-open org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "6231c8b7-fb7f-45f8-a467-f6480bc691ab",
+														"exec": [
+															"pm.test(\"Organization can not be updated\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "05d33454-c449-419d-8dc8-f10fd437f136",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"readOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_READ_ONLY\";",
+															"    pm.variables.set(\"readOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{readOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Change read-open acq.unit permissions to read-update-open",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "5001f5b1-1dda-49a6-891d-63bb828957c1",
+														"exec": [
+															"pm.test(\"Acq.unit is updated\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "016643fa-e539-4467-a6e2-ab2b8bc4d1a6",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.name = \"read and update only\";",
+															"body.id = pm.variables.get(\"readOnlyAcqUnitId\");",
+															"body.isDeleted = false;",
+															"body.protectCreate = true;",
+															"body.protectRead = false;",
+															"body.protectUpdate = false;",
+															"body.protectDelete = true;",
+															"",
+															"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{unitBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/units/{{readOnlyAcqUnitId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"units",
+														"{{readOnlyAcqUnitId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update read-update-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "c1ba0e3d-f03d-4fa9-982d-af3ae418e058",
+														"exec": [
+															"pm.test(\"Organization is updated\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "1e78be9e-ba33-45da-9d13-300769fbb0c3",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"readOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_READ_ONLY\";",
+															"    pm.variables.set(\"readOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{readOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Change read-update-open acq.unit permissions to read-open",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "d7fa942d-1473-4201-87b8-ffa904947876",
+														"exec": [
+															"pm.test(\"Acq.unit is updated\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "ab14f7ae-eba9-4164-b513-6abda4abd09a",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.name = \"read only\";",
+															"body.id = pm.variables.get(\"readOnlyAcqUnitId\");",
+															"body.isDeleted = false;",
+															"body.protectCreate = true;",
+															"body.protectRead = false;",
+															"body.protectUpdate = true;",
+															"body.protectDelete = true;",
+															"",
+															"pm.variables.set(\"unitBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{unitBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/units/{{readOnlyAcqUnitId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"units",
+														"{{readOnlyAcqUnitId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update full-protected org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "34924b99-103d-411e-9c62-25da2f7ad454",
+														"exec": [
+															"pm.test(\"Organization can not be updated\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "d1ff577e-b3c6-4fbd-8f79-50a9d68b1cbf",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"fullProtectedOrganizationContent\"));",
+															"    org.code = \"UPDATED_FULL_PROTECTED\";",
+															"    pm.variables.set(\"fullProtectedOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{fullProtectedOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Assign user to read-open unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "ea7f61a1-0ac8-4200-a012-9eadec5b5d4e",
+														"exec": [
+															"let utils = eval(globals.loadUtils);",
+															"let acqUnitMembership = {};",
+															"",
+															"pm.test(\"Membership is created\", function () {",
+															"    pm.response.to.have.status(201);",
+															"    acqUnitMembership = pm.response.json();",
+															"});",
+															"",
+															"pm.variables.set(\"acqMembershipId\", acqUnitMembership.id);"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "61c50336-8015-4da5-a9e4-4993ef5ae624",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.userId = pm.variables.get(\"userId\");",
+															"body.acquisitionsUnitId = pm.variables.get(\"readOnlyAcqUnitId\");",
+															"",
+															"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{membershipBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/memberships",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"memberships"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "b9dcd85b-80bb-4e49-a2a4-2489064604fc",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "42230566-3fb3-4283-9f0c-cbaccb237ef9",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"noAcqOrganizationContent\"));",
+															"    org.code = \"UPDATED_NO_ACQ\";",
+															"    pm.variables.set(\"noAcqOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{noAcqOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update read-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "8b70e4d8-5abd-4ed5-9a12-f29ee0ef2fe4",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "8128ddf2-5c31-4c66-9198-d884687fc553",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"readOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_READ_ONLY\";",
+															"    pm.variables.set(\"readOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{readOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update update-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "304891d9-9074-4f81-9caf-53e822e8e623",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "233fe5c0-3a13-4a7e-a6c4-b6e3ef8b35fa",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"updateOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_UPDATE_ONLY\";",
+															"    pm.variables.set(\"updateOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{updateOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{updateOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{updateOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update full-protected org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "13edb50f-001f-498b-8b9b-bcb7bdbcc5e7",
+														"exec": [
+															"pm.test(\"Organization can not be updated\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "15e55272-c7e2-4422-b9b6-6ec6df54c8a8",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"fullProtectedOrganizationContent\"));",
+															"    org.code = \"UPDATED_FULL_PROTECTED\";",
+															"    pm.variables.set(\"fullProtectedOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{fullProtectedOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Assign user to update-open unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "9274767e-cc15-41f8-9a3d-be2977d5135e",
+														"exec": [
+															"pm.test(\"Membership was assigned\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "60abf390-d510-41b0-af86-edff08bce87a",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.id = pm.variables.get(\"acqMembershipId\");",
+															"body.userId = pm.variables.get(\"userId\");",
+															"body.acquisitionsUnitId = pm.variables.get(\"updateOnlyAcqUnitId\");",
+															"",
+															"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{membershipBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/memberships/{{acqMembershipId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"memberships",
+														"{{acqMembershipId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "95145824-0c5f-4ca8-80fa-7339f200cb50",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "129c4375-79a2-4143-8c28-a15e819bec2b",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"noAcqOrganizationContent\"));",
+															"    org.code = \"UPDATED_NO_ACQ\";",
+															"    pm.variables.set(\"noAcqOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{noAcqOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update read-open org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "fa47c2a2-8e7b-4cb3-91c8-becff71728e4",
+														"exec": [
+															"pm.test(\"Organization can not be updated\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "f6205acd-61a8-4a30-a9f6-57fdc88aa5db",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"readOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_READ_ONLY\";",
+															"    pm.variables.set(\"readOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{readOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update update-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "9f6af2e0-8012-4c0b-84dd-5b6e0bfee914",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "2b471469-23f7-4eec-8da1-3eb5354170bb",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"updateOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_UPDATE_ONLY\";",
+															"    pm.variables.set(\"updateOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{updateOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{updateOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{updateOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update full-protected org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "f8e3b536-2d2d-405d-adb3-1d157a5db7f7",
+														"exec": [
+															"pm.test(\"Organization can not be updated\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "3e2c4c02-5b71-42c2-9fb9-5a0ac46a9340",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"fullProtectedOrganizationContent\"));",
+															"    org.code = \"UPDATED_FULL_PROTECTED\";",
+															"    pm.variables.set(\"fullProtectedOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{fullProtectedOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Assign user to full-protected unit",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "622fa971-ce84-4cae-9caf-a88f68f49076",
+														"exec": [
+															"pm.test(\"Membership was assigned\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "a1825b71-9b06-47ce-8037-1d58e9edba73",
+														"exec": [
+															"let body = {};",
+															"",
+															"body.id = pm.variables.get(\"acqMembershipId\");",
+															"body.userId = pm.variables.get(\"userId\");",
+															"body.acquisitionsUnitId = pm.variables.get(\"fullProtectedAcqUnitId\");",
+															"",
+															"pm.variables.set(\"membershipBody\", JSON.stringify(body));"
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken-testAdmin}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{membershipBody}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/acquisitions-units-storage/memberships/{{acqMembershipId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"acquisitions-units-storage",
+														"memberships",
+														"{{acqMembershipId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update not protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "de3dbba2-bfc6-4a4b-b3a2-469d0668d5c4",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "10311a49-ede6-440e-bd5a-f3acbcd5b4a9",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"noAcqOrganizationContent\"));",
+															"    org.code = \"UPDATED_NO_ACQ\";",
+															"    pm.variables.set(\"noAcqOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{noAcqOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{noAcqOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{noAcqOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update read-open org - forbidden",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "46802c14-9b02-4309-a5df-f3c9d8267e9c",
+														"exec": [
+															"pm.test(\"Organization can not be updated\",  () => {",
+															"    pm.response.to.be.forbidden;",
+															"",
+															"    let errors = pm.response.json().errors;",
+															"    pm.expect(errors.length).to.eql(1);",
+															"    pm.expect(errors[0].code).to.eql(\"userHasNoPermission\");",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "46bc7f29-7ac0-4f47-9a6e-183b03408039",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"readOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_READ_ONLY\";",
+															"    pm.variables.set(\"readOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"value": "application/json",
+														"type": "text"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{readOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{readOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{readOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update update-open org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "9fdaa3e1-f2ce-4eaf-9958-149992960771",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "dd72dfb4-4edb-428c-9816-90e35f198e3b",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"updateOnlyOrganizationContent\"));",
+															"    org.code = \"UPDATED_UPDATE_ONLY\";",
+															"    pm.variables.set(\"updateOnlyOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{updateOnlyOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{updateOnlyOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{updateOnlyOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										},
+										{
+											"name": "Update full-protected org",
+											"event": [
+												{
+													"listen": "test",
+													"script": {
+														"id": "ba9d7065-a7ad-4d3f-9c35-eab59bcb0e31",
+														"exec": [
+															"pm.test(\"Organizations found\", function () {",
+															"    pm.response.to.have.status(204);",
+															"});"
+														],
+														"type": "text/javascript"
+													}
+												},
+												{
+													"listen": "prerequest",
+													"script": {
+														"id": "bdd01eeb-3b56-4ef3-8cf1-c87fe8ecb915",
+														"exec": [
+															"let org = JSON.parse(pm.variables.get(\"fullProtectedOrganizationContent\"));",
+															"    org.code = \"UPDATED_FULL_PROTECTED\";",
+															"    pm.variables.set(\"fullProtectedOrganizationContent\", JSON.stringify(org));",
+															""
+														],
+														"type": "text/javascript"
+													}
+												}
+											],
+											"request": {
+												"method": "PUT",
+												"header": [
+													{
+														"key": "x-okapi-token",
+														"value": "{{xokapitoken}}"
+													},
+													{
+														"key": "Content-Type",
+														"type": "text",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{{fullProtectedOrganizationContent}}"
+												},
+												"url": {
+													"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{fullProtectedOrganizationId}}",
+													"protocol": "{{protocol}}",
+													"host": [
+														"{{url}}"
+													],
+													"port": "{{okapiport}}",
+													"path": [
+														"organizations",
+														"organizations",
+														"{{fullProtectedOrganizationId}}"
+													]
+												}
+											},
+											"response": []
+										}
+									],
+									"protocolProfileBehavior": {},
+									"_postman_isSubFolder": true
+								}
+							],
+							"protocolProfileBehavior": {},
+							"_postman_isSubFolder": true
+						},
+						{
+							"name": "Create active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f3812fe7-967b-4014-a6de-71fe403cf92c",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = {};",
+											"",
+											"pm.test(\"Organization is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    organization = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(organization.id).to.exist;",
+											"    pm.environment.set(\"activeOrganizationId\", organization.id); ",
+											"",
+											"    utils.validateOrganization(organization);",
+											"    pm.expect(organization.status).to.eql(\"Active\");",
+											"    pm.expect(organization.name).to.contain(\"for API Test\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "7ef458b1-1450-44a9-8de8-f1917896b953",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    delete org.id;",
+											"    org.name = \"Active org for API Test\";",
+											"    org.status = \"Active\";",
+											"    org.code = \"ACTIVEORG1\";",
+											"    org.accounts[0].acqUnitIds = [];",
+											"    org.acqUnitIds = [];",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "777e9641-6fbe-4eb5-8a74-18e07d059ecf",
+										"exec": [
+											"pm.test(\"Organization is updated\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "ca48f145-212e-4d49-a626-b4296781f23b",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    delete org.id;",
+											"    org.name = \"Active org for API Test - UPDATED\";",
+											"    org.status = \"Active\";",
+											"    org.code = \"ACTIVEORG2\";",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{activeOrganizationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"{{activeOrganizationId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "da6be6a1-e11c-445b-8795-e39f8825e1e4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = {};",
+											"",
+											"pm.test(\"Organizations found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    organization = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function () {",
+											"    pm.expect(organization.id).to.eql(pm.environment.get(\"activeOrganizationId\"));",
+											"    utils.validateOrganization(organization);",
+											"    pm.expect(organization.code).to.eql(\"ACTIVEORG2\");",
+											"    pm.expect(organization.status).to.eql(\"Active\");",
+											"    pm.expect(organization.name).to.contain(\"Active org for API Test - UPDATED\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "43d6f70f-cfbb-48b1-b0c2-9c36185cc871",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{activeOrganizationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"{{activeOrganizationId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete active org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cae6994a-22de-404a-9920-a775895b8ada",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Organization is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "1a8377d8-6ca0-4a85-baad-7e947d21ba4a",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/{{activeOrganizationId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"{{activeOrganizationId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create inactive org",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "73dcafbe-99f9-4a7a-8684-f1701c276ff9",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = {};",
+											"",
+											"pm.test(\"Organization is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    organization = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(organization.id).to.exist;",
+											"    pm.environment.set(\"inactiveOrganizationId\", organization.id); ",
+											"",
+											"    utils.validateOrganization(organization);",
+											"    pm.expect(organization.status).to.eql(\"Inactive\");",
+											"    pm.expect(organization.isVendor).to.be.false;",
+											"    pm.expect(organization.name).to.contain(\"for API Test\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "db69b713-be18-41dd-83d6-236bab13532d",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    delete org.id;",
+											"    org.name = \"Inactive for API Test\";",
+											"    org.status = \"Inactive\";",
+											"    org.code = \"INACTIVEORG\";",
+											"    org.isVendor = false;",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created orgs",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "e8e03a8d-102a-4455-943d-2a099f479946",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let organization = [];",
+											"",
+											"pm.test(\"Organizations found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    organizations = pm.response.json().organizations;",
+											"});",
+											"",
+											"pm.test(\"Organization content is valid\", function() {",
+											"    pm.expect(pm.response.json().totalRecords).to.equal(1);",
+											"    organizations.forEach(org => utils.validateOrganization(org));",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "23e8a96a-7d43-42e5-bcd9-7721f88ac3a9",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations?query=name=\"Inactive for API Test\"",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "name=\"Inactive for API Test\""
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Addresses",
+					"item": [
+						{
+							"name": "Create address",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "04bb4e31-0253-481a-a5c1-5e5dd4e5e81b",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.variables.set(\"addressContent\", JSON.stringify(utils.buildAddress()));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "e4135284-d7a7-45f0-a08f-2df06c8b61bb",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = {};",
+											"",
+											"pm.test(\"Address is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    address = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Address content is valid\", function() {",
+											"    pm.expect(address.id).to.exist;",
+											"    pm.environment.set(\"addressId\", address.id); ",
+											"    ",
+											"    utils.validateAddress(address);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create another address for filter",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "d2955aa1-751f-48bc-af16-4f7c1773b3f1",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = JSON.stringify(utils.buildAddress());",
+											"let add = JSON.parse(address);",
+											"add.addressLine1 = \"Api Test\"",
+											"",
+											"pm.variables.set(\"addressContentForFilter\", JSON.stringify(add));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "af305c98-446d-4f15-9dc5-e9116345e1ce",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = {};",
+											"",
+											"pm.test(\"Address is created\", function () {",
+											"    pm.response.to.have.status(201);",
+											"    address = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Address content is valid\", function() {",
+											"    pm.expect(address.id).to.exist;",
+											"    pm.environment.set(\"addressForFilterId\", address.id); ",
+											"    ",
+											"    utils.validateAddress(address);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressContentForFilter}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update address with new country",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5582b723-a469-46e4-9f24-af36b143654b",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = JSON.stringify(utils.buildAddress());",
+											"let add = JSON.parse(address);",
+											"let country = \"UUU\" + add.country;",
+											"",
+											"add.country = country;",
+											"pm.variables.set(\"updatedCountry\", country);",
+											"pm.variables.set(\"updatedAddress\", JSON.stringify(add));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "44b4299c-d454-498b-a0c5-1005c1b1c6a9",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/organizations-storage/addresses/\" + environment.addressId, (err, res) => {",
+											"        pm.test(\"Verify address updated with new country\", () => pm.expect(res.json().country).to.equal(pm.variables.get(\"updatedCountry\")));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{updatedAddress}}\n"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "b387c28e-5e32-42b7-95b9-3ea2c8996530",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = {};",
+											"",
+											"pm.test(\"Address found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    address = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Addrress content is valid\", function() {",
+											"    pm.expect(address.id).to.eql(pm.environment.get(\"addressId\"));",
+											"    utils.validateAddress(address);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get created addresses",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c19a6e83-3052-4392-b481-720696bcc6fb",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let addresses = [];",
+											"",
+											"pm.test(\"Addresses found\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    addresses = pm.response.json().addresses;",
+											"});",
+											"",
+											"pm.test(\"Addresses content is valid\", function() {",
+											"    pm.expect(pm.response.json().totalRecords).to.be.equal(1);",
+											"    addresses.forEach(address => utils.validateAddress(address));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses?query=addressLine1==API Test",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "addressLine1==API Test"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "eb3a2106-916f-490c-ab58-1eff42f63982",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Address is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Interfaces",
+					"item": [
+						{
+							"name": "Create interface",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "07fc0c17-3caa-4705-acef-bfe4c7f37858",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/interfaces/acso_interface.json\", function (err, res) {",
+											"    let testInterface = res.json();",
+											"    delete testInterface.id;",
+											"    pm.variables.set(\"interfaceContent\", JSON.stringify(testInterface));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "59c30198-6527-4aa7-8949-03021ec3b234",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Interface is created\", function() {",
+											"    pm.response.to.have.status(201);",
+											"",
+											"    let testInterface = pm.response.json();",
+											"    pm.expect(testInterface.id).to.exist;",
+											"    pm.variables.set(\"interfaceId\", testInterface.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{interfaceContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/interfaces",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"interfaces"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create interface credential",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "b809cca4-554e-4bef-850b-d41ac72ec73e",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let interfaceCredential = {};",
+											"",
+											"pm.test(\"Interface credential is created\", function() {",
+											"    pm.response.to.have.status(201);",
+											"    interfaceCredential = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Interface credential content is valid\", function() {",
+											"    pm.expect(interfaceCredential.id).to.exist;",
+											"    pm.expect(interfaceCredential.interfaceId).to.be.equal(pm.variables.get(\"interfaceId\"));",
+											"",
+											"    pm.variables.set(\"createdInterfaceCredential\", JSON.stringify(interfaceCredential));",
+											"    pm.variables.set(\"createdInterfaceCredentialId\", interfaceCredential.id);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "2d4b1037-bb56-438e-afb1-44612f1cbefb",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/interface_credentials/alexs_interface_credential.json\", function (err, res) {",
+											"    let interfaceCredential = res.json();",
+											"    delete interfaceCredential.id;",
+											"    interfaceCredential.interfaceId = pm.variables.get(\"interfaceId\");",
+											"    pm.variables.set(\"interfaceCredentialContent\", JSON.stringify(interfaceCredential));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{interfaceCredentialContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/interfaces/{{interfaceId}}/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"interfaces",
+										"{{interfaceId}}",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update interface credential with new password",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "43b50a81-a743-4a7d-a4b8-ed709496e8c0",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"let interfaceCredentialForUpdate = JSON.parse(pm.variables.get(\"createdInterfaceCredential\"));",
+											"interfaceCredentialForUpdate.password = \"NEW_PASSWORD_123\";",
+											"pm.variables.set(\"interfaceCredentialContent\", JSON.stringify(interfaceCredentialForUpdate));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "c3bb8e00-e157-4a80-ae00-5dac0b809f51",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.test(\"Status code is 204\", function () {",
+											"    pm.response.to.have.status(\"No Content\");",
+											"",
+											"    // The test can be run only if update succeded",
+											"    utils.sendGetRequest(\"/organizations-storage/interfaces/\" + pm.variables.get(\"interfaceId\") + \"/credentials\", (err, res) => {",
+											"        pm.test(\"Verify password updated\", () => pm.expect(res.json().password).to.equal(\"NEW_PASSWORD_123\"));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{interfaceCredentialContent}}\n"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/interfaces/{{interfaceId}}/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"interfaces",
+										"{{interfaceId}}",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get interface credential",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "3f5436c0-c24f-43bc-bdc4-961b4f64c0e1",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let interfaceCredential = {};",
+											"",
+											"pm.test(\"Interface credential found\", function() {",
+											"    pm.response.to.have.status(200);",
+											"    interfaceCredential = pm.response.json();",
+											"});",
+											"",
+											"pm.test(\"Interface credential content is valid\", function() {",
+											"    pm.expect(interfaceCredential.interfaceId).to.eql(pm.variables.get(\"interfaceId\"));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/interfaces/{{interfaceId}}/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"interfaces",
+										"{{interfaceId}}",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete interface credential",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "4c6b9370-ba8d-4ec6-bc18-96b6ba448a6a",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Address is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/interfaces/{{interfaceId}}/credentials",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"interfaces",
+										"{{interfaceId}}",
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete interface",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "a77fd87c-0e24-4349-8b8b-7fb3e3666e32",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Address is deleted\", function () {",
+											"    pm.response.to.have.status(204);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/interfaces/{{interfaceId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"interfaces",
+										"{{interfaceId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "12bcda11-e91c-489b-bef5-74bcbc5d1792",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "bfba028d-2c1e-4432-ab82-1fe87342a943",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Negative Tests",
+			"item": [
+				{
+					"name": "Organizations",
+					"item": [
+						{
+							"name": "Get org - not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "cd673fbf-892e-4902-828b-f703b9bece01",
+										"exec": [
+											"pm.test(\"Organization not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/28cccf6f-599d-4cce-afeb-18d042717508",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"28cccf6f-599d-4cce-afeb-18d042717508"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update org - not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "add1e18c-1242-456a-9448-f15312fd4491",
+										"exec": [
+											"pm.test(\"Organization updating not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "5bd329f0-2eee-42a8-b56a-7ba15ca096eb",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    delete org.id;",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/28cccf6f-599d-4cce-afeb-18d042717508",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"28cccf6f-599d-4cce-afeb-18d042717508"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update org - id mismatch",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bfbed5c4-1375-49cc-bf93-d4f382eb347c",
+										"exec": [
+											"pm.test(\"Organization updating id mismatch\", function () {",
+											"    pm.response.to.have.status(422);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "1f4d1f49-fe4f-414e-862c-2a14a4bcaba4",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.sendRequest(pm.variables.get(\"resourcesUrl\") + \"/organizations/srebsco.json\", function (err, res) {",
+											"    let org = res.json();",
+											"    org.id = \"28cccf6f-599d-4cce-afeb-18d042717507\";",
+											"    pm.variables.set(\"organizationContent\", JSON.stringify(org));",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{organizationContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/28cccf6f-599d-4cce-afeb-18d042717508",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"28cccf6f-599d-4cce-afeb-18d042717508"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete org - not found",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bba61f9d-50bc-4be9-a6f5-43f9ed9a98eb",
+										"exec": [
+											"pm.test(\"Organization delete not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"type": "text",
+										"value": "{{xokapitoken}}"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations/organizations/28cccf6f-599d-4cce-afeb-18d042717508",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations",
+										"organizations",
+										"28cccf6f-599d-4cce-afeb-18d042717508"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Addresses",
+					"item": [
+						{
+							"name": "Get address - bad ID 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "521c7b62-5f64-4a94-bcaf-337292df9b5b",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address - valid token, invalid tenant - 400",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bbdca441-5f3d-441d-90a5-c131fc2b8a06",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"No such Tenant fs12345678\");",
+											"});",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "fs12345678",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address - bad token format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "61b041b1-3a03-412a-9d7a-8f5ae82f0fcd",
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "bad-token",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get address - invalid token - 401",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "a351f86a-ead5-430b-be4b-4462b68c69b5",
+										"exec": [
+											"pm.test(\"Status code is 401\", function () {",
+											"    pm.response.to.have.status(401);",
+											"});",
+											"",
+											"pm.test(\"empty instance ID returns error message\", function () {",
+											"     pm.expect(pm.response.text()).to.include(\"Invalid token\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Okapi-Tenant",
+										"value": "{{testTenant}}",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "eyJhbGciOiJIUzUxMiJ999999.eyJzdWIiOiJhZG1pbiIsInVzZXJfaWQiOiJlZjY3NmRiOS1kMjMxLTQ3OWEtYWE5MS1mNjVlYjRiMTc4NzIiLCJ0ZW5hbnQiOiJmczAwMDAwMDAwIn2.KC0RbgafcMmR5Mc3-I7a6SQPKeDSr0SkJlLMcqQz3nwI0lwPTlxw0wJgidxDq-qjCR0wurFRn5ugd9_SVadSxg",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create address with invalid ID",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "aa5fd814-1f51-4404-8b27-4d1035656451",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"let address = JSON.stringify(utils.buildAddress());",
+											"let add = JSON.parse(address);",
+											"add.id = \"123-345\"",
+											"",
+											"pm.variables.set(\"addressContent\", JSON.stringify(add));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "539057a8-b044-44e1-b477-98fe1dc7d746",
+										"exec": [
+											"pm.test(\"Status code is 422\", function () {",
+											"    pm.response.to.have.status(422);",
+											"    pm.expect(pm.response.json().errors).to.have.lengthOf(1);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressContent}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update address - bad ID 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "2bea9142-e1e1-46b3-a7a4-f463e82bb474",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.variables.set(\"addressBody\", JSON.stringify(utils.buildAddress()));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "a5f8a246-f926-408d-974c-d1233d4248c9",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"name": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{addressBody}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address - bad ID 400",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "21d2b9c3-7bc1-4c2e-8bca-42a2a9f3a8a0",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "1791b73c-77d2-42a6-89a0-7abb1d842dec",
+										"exec": [
+											"pm.test(\"Status code is 400 - resource does not exist\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error string in response body\", function () {",
+											"    pm.expect(pm.response.text()).to.include(\"parameter is incorrect\");",
+											"    pm.expect(pm.response.text()).to.include(\"bad-id\");",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/bad-id",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"bad-id"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete already deleted address",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "13498f5f-0e95-4cfb-b466-3eaa5a2396b7",
+										"exec": [
+											"pm.test(\"Address is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{addressId}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{addressId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete address by random ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "3473d08a-61d2-4899-864c-b507f2772535",
+										"exec": [
+											"pm.test(\"Address is not found\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/organizations-storage/addresses/{{$guid}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"organizations-storage",
+										"addresses",
+										"{{$guid}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Cleanup",
+			"item": [
+				{
+					"name": "Cleanup test tenant",
+					"item": [
+						{
+							"name": "Purge and disable all module for created tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "2dd7de81-d411-4832-8b3f-0facd1982db1",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"pm.sendRequest(utils.buildOkapiUrl(\"/_/proxy/tenants/\" + pm.variables.get(\"testTenant\") + \"/modules\"), (err, res) => {",
+											"    pm.test(\"Preparing request to disable modules\", () => {",
+											"        pm.expect(err).to.equal(null);",
+											"        pm.expect(res.code).to.equal(200);",
+											"        let modulesToDisable = res.json();",
+											"        modulesToDisable.forEach(entry => entry.action = \"disable\");",
+											"",
+											"        console.log(modulesToDisable);",
+											"        pm.variables.set(\"modulesToDisable\", JSON.stringify(modulesToDisable));",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "14203e6f-e244-4ffd-99f6-8ed4ed59e773",
+										"exec": [
+											"let utils = eval(globals.loadUtils);",
+											"",
+											"pm.test(\"Disable all modules for test tenant\", function () {",
+											"    pm.response.to.have.status(200);",
+											"    pm.response.to.be.withBody;",
+											"});",
+											"",
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"type": "text",
+										"value": "application/json"
+									},
+									{
+										"key": "X-Okapi-Token",
+										"value": "{{xokapitoken-admin}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{{modulesToDisable}}"
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}/install?purge=true",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}",
+										"install"
+									],
+									"query": [
+										{
+											"key": "purge",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete test tenant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "46c66c9b-311d-4b95-a0f1-3f02009d7094",
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "daef999e-281b-482d-bede-4d118dc4a0e6",
+										"exec": [
+											"pm.test(\"Tenant deleted - Expected Created (204)\", () => {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"// Remove all created variables",
+											"eval(globals.loadUtils).unsetTestVariables();"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "x-okapi-token",
+										"value": "{{xokapitoken-admin}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{protocol}}://{{url}}:{{okapiport}}/_/proxy/tenants/{{testTenant}}",
+									"protocol": "{{protocol}}",
+									"host": [
+										"{{url}}"
+									],
+									"port": "{{okapiport}}",
+									"path": [
+										"_",
+										"proxy",
+										"tenants",
+										"{{testTenant}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"protocolProfileBehavior": {},
+					"_postman_isSubFolder": true
+				}
+			],
+			"protocolProfileBehavior": {}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "612b331f-6d8c-4a0b-8df6-d395f3b7c476",
+				"type": "text/javascript",
+				"exec": [
+					"// Global testing object - used in further tests",
+					"pm.globals.set(\"testData\", {",
+					"    // User templates with hardcoded id",
+					"    users: {",
+					"        admin: {",
+					"            user: {",
+					"                \"id\": \"00000000-1111-5555-9999-999999999999\",",
+					"                \"username\": \"mod-orgs-admin-user\",",
+					"                \"active\": true,",
+					"                \"personal\": {",
+					"                    \"firstName\": \"Tenant\",",
+					"                    \"lastName\": \"Admin\"",
+					"                }",
+					"            },",
+					"            credentials: {",
+					"                \"id\": \"00000000-1111-5555-9999-999999999999\",",
+					"                \"username\": \"mod-orgs-admin-user\",",
+					"                \"password\": \"mod-orgs-admin-password\"",
+					"            },",
+					"            permissions: {",
+					"                \"id\": \"00000000-1111-5555-9999-999999999999\",",
+					"                \"userId\": \"00000000-1111-5555-9999-999999999999\",",
+					"                \"permissions\": []",
+					"            }",
+					"        },",
+					"        regular: {",
+					"            user: {",
+					"                \"id\": \"00000001-1111-5555-9999-999999999999\",",
+					"                \"username\": \"mod-orgs-user\",",
+					"                \"active\": true,",
+					"                \"personal\": {",
+					"                    \"firstName\": \"mod-organizations-storage\",",
+					"                    \"lastName\": \"API Tests\"",
+					"                }",
+					"            },",
+					"            credentials: {",
+					"                \"id\": \"00000001-1111-5555-9999-999999999999\",",
+					"                \"username\": \"mod-orgs-user\",",
+					"                \"password\": \"mod-orgs-user-password\"",
+					"            },",
+					"            permissions: {",
+					"                \"id\": \"00000001-1111-5555-9999-999999999999\",",
+					"                \"userId\": \"00000001-1111-5555-9999-999999999999\",",
+					"                \"permissions\": [",
+					"                    \"orders-storage.module.all\",",
+					"                    \"organizations-storage.module.all\",",
+					"                    \"organizations.module.all\"",
+					"                ]",
+					"            }",
+					"        }",
+					"    },",
+					"    tenant: {",
+					"        \"id\": pm.variables.get(\"testTenant\"),",
+					"        \"name\": \"Test organizations tenant\",",
+					"        \"description\": \"Tenant for test purpose\"",
+					"    }",
+					"});",
+					"",
+					"postman.setGlobalVariable(\"loadUtils\", function loadUtils() {",
+					"    let utils = {};",
+					"    utils.schemaPrefix = \"orgs_schema_\";",
+					"",
+					"    /**",
+					"     * Creates OKAPI URL endpoint based on provided path",
+					"     */",
+					"    utils.buildOkapiUrl = function (path) {",
+					"        return pm.environment.get(\"protocol\") + \"://\" + pm.environment.get(\"url\") + \":\" + pm.environment.get(\"okapiport\") + path;",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends delete request based on specified path.",
+					"     * The Promise is returned as a result of the operation holding the http code of the response once completed.",
+					"     */",
+					"    utils.processDeleteRequest = function (path) {",
+					"        return new Promise((resolve) => {",
+					"            utils.sendDeleteRequest(path, (err, response) => resolve(response.code));",
+					"        });",
+					"    };",
+					"",
+					"    utils.getModuleId = function (moduleName, bodyHandler) {",
+					"        pm.sendRequest({",
+					"            url: utils.buildOkapiUrl(\"/_/proxy/modules?latest=1&filter=\" + moduleName),",
+					"            method: \"GET\",",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.environment.get(\"xokapitenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken-admin\")",
+					"            }",
+					"        }, (err, res) => {",
+					"            pm.test(moduleName + \" module is available\", () => {",
+					"                pm.expect(err).to.equal(null);",
+					"                pm.expect(res).to.be.ok;",
+					"                let modulesArr = res.json();",
+					"                pm.expect(modulesArr).to.have.lengthOf.at.least(1);",
+					"                bodyHandler(modulesArr[modulesArr.length - 1].id);",
+					"            });",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Verifies if the delete operation succeeded",
+					"     */",
+					"    utils.validateResultOfDeleteRequest = function (code, message) {",
+					"        pm.test(message ? message : \"Record should be successfully deleted\", function () {",
+					"            pm.expect(code, \"The delete operation has to be completed with 204 code\").to.eql(204);",
+					"        });",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendGetRequest = function (path, handler) {",
+					"        pm.sendRequest(utils.buildPmRequest(path, \"GET\"), handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends DELETE request and uses passed handler to handle result",
+					"     */",
+					"    utils.sendDeleteRequest = function (path, handler) {",
+					"        pm.sendRequest(utils.buildPmRequest(path, \"DELETE\"), handler);",
+					"    };",
+					"",
+					"    /**",
+					"     * Sends GET request and uses passed handler to handle result",
+					"     */",
+					"    utils.buildPmRequest = function (path, method) {",
+					"        return {",
+					"            url: utils.buildOkapiUrl(path),",
+					"            method: method,",
+					"            header: {",
+					"                \"X-Okapi-Tenant\": pm.variables.get(\"testTenant\"),",
+					"                \"X-Okapi-Token\": pm.environment.get(\"xokapitoken\")",
+					"            }",
+					"        };",
+					"    };",
+					"",
+					"    /**",
+					"     * Clean up variables",
+					"     */",
+					"    utils.unsetTestVariables = function () {",
+					"        pm.globals.unset(\"loadUtils\");",
+					"        pm.globals.unset(\"testData\");",
+					"",
+					"        pm.environment.unset(\"addressId\");",
+					"        pm.environment.unset(\"addressForFilterId\");",
+					"        pm.environment.unset(\"activeOrganizationId\");",
+					"        pm.environment.unset(\"enabledModules\");",
+					"        pm.environment.unset(\"inactiveOrganizationId\");",
+					"        pm.environment.unset(\"xokapitoken\");",
+					"        pm.environment.unset(\"xokapitoken-testAdmin\");",
+					"",
+					"        // Unset schema variables",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => pm.environment.unset(schemaVar.key));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils.validateOrganization = function (jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"organization.json\")));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils.validateAddress = function (jsonData) {",
+					"        utils._validateAgainstSchema(jsonData, JSON.parse(pm.environment.get(utils.schemaPrefix + \"address.json\")));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to validate object against specified schema",
+					"     */",
+					"    utils._validateAgainstSchema = function (jsonData, schema) {",
+					"        utils._addSchemas();",
+					"        var result = tv4.validateMultiple(jsonData, schema);",
+					"        pm.expect(result.valid).to.equal(true, \"Schema validation error: \" + JSON.stringify(result.errors));",
+					"        //make sure no schemas are missing",
+					"        pm.expect(result.missing.length).to.equal(0, \"Missing schemas: \" + JSON.stringify(result.missing));",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to build address",
+					"     */",
+					"    utils.buildAddress = function () {",
+					"        return {",
+					"            \"addressLine1\": \"10 Estes Street\",",
+					"            \"addressLine2\": \"\",",
+					"            \"city\": \"Ipswich\",",
+					"            \"stateRegion\": \"MA\",",
+					"            \"zipCode\": \"01938\",",
+					"            \"country\": \"USA\"",
+					"        };",
+					"    };",
+					"",
+					"    /**",
+					"     * Internal function to load schema defenitions to tv4",
+					"     */",
+					"    utils._addSchemas = function () {",
+					"        //Create and add schemas for validation",
+					"        pm.environment.values",
+					"            .filter(variable => variable.key.startsWith(utils.schemaPrefix))",
+					"            .forEach(schemaVar => tv4.addSchema(schemaVar.key, JSON.parse(schemaVar.value)));",
+					"    };",
+					"",
+					"    return utils;",
+					"",
+					"} + '; loadUtils();');"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "82784a95-8530-4160-86f0-20deb522b7df",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"id": "f96c5ee4-308e-4a0a-b8be-6d244a335b24",
+			"key": "resourcesUrl",
+			"value": "https://raw.githubusercontent.com/folio-org/mod-organizations-storage/master/src/main/resources/data",
+			"type": "string"
+		},
+		{
+			"id": "f20ab22e-a617-4d29-a366-7bd576d62562",
+			"key": "testTenant",
+			"value": "orgs_api_tests",
+			"type": "string"
+		}
+	],
+	"protocolProfileBehavior": {}
+}
